@@ -1,13 +1,66 @@
--- PHASE B — VALIDATION (COUNTS & BASIC SANITY).
--- Replace with actual SELECTs later; for now, capture what we will assert.
+USE ccinfom_dev;
 
--- COUNTS (DoD): Expect ≥10 rows per core
--- TODO: SELECT COUNT(*) FROM products;
--- TODO: SELECT COUNT(*) FROM customers;
--- TODO: SELECT COUNT(*) FROM employees;
--- TODO: SELECT COUNT(*) FROM vehicles;
--- TODO: SELECT COUNT(*) FROM branches;
+-- ===========================================================
+-- GATE A: Row counts (DoD ≥10; high bar ≥13 with exceptions)
+-- ===========================================================
+SELECT 'customers' AS table_name,
+       COUNT(*)    AS rows_count,
+       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10,
+       CASE WHEN COUNT(*) >= 13 THEN 'OK' ELSE '—'   END AS meets_high_bar_13
+FROM customers
+UNION ALL
+SELECT 'branches',
+       COUNT(*),
+       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END,
+       CASE WHEN COUNT(*) >= 13 THEN 'OK' ELSE '—'   END
+FROM branches;
 
--- OPTIONAL QUICK CHECKS (after seeding)
--- TODO: SELECT DISTINCT role FROM employees;           -- expect picker/packer/dispatcher
--- TODO: SELECT COUNT(*) FROM products WHERE active_flag = FALSE;  -- exceptions present
+-- ===========================================================
+-- GATE B: Audit trio spot checks (non-NULL, auto-filled)
+-- ===========================================================
+SELECT customer_id AS id, created_at, updated_at, updated_by
+FROM customers
+ORDER BY customer_id
+LIMIT 5;
+
+SELECT branch_id AS id, created_at, updated_at, updated_by
+FROM branches
+ORDER BY branch_id
+LIMIT 5;
+
+-- ===========================================================
+-- GATE C: Domain sanity (should return ZERO rows on clean data)
+-- (Matches your Phase-B DDL: customers.email is NULL or contains '@';
+--  address/city are NOT NULL in branches.)
+-- ===========================================================
+-- Invalid customer emails (should be none)
+SELECT customer_id, email
+FROM customers
+WHERE email IS NOT NULL AND email NOT LIKE '%@%';
+
+-- Missing mandatory branch fields (should be none due to NOT NULL)
+SELECT branch_id, branch_name, address, city
+FROM branches
+WHERE address IS NULL OR city IS NULL;
+
+-- Optional (informational): potential duplicate customers by name
+SELECT LOWER(TRIM(customer_name)) AS normalized_name, COUNT(*) AS dup_count
+FROM customers
+GROUP BY LOWER(TRIM(customer_name))
+HAVING COUNT(*) > 1;
+
+-- ===========================================================
+-- GATE D: Surface intended EXCEPTIONS (should list rows you seeded)
+-- These do not fail Phase B; they prove your edge seeds exist.
+-- ===========================================================
+-- Customers missing any contact channel
+SELECT customer_id, customer_name, contact_person, phone, email
+FROM customers
+WHERE contact_person IS NULL OR phone IS NULL OR email IS NULL
+ORDER BY customer_id;
+
+-- Branches missing contact fields
+SELECT branch_id, branch_name, contact_person, phone
+FROM branches
+WHERE contact_person IS NULL OR phone IS NULL
+ORDER BY branch_id;

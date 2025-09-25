@@ -1,6 +1,11 @@
 -- PHASE B — CORES ONLY (NO FKs here). Replace TODOs with actual DDL later.
 -- Goal: Define 5 core tables with PK + business fields + audit trio.
 -- DoD: schema loads cleanly; audit trio on every core; ZERO FOREIGN KEY clauses in cores.
+CREATE DATABASE IF NOT EXISTS ccinfom_dev;
+USE ccinfom_dev;
+
+DROP TABLE IF EXISTS branches;
+DROP TABLE IF EXISTS customers;
 
 -- [PRODUCTS]
 -- TODO: CREATE TABLE products (
@@ -11,12 +16,18 @@
 --   Audit trio: created_at, updated_at (with ON UPDATE), updated_by
 -- );
 
--- [CUSTOMERS]
--- TODO: CREATE TABLE customers (
---   PK: customer_id
---   Business fields: customer_name, contact_person, phone, email, default_delivery_address (TEXT)
---   Audit trio: created_at, updated_at, updated_by
--- );
+CREATE TABLE customers (
+  customer_id               BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  customer_name             VARCHAR(200) NOT NULL,
+  contact_person            VARCHAR(200),
+  phone                     VARCHAR(40),
+  email                     VARCHAR(120),
+  default_delivery_address  VARCHAR(300) NOT NULL, 
+  created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by                VARCHAR(64) NOT NULL DEFAULT 'system',
+  CONSTRAINT ck_customers_email CHECK (email IS NULL OR email LIKE '%@%')
+);
 
 -- [EMPLOYEES]
 -- TODO: CREATE TABLE employees (
@@ -32,12 +43,18 @@
 --   Audit trio: created_at, updated_at, updated_by
 -- );
 
--- [BRANCHES]
--- TODO: CREATE TABLE branches (
---   PK: branch_id
---   Business fields: branch_name, address (TEXT), city, contact_person, phone
---   Audit trio: created_at, updated_at, updated_by
--- );
+CREATE TABLE branches (
+  branch_id       BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  branch_name     VARCHAR(200) NOT NULL,
+  address         VARCHAR(300) NOT NULL,           
+  city            VARCHAR(120) NOT NULL,
+  contact_person  VARCHAR(200),
+  phone           VARCHAR(40),
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system'
+);
+
 
 -- NOTES:
 -- • Keep foreign keys OUT of core tables. Relationships live in transaction tables (Phase C/E).
