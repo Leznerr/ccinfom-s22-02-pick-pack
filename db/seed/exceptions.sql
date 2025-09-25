@@ -18,6 +18,13 @@ VALUES
 
 -- [EMPLOYEES] (≥3)
 -- TODO: status = 'inactive' OR unexpected role to test controlled values
+INSERT INTO employees (last_name, first_name, phone, email, status, updated_by) -- Missing role (should fail in strict validation)
+VALUES ('Test', 'NoRole', '09999999999', 'norole@example.com', 'active', 'tester');
+INSERT INTO employees (last_name, first_name, role, phone, email, status, updated_by)-- Duplicate email (conflicts with UNIQUE constraint)
+VALUES ('Duplicate', 'Email', 'picker', '09998887777', 'miguel.santos@example.com', 'active', 'tester');
+INSERT INTO employees (last_name, first_name, role, phone, email, status, updated_by)-- Invalid status (should fail ENUM constraint if enforced)
+VALUES ('Invalid', 'Status', 'packer', '09110001111', 'invalid.status@example.com', 'on-leave', 'tester');
+
 
 -- [VEHICLES] (≥3)
 -- TODO: status = 'maintenance' OR capacity = 0

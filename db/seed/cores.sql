@@ -10,6 +10,18 @@
 
 -- [EMPLOYEES] (≥10)
 -- TODO: Mix roles: picker/packer/dispatcher; status mostly 'active'; valid phones/emails.
+INSERT INTO employees (last_name, first_name, role, phone, email, status, updated_by)
+VALUES
+('Santos', 'Miguel', 'picker', '09171234567', 'miguel.santos@example.com', 'active', 'seed'),
+('Reyes', 'Ana', 'packer', '09183456789', 'ana.reyes@example.com', 'active', 'seed'),
+('Dela Cruz', 'Juan', 'dispatcher', '09281234567', 'juan.delacruz@example.com', 'active', 'seed'),
+('Garcia', 'Liza', 'picker', '09391234567', 'liza.garcia@example.com', 'active', 'seed'),
+('Fernandez', 'Carlos', 'packer', '09184561234', 'carlos.fernandez@example.com', 'active', 'seed'),
+('Mendoza', 'Rosa', 'dispatcher', '09274561234', 'rosa.mendoza@example.com', 'active', 'seed'),
+('Lopez', 'Marco', 'picker', '09173456721', 'marco.lopez@example.com', 'active', 'seed'),
+('Torres', 'Elena', 'packer', '09283456721', 'elena.torres@example.com', 'inactive', 'seed'),
+('Cruz', 'Paolo', 'dispatcher', '09194567890', 'paolo.cruz@example.com', 'active', 'seed'),
+('Aquino', 'Julia', 'picker', '09383456721', 'julia.aquino@example.com', 'active', 'seed');
 
 -- [VEHICLES] (≥10)
 -- TODO: Mix vehicle_type (van/truck/motorcycle); capacities vary; status mostly 'available'.

@@ -29,12 +29,18 @@ CREATE TABLE customers (
   CONSTRAINT ck_customers_email CHECK (email IS NULL OR email LIKE '%@%')
 );
 
--- [EMPLOYEES]
--- TODO: CREATE TABLE employees (
---   PK: employee_id
---   Business fields: last_name, first_name, role (picker/packer/dispatcher), phone, email, status
---   Audit trio: created_at, updated_at, updated_by
--- );
+CREATE TABLE employees (
+  employee_id   BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  last_name     VARCHAR(100) NOT NULL,
+  first_name    VARCHAR(100) NOT NULL,
+  role          ENUM('picker','packer','dispatcher') NOT NULL,
+  phone         VARCHAR(20),
+  email         VARCHAR(150) UNIQUE,
+  status        ENUM('active','inactive') DEFAULT 'active',
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by    VARCHAR(64) NOT NULL DEFAULT 'system'
+);
 
 -- [VEHICLES]
 -- TODO: CREATE TABLE vehicles (

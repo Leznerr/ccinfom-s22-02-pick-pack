@@ -64,3 +64,39 @@ SELECT branch_id, branch_name, contact_person, phone
 FROM branches
 WHERE contact_person IS NULL OR phone IS NULL
 ORDER BY branch_id;
+
+
+
+
+-- ===========================================================
+-- EMPLOYEES QA
+-- ===========================================================
+
+-- Row count (≥10 normal expected)
+SELECT 'employees' AS table_name,
+       COUNT(*) AS rows_count,
+       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10
+FROM employees;
+
+-- Audit trio check
+SELECT employee_id, created_at, updated_at, updated_by
+FROM employees
+ORDER BY employee_id
+LIMIT 5;
+
+-- Domain sanity
+SELECT employee_id, role
+FROM employees
+WHERE role NOT IN ('picker','packer','dispatcher');
+
+SELECT employee_id, status
+FROM employees
+WHERE status NOT IN ('active','inactive');
+
+-- Exceptions surfaced
+SELECT employee_id, last_name, first_name, email, status
+FROM employees
+WHERE email IS NULL OR role IS NULL OR status NOT IN ('active','inactive');
+
+
+
