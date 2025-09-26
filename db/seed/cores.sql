@@ -25,6 +25,19 @@ VALUES
 
 -- [VEHICLES] (≥10)
 -- TODO: Mix vehicle_type (van/truck/motorcycle); capacities vary; status mostly 'available'.
+INSERT INTO vehicles (vehicle_id, plate_number, Vehicle_type, Vehicle_capacity, statos, updated_by) VALUES
+	(0,'ABC-123', 'van', 12.0, 'available', 'admin'),
+	(1,'DEF-456', 'truck', 3.0, 'available', 'admin'),
+	(2,'GHI-789', 'motorcycle', 2.0, 'available', 'admin'),
+	(3,'JKL-012', 'van', 15.0, 'available', 'admin'),
+	(4,'MNO-345', 'truck', 5.0, 'maintenance', 'admin'),
+	(5,'PQR-678', 'motorcycle', 2.0, 'available', 'admin'),
+	(6,'STU-901', 'van', 7.0, 'available', 'admin'),
+	(7,'VWX-234', 'truck', 5.0, 'available', 'admin'),
+	(8,'YZA-567', 'motorcycle', 2.0, 'available', 'admin'),
+	(9,'BCD-890', 'van', 10.0, 'available', 'admin'),
+	(10,'EFG-123', 'truck', 4.0, 'available', 'admin'),
+	(11,'HIJ-456', 'motorcycle', 2.0, 'rented', 'admin');
 
 -- [BRANCHES] (≥10)
 -- TODO: Branch names + address + city + contact_person + phone.
