@@ -48,6 +48,16 @@ CREATE TABLE employees (
 --   Business fields: plate_number (UNIQUE), vehicle_type, capacity DECIMAL, status (available/maintenance)
 --   Audit trio: created_at, updated_at, updated_by
 -- );
+CREATE TABLE vehicles(
+	vehicle_id 			INT PRIMARY KEY, -- is this auto increment???
+    plate_number 		VARCHAR(10) NOT NULL UNIQUE,
+    Vehicle_type 		VARCHAR(20), 
+    Vehicle_capacity 	DOUBLE NOT NULL,
+	statos 				VARCHAR(15) NOT NULL, 	-- status is a keyword in MySQL; replaced with statos.
+    created_at 			TIMESTAMP NOT NULL DEFAULT current_timestamp,
+    updated_at 			TIMESTAMP NOT NULL DEFAULT current_timestamp ON UPDATE current_timestamp,
+    updated_by 			VARCHAR(50) NOT NULL
+	); 
 
 CREATE TABLE branches (
   branch_id       BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
