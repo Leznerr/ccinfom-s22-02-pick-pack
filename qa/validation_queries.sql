@@ -3,6 +3,12 @@ USE ccinfom_dev;
 -- ===========================================================
 -- GATE A: Row counts (DoD ≥10; high bar ≥13 with exceptions)
 -- ===========================================================
+SELECT 'products' AS table_name,
+       COUNT(*) AS rows_count,
+       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10,
+       CASE WHEN COUNT(*) >= 13 THEN 'OK' ELSE '—'   END AS meets_high_bar_13
+FROM products
+UNION ALL
 SELECT 'customers' AS table_name,
        COUNT(*)    AS rows_count,
        CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10,
@@ -18,6 +24,11 @@ FROM branches;
 -- ===========================================================
 -- GATE B: Audit trio spot checks (non-NULL, auto-filled)
 -- ===========================================================
+SELECT product_id, created_at, updated_at, updated_by
+FROM products
+ORDER BY product_id
+LIMIT 5;
+
 SELECT customer_id AS id, created_at, updated_at, updated_by
 FROM customers
 ORDER BY customer_id
@@ -28,11 +39,20 @@ FROM branches
 ORDER BY branch_id
 LIMIT 5;
 
+
 -- ===========================================================
 -- GATE C: Domain sanity (should return ZERO rows on clean data)
 -- (Matches your Phase-B DDL: customers.email is NULL or contains '@';
 --  address/city are NOT NULL in branches.)
 -- ===========================================================
+-- Invalid products
+SELECT product_id, sku, unit_price, on_hand_qty, reserved_qty
+FROM products
+WHERE unit_price < 0
+   OR on_hand_qty < 0
+   OR reserved_qty < 0
+   OR reserved_qty > on_hand_qty;
+   
 -- Invalid customer emails (should be none)
 SELECT customer_id, email
 FROM customers
@@ -53,6 +73,16 @@ HAVING COUNT(*) > 1;
 -- GATE D: Surface intended EXCEPTIONS (should list rows you seeded)
 -- These do not fail Phase B; they prove your edge seeds exist.
 -- ===========================================================
+-- Products that are inactive
+SELECT product_id, sku, active_flag
+FROM products
+WHERE active_flag = FALSE;
+
+-- Products with suspicious reserves
+SELECT product_id, sku, on_hand_qty, reserved_qty
+FROM products
+WHERE reserved_qty > on_hand_qty;
+
 -- Customers missing any contact channel
 SELECT customer_id, customer_name, contact_person, phone, email
 FROM customers
@@ -64,9 +94,6 @@ SELECT branch_id, branch_name, contact_person, phone
 FROM branches
 WHERE contact_person IS NULL OR phone IS NULL
 ORDER BY branch_id;
-
-
-
 
 -- ===========================================================
 -- EMPLOYEES QA

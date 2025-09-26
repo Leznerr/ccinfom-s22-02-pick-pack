@@ -6,6 +6,12 @@ USE ccinfom_dev;
 -- TODO: Inactive product (active_flag = FALSE)
 -- TODO: Very high/low unit_price or long name to test UI lengths
 -- TODO: (Optional) Prepare a would-be duplicate SKU case (document expectation: UNIQUE violation)
+INSERT INTO products
+  (sku, product_name, category, unit_price, unit_of_measure, on_hand_qty, reserved_qty, active_flag, updated_by)
+VALUES
+('PRD-EXC1', 'Inactive Gadget', 'Gadgets', 150.00, 'pcs', 10, 0, FALSE, 'seed'), -- inactive
+('PRD-EXC2', REPEAT('LongName', 10), 'Tools', 1.00, 'pcs', 5, 0, TRUE, 'seed'),  -- long name stress test
+('PRD-EXC3', 'Duplicate SKU', 'Widgets', 99.99, 'pcs', 20, 0, TRUE, 'seed');     -- prepare duplicate, second insert will fail
 
 -- [CUSTOMERS] (≥3)
 -- TODO: Missing contact_person OR malformed phone/email (to see how UI handles)
@@ -31,6 +37,7 @@ INSERT INTO vehicles (vehicle_id, plate_number, Vehicle_type, Vehicle_capacity, 
 	(12,'DCP-123','motorcycle',3.0,'maintenance','admin'),
     (13,'DCP-124','van',0,'maintenance','admin'),
     (14,'DCP-125','truck',6.7,'maintenance','admin')
+    
 -- [BRANCHES] (≥3)
 -- TODO: Missing contact or phone OR generic address
 INSERT INTO branches

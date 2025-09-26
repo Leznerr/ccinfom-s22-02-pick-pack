@@ -4,9 +4,20 @@
 
 -- [PRODUCTS] (≥10)
 -- TODO: Add diverse SKUs across categories (Widget/Gadget/Tool/Accessory); set on_hand_qty and unit_price realistically.
+INSERT INTO products (sku, product_name, category, unit_price, unit_of_measure, on_hand_qty, reserved_qty, active_flag, updated_by)
+VALUES
+('WGT-1001', 'Widget A', 'Widgets', 120.00, 'pcs', 500, 0, TRUE, 'seed'),
+('WHT-1002', 'Widget B', 'Widgets', 95.50, 'pcs', 300, 20, TRUE, 'seed'),
+('GDT-2001', 'Gadget Alpha', 'Gadgets', 550.00, 'pcs', 100, 0, TRUE, 'seed'),
+('GET-2002', 'Gadget Beta', 'Gadgets', 750.00, 'pcs', 80, 5, TRUE, 'seed'),
+('TOL-3001', 'Tool Hammer', 'Tools', 250.00, 'pcs', 150, 0, TRUE, 'seed'),
+('TPL-3002', 'Tool Screwdriver', 'Tools', 75.00, 'pcs', 400, 0, TRUE, 'seed'),
+('ACC-4001', 'Accessory Cable', 'Accessories', 45.00, 'pcs', 1000, 50, TRUE, 'seed'),
+('ADC-4002', 'Accessory Charger', 'Accessories', 180.00, 'pcs', 200, 0, TRUE, 'seed');
 
 -- [CUSTOMERS] (≥10)
 -- TODO: Add company names with contact_person, phone, email, and delivery addresses from major Metro Manila cities.
+
 
 -- [EMPLOYEES] (≥10)
 -- TODO: Mix roles: picker/packer/dispatcher; status mostly 'active'; valid phones/emails.
@@ -25,22 +36,24 @@ VALUES
 
 -- [VEHICLES] (≥10)
 -- TODO: Mix vehicle_type (van/truck/motorcycle); capacities vary; status mostly 'available'.
-INSERT INTO vehicles (vehicle_id, plate_number, Vehicle_type, Vehicle_capacity, statos, updated_by) VALUES
-	(0,'ABC-123', 'van', 12.0, 'available', 'admin'),
-	(1,'DEF-456', 'truck', 3.0, 'available', 'admin'),
-	(2,'GHI-789', 'motorcycle', 2.0, 'available', 'admin'),
-	(3,'JKL-012', 'van', 15.0, 'available', 'admin'),
-	(4,'MNO-345', 'truck', 5.0, 'maintenance', 'admin'),
-	(5,'PQR-678', 'motorcycle', 2.0, 'available', 'admin'),
-	(6,'STU-901', 'van', 7.0, 'available', 'admin'),
-	(7,'VWX-234', 'truck', 5.0, 'available', 'admin'),
-	(8,'YZA-567', 'motorcycle', 2.0, 'available', 'admin'),
-	(9,'BCD-890', 'van', 10.0, 'available', 'admin'),
-	(10,'EFG-123', 'truck', 4.0, 'available', 'admin'),
-	(11,'HIJ-456', 'motorcycle', 2.0, 'rented', 'admin');
+INSERT INTO vehicles (vehicle_id, plate_number, Vehicle_type, Vehicle_capacity, statos, updated_by)
+VALUES
+(0,'ABC-123', 'van', 12.0, 'available', 'admin'),
+(1,'DEF-456', 'truck', 3.0, 'available', 'admin'),
+(2,'GHI-789', 'motorcycle', 2.0, 'available', 'admin'),
+(3,'JKL-012', 'van', 15.0, 'available', 'admin'),
+(4,'MNO-345', 'truck', 5.0, 'maintenance', 'admin'),
+(5,'PQR-678', 'motorcycle', 2.0, 'available', 'admin'),
+(6,'STU-901', 'van', 7.0, 'available', 'admin'),
+(7,'VWX-234', 'truck', 5.0, 'available', 'admin'),
+(8,'YZA-567', 'motorcycle', 2.0, 'available', 'admin'),
+(9,'BCD-890', 'van', 10.0, 'available', 'admin'),
+(10,'EFG-123', 'truck', 4.0, 'available', 'admin'),
+(11,'HIJ-456', 'motorcycle', 2.0, 'rented', 'admin');
 
 -- [BRANCHES] (≥10)
 -- TODO: Branch names + address + city + contact_person + phone.
+
 
 -- REMINDERS:
 -- • Use consistent formats (phones, emails).
