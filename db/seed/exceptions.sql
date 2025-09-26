@@ -27,7 +27,10 @@ VALUES
 
 -- [VEHICLES] (≥3)
 -- TODO: status = 'maintenance' OR capacity = 0
-
+INSERT INTO vehicles (vehicle_id, plate_number, Vehicle_type, Vehicle_capacity, statos, updated_by) VALUES
+	(12,'DCP-123','motorcycle',3.0,'maintenance','admin'),
+    (13,'DCP-124','van',0,'maintenance','admin'),
+    (14,'DCP-125','truck',6.7,'maintenance','admin')
 -- [BRANCHES] (≥3)
 -- TODO: Missing contact or phone OR generic address
 INSERT INTO branches
