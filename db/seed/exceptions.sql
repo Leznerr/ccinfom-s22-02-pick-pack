@@ -19,7 +19,7 @@ VALUES
 -- [EMPLOYEES] (≥3)
 -- TODO: status = 'inactive' OR unexpected role to test controlled values
 INSERT INTO employees
-  (last_name, first_name, role, phone, email, status, updated_by)
+  (last_name, first_name, employee_role, phone, email, employee_status, updated_by)
 VALUES
   ('Test',     'NoRole',   NULL,       '09999999999', 'norole@example.com',   'active',    'seed'),   -- Missing role
   ('Duplicate','Email',    'picker',   '09998887777', 'miguel.santos@example.com', 'active','seed'),  -- Duplicate email

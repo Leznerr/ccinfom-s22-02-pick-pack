@@ -85,18 +85,17 @@ ORDER BY employee_id
 LIMIT 5;
 
 -- Domain sanity
-SELECT employee_id, role
+SELECT employee_id, employee_role
 FROM employees
-WHERE role NOT IN ('picker','packer','dispatcher');
+WHERE employee_role NOT IN ('picker','packer','dispatcher');
 
-SELECT employee_id, status
+SELECT employee_id, employee_status
 FROM employees
-WHERE status NOT IN ('active','inactive');
+WHERE employee_status NOT IN ('active','inactive');
 
 -- Exceptions surfaced
-SELECT employee_id, last_name, first_name, email, status
+SELECT employee_id, last_name, first_name, email, employee_role, employee_status
 FROM employees
-WHERE email IS NULL OR role IS NULL OR status NOT IN ('active','inactive');
-
-
-
+WHERE email IS NULL 
+   OR employee_role IS NULL 
+   OR employee_status NOT IN ('active','inactive');

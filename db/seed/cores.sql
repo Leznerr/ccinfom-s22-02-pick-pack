@@ -10,7 +10,7 @@
 
 -- [EMPLOYEES] (≥10)
 -- TODO: Mix roles: picker/packer/dispatcher; status mostly 'active'; valid phones/emails.
-INSERT INTO employees (last_name, first_name, role, phone, email, status, updated_by)
+INSERT INTO employees (last_name, first_name, employee_role, phone, email, employee_status, updated_by)
 VALUES
 ('Santos', 'Miguel', 'picker', '09171234567', 'miguel.santos@example.com', 'active', 'seed'),
 ('Reyes', 'Ana', 'packer', '09183456789', 'ana.reyes@example.com', 'active', 'seed'),
