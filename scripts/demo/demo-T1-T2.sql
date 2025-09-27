@@ -1,0 +1,12 @@
+-- =========================================
+-- PHASE C — DEMO (Happy Path) T1 + T2
+-- Steps:
+-- 1) Create Ticket A (hdr + 2–3 lines). SELECT hdr/lines to show data.
+-- 2) Start Picking (insert picking_hdr). VERIFY ticket_status='Picking'.
+-- 3) Insert picking_line rows (join to ticket_line). SHOW products before/after:
+--      reserved_qty ↑ equals SUM(picked_qty), on_hand_qty ↔ unchanged.
+-- 4) Run QA snippets (/qa/validation_queries.sql) and print results.
+-- Expected:
+-- - No errors; status flip to 'Picking'; reserved_qty increased exactly by picked_qty.
+-- - No change to on_hand_qty at this phase.
+-- =========================================
