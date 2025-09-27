@@ -5,16 +5,19 @@
 CREATE DATABASE IF NOT EXISTS ccinfom_dev;
 USE ccinfom_dev;
 
+
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS branches;
 DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS vehicles;
 
 CREATE TABLE products (
   product_id       BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   sku              VARCHAR(64) NOT NULL UNIQUE,
   product_name     VARCHAR(200) NOT NULL,
   category         VARCHAR(100) NOT NULL,
-  unit_price       DECIMAL(10,2) NOT NULL CHECK (unit_price >= 0),
+  unit_price       DECIMAL(12,2) NOT NULL CHECK (unit_price >= 0),
   unit_of_measure  VARCHAR(50) NOT NULL,
   on_hand_qty      DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (on_hand_qty >= 0),
   reserved_qty     DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (reserved_qty >= 0),
@@ -44,22 +47,22 @@ CREATE TABLE employees (
   employee_role          	ENUM('picker','packer','dispatcher') NOT NULL,
   phone         			VARCHAR(20),
   email         			VARCHAR(150) UNIQUE,
-  employee_status        	ENUM('active','inactive') DEFAULT 'active',
+  employee_status        	ENUM('active','inactive') NOT NULL DEFAULT 'active',
   created_at    			TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    			TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by    			VARCHAR(64) NOT NULL DEFAULT 'system'
 );
 
 CREATE TABLE vehicles (
-	vehicle_id 				INT PRIMARY KEY, -- is this auto increment???
-    plate_number 			VARCHAR(10) NOT NULL UNIQUE,
-    Vehicle_type 			VARCHAR(20), 
-    Vehicle_capacity 		DOUBLE NOT NULL,
-	statos 					VARCHAR(15) NOT NULL, 	-- status is a keyword in MySQL; replaced with statos.
-    created_at 				TIMESTAMP NOT NULL DEFAULT current_timestamp,
-    updated_at 				TIMESTAMP NOT NULL DEFAULT current_timestamp ON UPDATE current_timestamp,
-    updated_by 				VARCHAR(50) NOT NULL
-); 
+  vehicle_id        BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  plate_number      VARCHAR(10) NOT NULL UNIQUE,
+  vehicle_type      ENUM('van','truck','motorcycle') NOT NULL,
+  capacity          DECIMAL(12,2) NOT NULL CHECK (capacity >= 0),
+  vehicle_status            ENUM('available','maintenance','inactive') NOT NULL DEFAULT 'available',
+  created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by        VARCHAR(64) NOT NULL DEFAULT 'system'
+);
 
 CREATE TABLE branches (
   branch_id       			BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

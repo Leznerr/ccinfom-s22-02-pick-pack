@@ -3,126 +3,119 @@ USE ccinfom_dev;
 -- ===========================================================
 -- GATE A: Row counts (DoD ≥10; high bar ≥13 with exceptions)
 -- ===========================================================
-SELECT 'products' AS table_name,
-       COUNT(*) AS rows_count,
-       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10,
-       CASE WHEN COUNT(*) >= 13 THEN 'OK' ELSE '—'   END AS meets_high_bar_13
+SELECT 'products'  AS table_name, COUNT(*) AS rows_count,
+       IF(COUNT(*) >= 10,'OK','FAIL') AS meets_min_10,
+       IF(COUNT(*) >= 13,'OK','—')   AS meets_high_bar_13
 FROM products
 UNION ALL
-SELECT 'customers' AS table_name,
-       COUNT(*)    AS rows_count,
-       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10,
-       CASE WHEN COUNT(*) >= 13 THEN 'OK' ELSE '—'   END AS meets_high_bar_13
-FROM customers
+SELECT 'customers', COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM customers
 UNION ALL
-SELECT 'branches',
-       COUNT(*),
-       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END,
-       CASE WHEN COUNT(*) >= 13 THEN 'OK' ELSE '—'   END
-FROM branches;
+SELECT 'branches',  COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM branches
+UNION ALL
+SELECT 'employees', COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM employees
+UNION ALL
+SELECT 'vehicles',  COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM vehicles
+ORDER BY table_name;
 
 -- ===========================================================
 -- GATE B: Audit trio spot checks (non-NULL, auto-filled)
+-- (Sample first 5 of each core)
 -- ===========================================================
-SELECT product_id, created_at, updated_at, updated_by
-FROM products
-ORDER BY product_id
-LIMIT 5;
-
-SELECT customer_id AS id, created_at, updated_at, updated_by
-FROM customers
-ORDER BY customer_id
-LIMIT 5;
-
-SELECT branch_id AS id, created_at, updated_at, updated_by
-FROM branches
-ORDER BY branch_id
-LIMIT 5;
-
+SELECT product_id  AS id, 'products'  AS tbl, created_at, updated_at, updated_by FROM products  ORDER BY product_id  LIMIT 5;
+SELECT customer_id AS id, 'customers' AS tbl, created_at, updated_at, updated_by FROM customers ORDER BY customer_id LIMIT 5;
+SELECT branch_id   AS id, 'branches'  AS tbl, created_at, updated_at, updated_by FROM branches  ORDER BY branch_id   LIMIT 5;
+SELECT employee_id AS id, 'employees' AS tbl, created_at, updated_at, updated_by FROM employees ORDER BY employee_id LIMIT 5;
+SELECT vehicle_id  AS id, 'vehicles'  AS tbl, created_at, updated_at, updated_by FROM vehicles  ORDER BY vehicle_id  LIMIT 5;
 
 -- ===========================================================
 -- GATE C: Domain sanity (should return ZERO rows on clean data)
--- (Matches your Phase-B DDL: customers.email is NULL or contains '@';
---  address/city are NOT NULL in branches.)
 -- ===========================================================
--- Invalid products
+-- Products: non-negative & reserved ≤ on_hand
 SELECT product_id, sku, unit_price, on_hand_qty, reserved_qty
 FROM products
-WHERE unit_price < 0
-   OR on_hand_qty < 0
-   OR reserved_qty < 0
-   OR reserved_qty > on_hand_qty;
-   
--- Invalid customer emails (should be none)
-SELECT customer_id, email
-FROM customers
+WHERE unit_price < 0 OR on_hand_qty < 0 OR reserved_qty < 0 OR reserved_qty > on_hand_qty;
+
+-- Customers: email pattern (NULL ok)
+SELECT customer_id, email FROM customers
 WHERE email IS NOT NULL AND email NOT LIKE '%@%';
 
--- Missing mandatory branch fields (should be none due to NOT NULL)
-SELECT branch_id, branch_name, address, city
-FROM branches
+-- Branches: mandatory fields present
+SELECT branch_id, branch_name, address, city FROM branches
 WHERE address IS NULL OR city IS NULL;
 
--- Optional (informational): potential duplicate customers by name
+-- Vehicles: capacity non-negative (0 is allowed), valid enum enforced by DDL
+SELECT vehicle_id, plate_number, capacity FROM vehicles
+WHERE capacity < 0;
+
+-- Phones (present values must be PH mobile 11-digit 09xxxxxxxxx)
+SELECT 'customers' AS tbl, customer_id AS id, phone FROM customers
+WHERE phone IS NOT NULL AND phone NOT REGEXP '^09[0-9]{9}$'
+UNION ALL
+SELECT 'employees', employee_id, phone FROM employees
+WHERE phone NOT REGEXP '^09[0-9]{9}$'
+UNION ALL
+SELECT 'branches', branch_id, phone FROM branches
+WHERE phone IS NOT NULL AND phone NOT REGEXP '^09[0-9]{9}$';
+
+-- Uniqueness audits (should be empty/zero-delta)
+SELECT sku, COUNT(*) c FROM products GROUP BY sku HAVING c > 1;
+SELECT email, COUNT(*) c FROM employees GROUP BY email HAVING email IS NOT NULL AND c > 1;
+SELECT plate_number, COUNT(*) c FROM vehicles GROUP BY plate_number HAVING c > 1;
+
+-- Optional: name-based fuzzy dup for customers (informational)
 SELECT LOWER(TRIM(customer_name)) AS normalized_name, COUNT(*) AS dup_count
 FROM customers
 GROUP BY LOWER(TRIM(customer_name))
 HAVING COUNT(*) > 1;
 
 -- ===========================================================
--- GATE D: Surface intended EXCEPTIONS (should list rows you seeded)
--- These do not fail Phase B; they prove your edge seeds exist.
+-- GATE D: Surface intended EXCEPTIONS (edges you seeded)
+-- (These may be non-empty by design; if empty, that's fine.)
 -- ===========================================================
--- Products that are inactive
+-- Products: inactive
 SELECT product_id, sku, active_flag
 FROM products
 WHERE active_flag = FALSE;
 
--- Products with suspicious reserves
+-- Products: suspicious reserves (may be empty depending on seeds)
 SELECT product_id, sku, on_hand_qty, reserved_qty
 FROM products
 WHERE reserved_qty > on_hand_qty;
 
--- Customers missing any contact channel
+-- Customers: missing any contact channel (NULLs)
 SELECT customer_id, customer_name, contact_person, phone, email
 FROM customers
 WHERE contact_person IS NULL OR phone IS NULL OR email IS NULL
 ORDER BY customer_id;
 
--- Branches missing contact fields
+-- Branches: missing contact fields (NULLs)
 SELECT branch_id, branch_name, contact_person, phone
 FROM branches
 WHERE contact_person IS NULL OR phone IS NULL
 ORDER BY branch_id;
 
--- ===========================================================
--- EMPLOYEES QA
--- ===========================================================
+-- Vehicles: non-available states (maintenance/inactive)
+SELECT vehicle_id, plate_number, vehicle_status, capacity
+FROM vehicles
+WHERE vehicle_status <> 'available'
+ORDER BY vehicle_id;
 
--- Row count (≥10 normal expected)
-SELECT 'employees' AS table_name,
-       COUNT(*) AS rows_count,
-       CASE WHEN COUNT(*) >= 10 THEN 'OK' ELSE 'FAIL' END AS meets_min_10
+-- ===========================================================
+-- EMPLOYEES QA (kept for clarity; overlaps Gate A/B/C)
+-- ===========================================================
+SELECT 'employees' AS table_name, COUNT(*) AS rows_count,
+       IF(COUNT(*) >= 10,'OK','FAIL') AS meets_min_10
 FROM employees;
 
--- Audit trio check
-SELECT employee_id, created_at, updated_at, updated_by
-FROM employees
-ORDER BY employee_id
-LIMIT 5;
-
--- Domain sanity
-SELECT employee_id, employee_role
-FROM employees
+-- Domain sanity (should be zero due to ENUM/NOT NULL)
+SELECT employee_id, employee_role FROM employees
 WHERE employee_role NOT IN ('picker','packer','dispatcher');
 
-SELECT employee_id, employee_status
-FROM employees
+SELECT employee_id, employee_status FROM employees
 WHERE employee_status NOT IN ('active','inactive');
 
--- Exceptions surfaced
+-- Exceptions surfaced (edges you inserted)
 SELECT employee_id, last_name, first_name, email, employee_role, employee_status
 FROM employees
-WHERE email IS NULL 
-   OR employee_role IS NULL 
-   OR employee_status NOT IN ('active','inactive');
+WHERE email IS NULL OR employee_status = 'inactive'
+ORDER BY employee_id;
