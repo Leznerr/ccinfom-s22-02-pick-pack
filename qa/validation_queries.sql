@@ -119,3 +119,39 @@ SELECT employee_id, last_name, first_name, email, employee_role, employee_status
 FROM employees
 WHERE email IS NULL OR employee_status = 'inactive'
 ORDER BY employee_id;
+
+
+
+/* ==========================================
+   PHASE C — QA EXTENSIONS (T1/T2)
+   Append after Phase B gates.
+
+   ROW COUNTS (all should be ≥ 1 after seeds)
+   [ ] SELECT COUNT(*) FROM pick_ticket_hdr;
+   [ ] SELECT COUNT(*) FROM pick_ticket_line;
+   [ ] SELECT COUNT(*) FROM picking_hdr;
+   [ ] SELECT COUNT(*) FROM picking_line;
+
+   ORPHANS (should be zero)
+   [ ] pick_ticket_line without header
+   [ ] picking_line without header
+   [ ] headers referencing missing customer/branch/product/employee
+
+   INVENTORY INVARIANTS
+   [ ] on_hand unchanged by T2 (no UPDATE to products.on_hand_qty during T2)
+   [ ] Δreserved_qty BY product = SUM(picked_qty) from picking_line
+   [ ] No product where reserved_qty > on_hand_qty
+   [ ] Per ticket_line: SUM(picked_qty) ≤ requested_qty  -- requires ticket_line_id on picking_line
+
+   BUSINESS/STATUS
+   [ ] UNIQUE pairs hold: (pick_ticket_id,product_id) and (picking_id,ticket_line_id)
+   [ ] Tickets with a picking_hdr have ticket_status = 'Picking'
+   [ ] Picked SKU exists on ticket line (product match)  -- anti-join should return 0
+
+   PERFORMANCE VIS
+   [ ] EXPLAIN joins use indexes: ticket→lines→products, picking→lines
+
+   DEFINITION OF DONE (QA)
+   [ ] All checks return expected results; no orphans; all invariants pass
+========================================== */
+
