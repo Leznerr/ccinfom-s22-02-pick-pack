@@ -6,7 +6,13 @@
 -- 3) Insert picking_line rows (join to ticket_line). SHOW products before/after:
 --      reserved_qty ↑ equals SUM(picked_qty), on_hand_qty ↔ unchanged.
 -- 4) Run QA snippets (/qa/validation_queries.sql) and print results.
+-- 5) OPTIONAL NEGATIVE: Attempt an over-pick to prove DB guard (expect ERROR; no data change).
 -- Expected:
 -- - No errors; status flip to 'Picking'; reserved_qty increased exactly by picked_qty.
 -- - No change to on_hand_qty at this phase.
+
+-- Expected:
+-- - No errors on happy path; status flips to 'Picking'; reserved_qty increased exactly by picked_qty.
+-- - No change to on_hand_qty at this phase.
+-- - Over-pick attempt throws 'Insufficient available' and leaves data unchanged.
 -- =========================================
