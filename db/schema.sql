@@ -83,35 +83,76 @@ CREATE TABLE branches (
    ------------------------------------------
    BUILD
    [ ] Create T1 tables:
-       - pick_ticket_hdr(pk BIGINT AI, customer_id FK→customers, branch_id FK→branches,
-         ticket_status ENUM('Open','Picking','Packed','Dispatched','Delivered','Short-Closed') DEFAULT 'Open',
-         remarks, audit trio)
-       - pick_ticket_line(pk BIGINT AI, pick_ticket_id FK→pick_ticket_hdr ON DELETE CASCADE,
-         product_id FK→products, requested_qty DECIMAL(12,2) CHECK(requested_qty > 0),
-         uom VARCHAR(50), UNIQUE(pick_ticket_id,product_id), audit trio)
-       - Indexes: idx_pt_hdr_customer_id, idx_pt_hdr_branch_id, idx_pt_hdr_status, idx_pt_line_product_id
+       - pick_ticket_hdr (
+           pick_ticket_id BIGINT AI PK,
+           customer_id BIGINT NOT NULL FK→customers(customer_id),
+           branch_id   BIGINT NOT NULL FK→branches(branch_id),
+           ticket_status ENUM('Open','Picking','Packed','Dispatched','Delivered','Short-Closed') NOT NULL DEFAULT 'Open',
+           remarks VARCHAR(300) NULL,
+           created_at, updated_at, updated_by  -- audit trio
+         )
+       - pick_ticket_line (
+           ticket_line_id BIGINT AI PK,
+           pick_ticket_id BIGINT NOT NULL FK→pick_ticket_hdr(pick_ticket_id) ON DELETE CASCADE,
+           product_id BIGINT NOT NULL FK→products(product_id),
+           requested_qty DECIMAL(12,2) NOT NULL CHECK(requested_qty > 0),
+           uom VARCHAR(50) NOT NULL,
+           UNIQUE (pick_ticket_id, product_id),
+           created_at, updated_at, updated_by
+           -- (Optional) line_status ENUM('Valid','Invalid','Duplicate','Cancelled') DEFAULT 'Valid'
+         )
+       - Indexes: idx_pt_hdr_customer_id, idx_pt_hdr_branch_id, idx_pt_hdr_status,
+                  idx_pt_line_product_id
+
    [ ] Create T2 tables:
-       - picking_hdr(pk BIGINT AI, pick_ticket_id FK→pick_ticket_hdr, picker_employee_id FK→employees,
-         picking_status ENUM('Picking','Picked','Cancelled') DEFAULT 'Picking',
-         started_at, completed_at NULL, audit trio, UNIQUE(pick_ticket_id))
-       - picking_line(pk BIGINT AI, picking_id FK→picking_hdr ON DELETE CASCADE,
-         product_id FK→products, picked_qty DECIMAL(12,2) CHECK(picked_qty > 0),
-         uom VARCHAR(50), UNIQUE(picking_id,product_id), audit trio)
-       - Indexes: idx_pick_hdr_ticket_id, idx_pick_hdr_picker_id, idx_pick_hdr_status, idx_pick_line_product_id
+       - picking_hdr (
+           picking_id BIGINT AI PK,
+           pick_ticket_id BIGINT NOT NULL FK→pick_ticket_hdr(pick_ticket_id),
+           picker_employee_id BIGINT NOT NULL FK→employees(employee_id),
+           picking_status ENUM('Picking','Done','Cancelled') NOT NULL DEFAULT 'Picking',
+           started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+           completed_at TIMESTAMP NULL,
+           UNIQUE(pick_ticket_id),     -- one picking batch per ticket
+           created_at, updated_at, updated_by
+         )
+       - picking_line (
+           picking_line_id BIGINT AI PK,
+           picking_id BIGINT NOT NULL FK→picking_hdr(picking_id) ON DELETE CASCADE,
+           ticket_line_id BIGINT NOT NULL FK→pick_ticket_line(ticket_line_id),
+           product_id BIGINT NOT NULL FK→products(product_id),
+           picked_qty DECIMAL(12,2) NOT NULL CHECK(picked_qty > 0),
+           uom VARCHAR(50) NOT NULL,
+           -- tie to the ticket line: prevents duplicates at line level
+           UNIQUE (picking_id, ticket_line_id),
+           -- helpful meta for Phase E/Reports
+           short_reason VARCHAR(200) NULL,
+           scan_ref     VARCHAR(80)  NULL,
+           created_at, updated_at, updated_by
+         )
+       - Indexes: idx_pick_hdr_ticket_id, idx_pick_hdr_picker_id, idx_pick_hdr_status,
+                  idx_pick_line_product_id, idx_pick_line_ticket_line_id
+
    [ ] DO NOT add FKs to core tables (cores stay FK-free).
 
    INVENTORY & STATUS
-   [ ] Implement inventory effects via TRIGGERS on picking_line:
-       - AFTER INSERT: products.reserved_qty += NEW.picked_qty
-       - AFTER UPDATE: products.reserved_qty += (NEW.picked_qty - OLD.picked_qty)
-       - AFTER DELETE: products.reserved_qty -= OLD.picked_qty
-       - Guard: available = on_hand_qty - reserved_qty; IF available < delta THEN SIGNAL '45000' 'Insufficient available'
-   [ ] Status automation: AFTER INSERT on picking_hdr → set pick_ticket_hdr.ticket_status='Picking'
+   [ ] BEFORE INSERT/UPDATE picking_line guard (enforce business rules):
+       - Ensure ticket_line_id belongs to the same pick_ticket_id as picking_hdr.
+       - Ensure product_id matches the ticket line’s product_id.
+       - Ensure SUM(picked_qty by ticket_line_id, including NEW) ≤ requested_qty.
+       - Ensure product is active (products.active_flag = TRUE).
+       - Compute delta = NEW.picked_qty - COALESCE(OLD.picked_qty,0);
+         available = products.on_hand_qty - products.reserved_qty;
+         IF available < delta THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient available';
+   [ ] AFTER INSERT/UPDATE/DELETE picking_line inventory effects:
+       - AI: products.reserved_qty += NEW.picked_qty
+       - AU: products.reserved_qty += (NEW.picked_qty - OLD.picked_qty)
+       - AD: products.reserved_qty -= OLD.picked_qty
+   [ ] AFTER INSERT picking_hdr → set pick_ticket_hdr.ticket_status='Picking'
 
-   (Alternative: single proc sp_allocate_and_pick(...) with SELECT ... FOR UPDATE; choose ONE approach and keep consistent.)
+   (Alternative: one proc sp_allocate_and_pick(...) using SELECT ... FOR UPDATE; pick either triggers OR proc and keep consistent.)
 
    DEFINITION OF DONE (DDL)
    [ ] All 4 tx tables created with PK/FK/CHECK/UNIQUE + indexes
-   [ ] Triggers/proc compile with 0 warnings; status automation works
-   [ ] Names/ENUMs match spec; no FKs added to cores; file runs clean on fresh DB
+   [ ] Guards + inventory/status triggers (or proc) compile with 0 warnings
+   [ ] ENUMs/names match spec; cores remain FK-free; file runs clean on fresh DB
 ========================================== */
