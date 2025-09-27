@@ -77,7 +77,41 @@ CREATE TABLE branches (
 );
 
 
--- NOTES:
--- • Keep foreign keys OUT of core tables. Relationships live in transaction tables (Phase C/E).
--- • Use snake_case; PK names = <table>_id; include DEFAULTs for numeric/text as appropriate.
--- • After implementing, run on a clean DB before pushing (see docs/runbook.md).
+/* ==========================================
+   PHASE C — T1/T2 DDL TODO (production-ready)
+   Scope: add transactions w/ FKs, CHECKs, UNIQUEs, indexes + inventory/status logic.
+   ------------------------------------------
+   BUILD
+   [ ] Create T1 tables:
+       - pick_ticket_hdr(pk BIGINT AI, customer_id FK→customers, branch_id FK→branches,
+         ticket_status ENUM('Open','Picking','Packed','Dispatched','Delivered','Short-Closed') DEFAULT 'Open',
+         remarks, audit trio)
+       - pick_ticket_line(pk BIGINT AI, pick_ticket_id FK→pick_ticket_hdr ON DELETE CASCADE,
+         product_id FK→products, requested_qty DECIMAL(12,2) CHECK(requested_qty > 0),
+         uom VARCHAR(50), UNIQUE(pick_ticket_id,product_id), audit trio)
+       - Indexes: idx_pt_hdr_customer_id, idx_pt_hdr_branch_id, idx_pt_hdr_status, idx_pt_line_product_id
+   [ ] Create T2 tables:
+       - picking_hdr(pk BIGINT AI, pick_ticket_id FK→pick_ticket_hdr, picker_employee_id FK→employees,
+         picking_status ENUM('Picking','Picked','Cancelled') DEFAULT 'Picking',
+         started_at, completed_at NULL, audit trio, UNIQUE(pick_ticket_id))
+       - picking_line(pk BIGINT AI, picking_id FK→picking_hdr ON DELETE CASCADE,
+         product_id FK→products, picked_qty DECIMAL(12,2) CHECK(picked_qty > 0),
+         uom VARCHAR(50), UNIQUE(picking_id,product_id), audit trio)
+       - Indexes: idx_pick_hdr_ticket_id, idx_pick_hdr_picker_id, idx_pick_hdr_status, idx_pick_line_product_id
+   [ ] DO NOT add FKs to core tables (cores stay FK-free).
+
+   INVENTORY & STATUS
+   [ ] Implement inventory effects via TRIGGERS on picking_line:
+       - AFTER INSERT: products.reserved_qty += NEW.picked_qty
+       - AFTER UPDATE: products.reserved_qty += (NEW.picked_qty - OLD.picked_qty)
+       - AFTER DELETE: products.reserved_qty -= OLD.picked_qty
+       - Guard: available = on_hand_qty - reserved_qty; IF available < delta THEN SIGNAL '45000' 'Insufficient available'
+   [ ] Status automation: AFTER INSERT on picking_hdr → set pick_ticket_hdr.ticket_status='Picking'
+
+   (Alternative: single proc sp_allocate_and_pick(...) with SELECT ... FOR UPDATE; choose ONE approach and keep consistent.)
+
+   DEFINITION OF DONE (DDL)
+   [ ] All 4 tx tables created with PK/FK/CHECK/UNIQUE + indexes
+   [ ] Triggers/proc compile with 0 warnings; status automation works
+   [ ] Names/ENUMs match spec; no FKs added to cores; file runs clean on fresh DB
+========================================== */
