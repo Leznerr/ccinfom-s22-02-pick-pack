@@ -155,3 +155,41 @@ ORDER BY employee_id;
    [ ] All checks return expected results; no orphans; all invariants pass
 ========================================== */
 
+/* ==========================================
+   PHASE C — QA EXTENSIONS (T1)
+   ========================================== */
+
+-- ROW COUNTS: Expect >=1 after seeds
+SELECT 'pick_ticket_hdr' AS table_name, COUNT(*) AS rows_count FROM pick_ticket_hdr;
+SELECT 'pick_ticket_line' AS table_name, COUNT(*) AS rows_count FROM pick_ticket_line;
+
+-- ORPHANS: Lines without valid header (should return 0 rows)
+SELECT line.ticket_line_id, line.pick_ticket_id
+FROM pick_ticket_line AS line
+LEFT JOIN pick_ticket_hdr AS hdr ON line.pick_ticket_id = hdr.pick_ticket_id
+WHERE hdr.pick_ticket_id IS NULL;
+
+-- ORPHANS: Headers referencing missing customers/branches (should return 0 rows)
+SELECT hdr.pick_ticket_id, hdr.customer_id, hdr.branch_id
+FROM pick_ticket_hdr AS hdr
+LEFT JOIN customers AS c ON hdr.customer_id = c.customer_id
+LEFT JOIN branches  AS b ON hdr.branch_id = b.branch_id
+WHERE c.customer_id IS NULL OR b.branch_id IS NULL;
+
+-- BUSINESS/STATUS RULES
+-- UNIQUE guard: verify no duplicates (pick_ticket_id + product_id)
+SELECT pick_ticket_id, product_id, COUNT(*) AS dup_count
+FROM pick_ticket_line
+GROUP BY pick_ticket_id, product_id
+HAVING COUNT(*) > 1;
+
+-- REQUESTED_QTY sanity: should all be > 0
+SELECT ticket_line_id, requested_qty
+FROM pick_ticket_line
+WHERE requested_qty <= 0;
+
+-- LINE_PRODUCT validity: every line must reference an existing product (should return 0 rows)
+SELECT line.ticket_line_id, line.product_id
+FROM pick_ticket_line AS line
+LEFT JOIN products AS p ON line.product_id = p.product_id
+WHERE p.product_id IS NULL;

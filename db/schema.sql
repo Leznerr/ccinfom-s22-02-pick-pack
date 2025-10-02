@@ -156,3 +156,49 @@ CREATE TABLE branches (
    [ ] Guards + inventory/status triggers (or proc) compile with 0 warnings
    [ ] ENUMs/names match spec; cores remain FK-free; file runs clean on fresh DB
 ========================================== */
+
+-- Pick Ticket Header
+CREATE TABLE pick_ticket_hdr (
+  pick_ticket_id 	BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  customer_id		BIGINT UNSIGNED NOT NULL,
+  branch_id			BIGINT UNSIGNED NOT NULL,
+  ticket_status		ENUM('Open', 'Picking', 'Packed', 'Dispatched', 'Delivered', 'Short-Closed')
+					NOT NULL DEFAULT 'Open',
+  remarks			VARCHAR(300) NULL,
+  created_at		TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at		TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by		VARCHAR(64) NOT NULL DEFAULT 'system',
+  
+  CONSTRAINT fk_pt_hdr_customer FOREIGN KEY (customer_id)
+    REFERENCES customers(customer_id),
+  CONSTRAINT fk_pt_hdr_branch FOREIGN KEY (branch_id)
+	REFERENCES branches(branch_id)
+);
+
+-- Helpful indexes
+CREATE INDEX idx_pt_hdr_customer_id ON pick_ticket_hdr(customer_id);
+CREATE INDEX idx_pt_hdr_branch_id   ON pick_ticket_hdr(branch_id);
+CREATE INDEX idx_pt_hdr_status      ON pick_ticket_hdr(ticket_status);
+                  
+-- Pick Ticket Lines
+CREATE TABLE pick_ticket_line (
+  ticket_line_id 	BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  pick_ticket_id 	BIGINT UNSIGNED NOT NULL,
+  product_id		BIGINT UNSIGNED NOT NULL,
+  requested_qty		DECIMAL(12, 2) NOT NULL CHECK (requested_qty > 0),
+  uom				VARCHAR(50) NOT NULL,
+  line_status		ENUM('Valid', 'Invalid', 'Duplicate', 'Cancelled') DEFAULT 'Valid',
+  created_at		TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at		TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by		VARCHAR(64) NOT NULL DEFAULT 'system',
+  CONSTRAINT fk_pt_line_hdr FOREIGN KEY (pick_ticket_id)
+    REFERENCES pick_ticket_hdr(pick_ticket_id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_pt_line_product FOREIGN KEY (product_id)
+    REFERENCES products(product_id),
+  CONSTRAINT uq_pt_line UNIQUE (pick_ticket_id, product_id)
+);
+
+-- Helpful indexes
+CREATE INDEX idx_pt_line_product_id ON pick_ticket_line(product_id);
+CREATE INDEX idx_pt_line_ticket_id  ON pick_ticket_line(pick_ticket_id);
