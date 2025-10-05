@@ -9,6 +9,9 @@
    [ ] Script runs clean on fresh DB after schema & core seeds
    [ ] 3 headers created; 6–9 lines total; all audit fields populated
 ========================================== */
+USE ccinfom_dev;
+
+START TRANSACTION;
 
 -- Ticket 1: Customer 1 at Branch 1
 INSERT INTO pick_ticket_hdr (customer_id, branch_id, ticket_status, remarks, updated_by)

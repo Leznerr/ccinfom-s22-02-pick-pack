@@ -156,7 +156,7 @@ ORDER BY employee_id;
 ========================================== */
 
 /* ==========================================
-   PHASE C — QA EXTENSIONS (T1)
+   PHASE C — QA EXTENSIONS (T1 AND T2)
    ========================================== */
 
 -- ROW COUNTS: Expect >=1 after seeds
@@ -193,3 +193,122 @@ SELECT line.ticket_line_id, line.product_id
 FROM pick_ticket_line AS line
 LEFT JOIN products AS p ON line.product_id = p.product_id
 WHERE p.product_id IS NULL;
+
+
+
+-- ===================================================================
+-- T2-GATE A — Row counts (expect ≥1 after seeding tx-T2.sql)
+-- ===================================================================
+SELECT 'picking_hdr'  AS table_name, COUNT(*) AS rows_count FROM picking_hdr
+UNION ALL
+SELECT 'picking_line', COUNT(*) FROM picking_line;
+
+SELECT picking_status, COUNT(*) AS cnt FROM picking_hdr GROUP BY picking_status;
+
+-- ===================================================================
+-- T2-GATE B — Referential integrity / Orphans (expect ZERO rows)
+-- FK constraints should already prevent these; we surface any defect.
+-- ===================================================================
+-- picking_line has a header
+SELECT pl.picking_line_id
+FROM picking_line pl
+LEFT JOIN picking_hdr ph ON ph.picking_id = pl.picking_id
+WHERE ph.picking_id IS NULL;
+
+-- picking_line references an existing ticket line
+SELECT pl.picking_line_id
+FROM picking_line pl
+LEFT JOIN pick_ticket_line tl ON tl.ticket_line_id = pl.ticket_line_id
+WHERE tl.ticket_line_id IS NULL;
+
+-- picking_hdr references existing ticket & employee
+SELECT ph.picking_id
+FROM picking_hdr ph
+LEFT JOIN pick_ticket_hdr h ON h.pick_ticket_id = ph.pick_ticket_id
+LEFT JOIN employees e       ON e.employee_id   = ph.picker_employee_id
+WHERE h.pick_ticket_id IS NULL OR e.employee_id IS NULL;
+
+-- ===================================================================
+-- T2-GATE C — Business rules (expect ZERO rows)
+-- ===================================================================
+-- C1) Picked SKU must match the ticket line’s product
+SELECT pl.picking_line_id, pl.product_id AS picked_product, tl.product_id AS ticket_product
+FROM picking_line pl
+JOIN pick_ticket_line tl ON tl.ticket_line_id = pl.ticket_line_id
+WHERE pl.product_id <> tl.product_id;
+
+-- C2) Ticket line must belong to the SAME ticket as the picking header
+SELECT pl.picking_line_id, ph.pick_ticket_id AS picking_ticket, tl.pick_ticket_id AS line_ticket
+FROM picking_line pl
+JOIN picking_hdr ph  ON ph.picking_id      = pl.picking_id
+JOIN pick_ticket_line tl ON tl.ticket_line_id = pl.ticket_line_id
+WHERE ph.pick_ticket_id <> tl.pick_ticket_id;
+
+-- C3) Over-pick guard: SUM(picked_qty) per ticket_line ≤ requested_qty
+SELECT tl.ticket_line_id, tl.requested_qty,
+       COALESCE(SUM(pl.picked_qty),0) AS picked_qty
+FROM pick_ticket_line tl
+LEFT JOIN picking_line pl ON pl.ticket_line_id = tl.ticket_line_id
+GROUP BY tl.ticket_line_id, tl.requested_qty
+HAVING COALESCE(SUM(pl.picked_qty),0) > tl.requested_qty;
+
+-- C4) Duplicate protection at app level (should be zero; DB has UNIQUE too)
+SELECT picking_id, ticket_line_id, COUNT(*) AS dup_count
+FROM picking_line
+GROUP BY picking_id, ticket_line_id
+HAVING COUNT(*) > 1;
+
+-- ===================================================================
+-- T2-GATE D — Inventory invariants (expect ZERO rows in Phase C)
+-- In Phase C (before Close), reserved_qty should equal SUM of picked_qty.
+-- ===================================================================
+-- D1) Per product: reserved_qty = SUM(picked_qty)
+WITH s AS (
+  SELECT product_id, SUM(picked_qty) AS picked_sum
+  FROM picking_line
+  GROUP BY product_id
+)
+SELECT p.product_id, p.reserved_qty, COALESCE(s.picked_sum,0) AS picked_sum,
+       (p.reserved_qty - COALESCE(s.picked_sum,0)) AS delta
+FROM products p
+LEFT JOIN s ON s.product_id = p.product_id
+WHERE p.reserved_qty <> COALESCE(s.picked_sum,0);
+
+-- D2) No product where reserved exceeds on_hand (should be zero)
+SELECT product_id, on_hand_qty, reserved_qty
+FROM products
+WHERE reserved_qty > on_hand_qty;
+
+
+-- ===================================================================
+-- T2-GATE E — Status transitions (expect ZERO rows in Phase C)
+-- Tickets that have a picking_hdr should no longer be 'Open'
+-- (Typically they are 'Picking' until Packed in T3.)
+-- ===================================================================
+SELECT h.pick_ticket_id, h.ticket_status
+FROM pick_ticket_hdr h
+JOIN picking_hdr ph ON ph.pick_ticket_id = h.pick_ticket_id
+WHERE h.ticket_status = 'Open';
+
+-- ===================================================================
+-- T2-GATE F — Picking completion consistency (expect ZERO rows)
+-- If SUM(requested) == SUM(picked) for a picking_hdr, status must be 'Done'.
+-- If SUM differs, status must NOT be 'Done'.
+-- ===================================================================
+WITH req_vs_got AS (
+  SELECT ph.picking_id, ph.picking_status,
+         SUM(tl.requested_qty)                         AS req,
+         COALESCE(SUM(pl.picked_qty),0)                AS got
+  FROM picking_hdr ph
+  JOIN pick_ticket_line tl ON tl.pick_ticket_id = ph.pick_ticket_id
+  LEFT JOIN picking_line pl ON pl.picking_id = ph.picking_id
+                           AND pl.ticket_line_id = tl.ticket_line_id
+  GROUP BY ph.picking_id, ph.picking_status
+)
+-- Mismatch set (should return zero)
+SELECT picking_id, picking_status, req, got
+FROM req_vs_got
+WHERE (req = got    AND picking_status <> 'Done')
+   OR (req <> got   AND picking_status  = 'Done');
+   
+   
