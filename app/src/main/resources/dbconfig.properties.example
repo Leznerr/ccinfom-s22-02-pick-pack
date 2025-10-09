@@ -1,0 +1,9 @@
+# CCINFOM — Phase D
+# Copy this file to dbconfig.properties (same folder) and fill real values.
+db.host=127.0.0.1
+db.port=3306
+db.schema=ccinfom_dev
+db.user=cc_user
+db.password=cc_secret
+# Optional external override at runtime:
+#   -Dccinfom.dbconfig=/absolute/path/dbconfig.properties
