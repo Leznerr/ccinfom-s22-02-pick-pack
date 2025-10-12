@@ -7,3 +7,10 @@ db.user=cc_user
 db.password=cc_secret
 # Optional external override at runtime:
 #   -Dccinfom.dbconfig=/absolute/path/dbconfig.properties
+
+# Commands:
+# (1) javac -cp "lib/mysql-connector-j-9.4.0.jar;src/main/java" -d out src/main/java/com/ccinfom/config/DbConnection.java src/main/java/com/ccinfom/config/DbConfig.java
+# (2) java -cp "lib/mysql-connector-j-9.4.0.jar;out" com.ccinfom.config.DbConnection
+# 
+# If external config:
+# (2) java -Dccinfom.dbconfig="C:\ccinfom_config\dbconfig.properties" -cp "lib/mysql-connector-j-9.4.0.jar;out" com.ccinfom.config.DbConnection
