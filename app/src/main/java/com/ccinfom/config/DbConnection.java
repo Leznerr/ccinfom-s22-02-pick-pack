@@ -31,7 +31,8 @@
     public static Connection getConnection() throws SQLException {
         DbConfig config = new DbConfig();
 
-        String url = String.format("jdbc:mysql://%s:%s/%s?serverTimezone=UTC&useSSL=false", config.getHost(), config.getPort(), config.getSchema());
+        //String url = String.format("jdbc:mysql://%s:%s/%s?serverTimezone=UTC&useSSL=false", config.getHost(), config.getPort(), config.getSchema());
+        String url = config.getUrl(); // use db.url directly from properties
 
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");

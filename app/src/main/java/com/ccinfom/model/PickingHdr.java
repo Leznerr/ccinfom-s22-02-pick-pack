@@ -14,3 +14,9 @@
  *  - Can be populated from a ResultSet row without type loss.
  *  - No DB logic here (pure POJO).
  */
+
+  package com.ccinfom.model;
+
+ public class PickingHdr {
+    
+ }

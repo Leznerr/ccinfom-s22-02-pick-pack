@@ -103,6 +103,14 @@ public class DbConfig {
         return password; 
     }
 
+    public String getUrl() {
+        // Include allowPublicKeyRetrieval=true&useSSL=false for MySQL 8+
+        return String.format(
+            "jdbc:mysql://%s:%s/%s?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+            host, port, schema
+        );
+    }
+
     // Quick manual test
     public static void main(String[] args) {
         try {

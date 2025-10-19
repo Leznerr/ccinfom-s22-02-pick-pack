@@ -12,3 +12,17 @@
  * TODOs:
  *  [ ] Queries must be ordered predictably (e.g., by name).
  */
+
+package com.ccinfom.dao.interfaces;
+
+import com.ccinfom.model.*;
+
+import java.util.List;
+
+public interface LookupDao {
+    List<Customer> listCustomers();
+    List<Branch> listBranches();
+    List<Employee> listActivePickers();
+    List<Product> listActiveProducts();
+    List<Vehicle> listActiveVehicles();
+}
