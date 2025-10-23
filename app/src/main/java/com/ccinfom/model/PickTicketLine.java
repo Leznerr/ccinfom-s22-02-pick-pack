@@ -15,8 +15,100 @@
  *  - No DB logic here (pure POJO).
  */
 
-  package com.ccinfom.model;
+package com.ccinfom.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Objects;
 
  public class PickTicketLine {
+
+    public enum LineStatus {
+        Valid, Invalid, Duplicate, Cancelled
+    }
+
+    private Long ticketLineId;
+    private Long pickTicketId;
+    private Long productId;
+    private BigDecimal requestedQty;
+    private String uom;
+    private LineStatus lineStatus;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
+
+    // Constructors
+    public PickTicketLine() {}
+
+    public PickTicketLine(Long ticketLineId, Long pickTicketId, Long productId,
+                          BigDecimal requestedQty, String uom, LineStatus lineStatus,
+                          LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
+        this.ticketLineId = ticketLineId;
+        this.pickTicketId = pickTicketId;
+        this.productId = productId;
+        this.requestedQty = requestedQty;
+        this.uom = uom;
+        this.lineStatus = lineStatus;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.updatedBy = updatedBy;
+    }
     
- }
+    // Getters and Setters
+    public Long getTicketLineId() { return ticketLineId; }
+    public void setTicketLineId(Long ticketLineId) { this.ticketLineId = ticketLineId; }
+
+    public Long getPickTicketId() { return pickTicketId; }
+    public void setPickTicketId(Long pickTicketId) { this.pickTicketId = pickTicketId; }
+
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+
+    public BigDecimal getRequestedQty() { return requestedQty; }
+    public void setRequestedQty(BigDecimal requestedQty) { this.requestedQty = requestedQty; }
+
+    public String getUom() { return uom; }
+    public void setUom(String uom) { this.uom = uom; }
+
+    public LineStatus getLineStatus() { return lineStatus; }
+    public void setLineStatus(LineStatus lineStatus) { this.lineStatus = lineStatus; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+
+    // Utility methods
+    @Override
+    public String toString() {
+        return "PickTicketLine{" +
+                "ticketLineId=" + ticketLineId +
+                ", pickTicketId=" + pickTicketId +
+                ", productId=" + productId +
+                ", requestedQty=" + requestedQty +
+                ", uom='" + uom + '\'' +
+                ", lineStatus='" + lineStatus + '\'' +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", updatedBy='" + updatedBy + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PickTicketLine)) return false;
+        PickTicketLine that = (PickTicketLine) o;
+        return Objects.equals(ticketLineId, that.ticketLineId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(ticketLineId);
+    }
+
+ } // end

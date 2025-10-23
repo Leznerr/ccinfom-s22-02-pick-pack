@@ -113,7 +113,7 @@ CREATE TABLE pick_ticket_hdr (
   pick_ticket_id  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   customer_id     BIGINT UNSIGNED NOT NULL,
   branch_id       BIGINT UNSIGNED NOT NULL,
-  ticket_status   ENUM('Open','Picking','Packed','Dispatched','Delivered','Short-Closed')
+  ticket_status   ENUM('Open','Picking','Packed','Dispatched','Delivered','Closed')
                   NOT NULL DEFAULT 'Open',
   remarks         VARCHAR(300) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
