@@ -34,6 +34,27 @@ public class Product {
     private LocalDateTime updatedAt;
     private String updatedBy;
 
+    // Constructors
+    public Product() {}
+    public Product(Long productId, String sku, String productName, String category,
+                   BigDecimal unitPrice, String unitOfMeasure,
+                   BigDecimal onHandQty, BigDecimal reservedQty,
+                   boolean activeFlag, LocalDateTime createdAt,
+                   LocalDateTime updatedAt, String updatedBy) {
+        this.productId = productId;
+        this.sku = sku;
+        this.productName = productName;
+        this.category = category;
+        this.unitPrice = unitPrice;
+        this.unitOfMeasure = unitOfMeasure;
+        this.onHandQty = onHandQty;
+        this.reservedQty = reservedQty;
+        this.activeFlag = activeFlag;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.updatedBy = updatedBy;
+    }
+
     // Getters and Setters
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
@@ -70,9 +91,4 @@ public class Product {
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    @Override
-    public String toString() {
-        return productName + " (" + sku + ")";
-    }
 }

@@ -9,7 +9,7 @@ import com.ccinfom.model.*;
 
 import java.util.List;
 
-public class TestLookupDao {
+public class LookupDaoTest {
     public static void main(String[] args) {
         LookupDao lookupDao = new LookupDaoImpl();
 

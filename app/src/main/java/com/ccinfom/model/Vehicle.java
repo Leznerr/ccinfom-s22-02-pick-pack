@@ -12,6 +12,21 @@ public class Vehicle {
     private LocalDateTime  createdAt;
     private LocalDateTime  updatedAt;
     private String updatedBy;
+
+    // Constructors
+    public Vehicle() {}
+    public Vehicle(Long vehicleId, String plateNumber, String vehicleType, BigDecimal capacity,
+                   String vehicleStatus, LocalDateTime  createdAt,
+                   LocalDateTime  updatedAt, String updatedBy) {
+        this.vehicleId = vehicleId;
+        this.plateNumber = plateNumber;
+        this.vehicleType = vehicleType;
+        this.capacity = capacity;
+        this.vehicleStatus = vehicleStatus;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.updatedBy = updatedBy;
+    }
     
     // Getters and Setters
     public Long getVehicleId() { return vehicleId; }
@@ -37,9 +52,4 @@ public class Vehicle {
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    @Override
-    public String toString() {
-            return plateNumber + " (" + vehicleType + ")";
-    }
 }

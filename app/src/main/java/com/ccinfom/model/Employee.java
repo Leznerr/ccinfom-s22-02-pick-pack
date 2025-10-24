@@ -39,6 +39,23 @@ public class Employee {
     private LocalDateTime updatedAt;
     private String updatedBy;
 
+    // Constructors
+    public Employee() {}
+    public Employee(Long employeeId, String lastName, String firstName, Role employeeRole,
+                    String phone, String email, Status employeeStatus,
+                    LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
+        this.employeeId = employeeId;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.employeeRole = employeeRole;
+        this.phone = phone;
+        this.email = email;
+        this.employeeStatus = employeeStatus;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.updatedBy = updatedBy;
+    }
+
     // Getters and Setters
     public Long getEmployeeId() { return employeeId; }
     public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
@@ -69,9 +86,4 @@ public class Employee {
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    @Override
-    public String toString() {
-        return firstName + " " + lastName + " (" + employeeRole + ")";
-    }
 }

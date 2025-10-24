@@ -19,7 +19,6 @@ package com.ccinfom.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Objects;
 
  public class PickTicketLine {
 
@@ -39,7 +38,6 @@ import java.util.Objects;
 
     // Constructors
     public PickTicketLine() {}
-
     public PickTicketLine(Long ticketLineId, Long pickTicketId, Long productId,
                           BigDecimal requestedQty, String uom, LineStatus lineStatus,
                           LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
@@ -81,34 +79,5 @@ import java.util.Objects;
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    // Utility methods
-    @Override
-    public String toString() {
-        return "PickTicketLine{" +
-                "ticketLineId=" + ticketLineId +
-                ", pickTicketId=" + pickTicketId +
-                ", productId=" + productId +
-                ", requestedQty=" + requestedQty +
-                ", uom='" + uom + '\'' +
-                ", lineStatus='" + lineStatus + '\'' +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                ", updatedBy='" + updatedBy + '\'' +
-                '}';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof PickTicketLine)) return false;
-        PickTicketLine that = (PickTicketLine) o;
-        return Objects.equals(ticketLineId, that.ticketLineId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(ticketLineId);
-    }
 
  } // end

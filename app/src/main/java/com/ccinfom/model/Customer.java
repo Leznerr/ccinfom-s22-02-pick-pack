@@ -30,6 +30,22 @@ public class Customer {
     private LocalDateTime updatedAt;
     private String updatedBy;
 
+    // Constructors
+    public Customer() {}
+    public Customer(Long customerId, String customerName, String contactPerson,
+                    String phone, String email, String defaultDeliveryAddress,
+                    LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
+        this.customerId = customerId;
+        this.customerName = customerName;
+        this.contactPerson = contactPerson;
+        this.phone = phone;
+        this.email = email;
+        this.defaultDeliveryAddress = defaultDeliveryAddress;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.updatedBy = updatedBy;
+    }
+
     // Getters and Setters
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
@@ -57,9 +73,4 @@ public class Customer {
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    @Override
-    public String toString() {
-        return customerName + " (" + contactPerson + ")";
-    }
 }

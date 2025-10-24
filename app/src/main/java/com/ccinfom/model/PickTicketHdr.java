@@ -18,7 +18,6 @@
 package com.ccinfom.model;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 
  public class PickTicketHdr {
 
@@ -37,7 +36,6 @@ import java.util.Objects;
     
     // Constructors
     public PickTicketHdr() {}
-
     public PickTicketHdr(Long pickTicketId, Long customerId, Long branchId,
                          TicketStatus ticketStatus, String remarks,
                          LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
@@ -75,33 +73,4 @@ import java.util.Objects;
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    // Utility methods
-    @Override
-    public String toString() {
-        return "PickTicketHdr{" +
-                "pickTicketId=" + pickTicketId +
-                ", customerId=" + customerId +
-                ", branchId=" + branchId +
-                ", ticketStatus='" + ticketStatus + '\'' +
-                ", remarks='" + remarks + '\'' +
-                ", createdAt=" + createdAt +
-                ", updatedAt=" + updatedAt +
-                ", updatedBy='" + updatedBy + '\'' +
-                '}';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof PickTicketHdr)) return false;
-        PickTicketHdr that = (PickTicketHdr) o;
-        return Objects.equals(pickTicketId, that.pickTicketId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(pickTicketId);
-    }
-
- } // end
+ }

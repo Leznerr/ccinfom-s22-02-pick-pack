@@ -30,6 +30,22 @@ public class Branch {
     private LocalDateTime updatedAt;
     private String updatedBy;
 
+    // Constructors
+    public Branch() {}
+    public Branch(Long branchId, String branchName, String address, String city,
+                  String contactPerson, String phone,
+                  LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
+        this.branchId = branchId;
+        this.branchName = branchName;
+        this.address = address;
+        this.city = city;
+        this.contactPerson = contactPerson;
+        this.phone = phone;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.updatedBy = updatedBy;
+    }
+
     // Getters and Setters
     public Long getBranchId() { return branchId; }
     public void setBranchId(Long branchId) { this.branchId = branchId; }
@@ -57,9 +73,4 @@ public class Branch {
 
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
-
-    @Override
-    public String toString() {
-        return branchName + " - " + city;
-    }
 }
