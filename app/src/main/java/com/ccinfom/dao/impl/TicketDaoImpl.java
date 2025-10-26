@@ -1,20 +1,6 @@
-/*
- * CCINFOM — Phase D
- * File: TicketDaoImpl.java
- * Purpose: JDBC implementation of TicketDao.
- *
- * TODOs:
- *  [ ] Implement insertHeader(): INSERT pick_ticket_hdr (...) RETURN generated key.
- *  [ ] Implement insertLines(): batch insert pick_ticket_line with same ticket_id.
- *  [ ] Wrap SQLExceptions with context (which method, key values).
- *
- * Definition of Done:
- *  - Works against seeded DB; verified in Workbench and Java.
- *  - No resource leaks; PreparedStatements closed.
- */
-
 package com.ccinfom.dao.impl;
 
+import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.TicketDao;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickTicketLine;
@@ -25,16 +11,10 @@ import java.util.List;
 
 public class TicketDaoImpl implements TicketDao {
 
-    private final Connection conn;
-
-    public TicketDaoImpl(Connection conn) {
-        this.conn = conn;
-    }
-
     // -------------------- CREATE --------------------
 
     @Override
-    public long insertTicketHeader(PickTicketHdr hdr) throws SQLException {
+    public long insertTicketHeader(PickTicketHdr hdr, Connection conn) throws SQLException {
         String sql = """
             INSERT INTO pick_ticket_hdr (customer_id, branch_id, ticket_status, remarks, updated_by)
             VALUES (?, ?, ?, ?, ?)
@@ -47,20 +27,24 @@ public class TicketDaoImpl implements TicketDao {
             stmt.setString(4, hdr.getRemarks());
             stmt.setString(5, hdr.getUpdatedBy());
 
-            stmt.executeUpdate();
+            int affectedRows = stmt.executeUpdate();
 
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
+            if (affectedRows == 0) {
+                throw new SQLException("Creating ticket header failed, no rows affected.");
+            }
+
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getLong(1);
+                } else {
+                    throw new SQLException("Creating ticket header failed, no ID obtained.");
                 }
             }
         }
-
-        throw new SQLException("Failed to insert ticket header (no generated key returned).");
     }
 
     @Override
-    public void insertTicketLines(long pickTicketId, List<PickTicketLine> lines) throws SQLException {
+    public void insertTicketLines(List<PickTicketLine> lines, Connection conn) throws SQLException {
         String sql = """
             INSERT INTO pick_ticket_line
               (pick_ticket_id, product_id, requested_qty, uom, line_status, updated_by)
@@ -69,7 +53,7 @@ public class TicketDaoImpl implements TicketDao {
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             for (PickTicketLine line : lines) {
-                stmt.setLong(1, pickTicketId);
+                stmt.setLong(1, line.getPickTicketId());
                 stmt.setLong(2, line.getProductId());
                 stmt.setBigDecimal(3, line.getRequestedQty());
                 stmt.setString(4, line.getUom());
@@ -88,7 +72,8 @@ public class TicketDaoImpl implements TicketDao {
         String sql = "SELECT * FROM pick_ticket_hdr ORDER BY created_at DESC";
         List<PickTicketHdr> tickets = new ArrayList<>();
 
-        try (PreparedStatement stmt = conn.prepareStatement(sql);
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
@@ -101,7 +86,8 @@ public class TicketDaoImpl implements TicketDao {
     @Override
     public PickTicketHdr findTicketById(long pickTicketId) throws SQLException {
         String sql = "SELECT * FROM pick_ticket_hdr WHERE pick_ticket_id = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, pickTicketId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -117,7 +103,8 @@ public class TicketDaoImpl implements TicketDao {
         String sql = "SELECT * FROM pick_ticket_line WHERE pick_ticket_id = ?";
         List<PickTicketLine> lines = new ArrayList<>();
 
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, pickTicketId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -132,6 +119,13 @@ public class TicketDaoImpl implements TicketDao {
 
     @Override
     public void updateTicketStatus(long pickTicketId, PickTicketHdr.TicketStatus status, String updatedBy) throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            updateTicketStatus(pickTicketId, status, updatedBy, conn);
+        }
+    }
+
+    @Override
+    public void updateTicketStatus(long pickTicketId, PickTicketHdr.TicketStatus status, String updatedBy, Connection conn) throws SQLException {
         String sql = """
             UPDATE pick_ticket_hdr
             SET ticket_status = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
@@ -146,7 +140,7 @@ public class TicketDaoImpl implements TicketDao {
         }
     }
 
-    // -------------------- CLOSE / CANCEL --------------------
+    // -------------------- DELETE / CLOSE --------------------
 
     @Override
     public void closeOrCancelTicket(long pickTicketId, PickTicketHdr.TicketStatus status, String updatedBy) throws SQLException {

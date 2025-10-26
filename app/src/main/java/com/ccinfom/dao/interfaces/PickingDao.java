@@ -17,15 +17,15 @@
 
 package com.ccinfom.dao.interfaces;
 
+import com.ccinfom.model.PickingHdr;
+import com.ccinfom.model.PickingLine;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
-import com.ccinfom.model.PickingHdr;
-import com.ccinfom.model.PickingLine;
-
 public interface PickingDao {
-    long insertPickingHeader(PickingHdr hdr) throws Exception;
-    void insertPickingLines(long pickingId, List<PickingLine> lines) throws Exception;
-    PickingHdr findByTicketId(long pickTicketId) throws Exception;
+    long insertPickingHeader(PickingHdr hdr, Connection conn) throws SQLException;
+    void insertPickingLines(long pickingId, List<PickingLine> lines, Connection conn) throws SQLException;
+    PickingHdr findByTicketId(long pickTicketId) throws SQLException;
     List<PickingLine> listLinesByPickingId(long pickingId) throws SQLException;
 }

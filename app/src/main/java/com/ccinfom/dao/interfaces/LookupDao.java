@@ -16,7 +16,7 @@
 package com.ccinfom.dao.interfaces;
 
 import com.ccinfom.model.*;
-
+import java.sql.SQLException;
 import java.util.List;
 
 public interface LookupDao {
@@ -25,4 +25,5 @@ public interface LookupDao {
     List<Employee> listActivePickers();
     List<Product> listActiveProducts();
     List<Vehicle> listActiveVehicles();
+    Product findProductById(Long productId) throws SQLException;
 }

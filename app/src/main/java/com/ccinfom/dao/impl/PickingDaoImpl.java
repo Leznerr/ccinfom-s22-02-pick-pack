@@ -1,98 +1,47 @@
-/*
- * CCINFOM — Phase D
- * File: PickingDaoImpl.java
- * Purpose: JDBC implementation of PickingDao.
- *
- * TODOs:
- *  [ ] insertPickingHeader(): try insert; if duplicate (unique by ticket), fetch existing id.
- *  [ ] insertPickingLines(): batch insert with anti-dup filter.
- *
- * Definition of Done:
- *  - Idempotent behavior (re-running inserts does not duplicate rows).
- *  - Works with triggers: ticket status flips to 'Picking'.
- */
-
 package com.ccinfom.dao.impl;
 
+import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.PickingDao;
 import com.ccinfom.model.PickingHdr;
 import com.ccinfom.model.PickingLine;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
- public class PickingDaoImpl implements PickingDao {
-
-    private final Connection conn;
-
-    public PickingDaoImpl(Connection conn) {
-        this.conn = conn;
-    }
+public class PickingDaoImpl implements PickingDao {
 
     // -------------------- CREATE --------------------
     @Override
-    public long insertPickingHeader(PickingHdr hdr) throws SQLException {
+    public long insertPickingHeader(PickingHdr hdr, Connection conn) throws SQLException {
         String insertSQL = """
             INSERT INTO picking_hdr (pick_ticket_id, picker_employee_id, picking_status, updated_by)
             VALUES (?, ?, ?, ?)
             """;
-
-        String selectSQL = "SELECT picking_id FROM picking_hdr WHERE pick_ticket_id = ?";
-
-        try (PreparedStatement stmt = conn.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+            try (PreparedStatement stmt = conn.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, hdr.getPickTicketId());
             stmt.setLong(2, hdr.getPickerEmployeeId());
             stmt.setString(3, hdr.getPickingStatus());
             stmt.setString(4, hdr.getUpdatedBy());
-            int affected = stmt.executeUpdate();
-
-            System.out.println("Insert affected rows: " + affected);
+            stmt.executeUpdate();
 
             try (ResultSet rs = stmt.getGeneratedKeys()) {
                 if (rs.next()) {
-                    long id = rs.getLong(1);
-                    System.out.println("Inserted new picking_id: " + id);
-                    return id;
+                    return rs.getLong(1);
                 }
             }
-        } catch (SQLIntegrityConstraintViolationException dup) {
-            System.out.println("Duplicate entry detected for pick_ticket_id=" + hdr.getPickTicketId());
-            try (PreparedStatement stmt = conn.prepareStatement(selectSQL)) {
-                stmt.setLong(1, hdr.getPickTicketId());
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        long existing = rs.getLong("picking_id");
-                        System.out.println("Existing picking_id found: " + existing);
-                        return existing;
-                    } else {
-                        System.out.println("No picking_hdr row found for that ticket_id despite duplicate error!");
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("SQL ErrorState: " + e.getSQLState());
-            System.err.println("SQL ErrorCode: " + e.getErrorCode());
-            e.printStackTrace();
-            throw e;
         }
-
-        // If both insert and lookup failed:
-        System.err.println("Insert failed for pick_ticket_id=" + hdr.getPickTicketId() +
-                        ", picker_employee_id=" + hdr.getPickerEmployeeId());
-        throw new SQLException("Failed to insert or retrieve picking header.");
+        throw new SQLException("Failed to insert picking header.");
     }
 
 
     @Override
-    public void insertPickingLines(long pickingId, List<PickingLine> lines) throws SQLException {
+    public void insertPickingLines(long pickingId, List<PickingLine> lines, Connection conn) throws SQLException {
         String sql = """
-            INSERT IGNORE INTO picking_line
+            INSERT INTO picking_line
               (picking_id, ticket_line_id, product_id, picked_qty, uom, short_reason, scan_ref, updated_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """;
-
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            """;       
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             for (PickingLine line : lines) {
                 stmt.setLong(1, pickingId);
                 stmt.setLong(2, line.getTicketLineId());
@@ -113,7 +62,8 @@ import java.util.List;
     @Override
     public PickingHdr findByTicketId(long pickTicketId) throws SQLException {
         String sql = "SELECT * FROM picking_hdr WHERE pick_ticket_id = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, pickTicketId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -128,7 +78,8 @@ import java.util.List;
         String sql = "SELECT * FROM picking_line WHERE picking_id = ?";
         List<PickingLine> lines = new ArrayList<>();
 
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, pickingId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

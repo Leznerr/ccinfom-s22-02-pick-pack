@@ -13,7 +13,6 @@ package com.ccinfom.dao.impl;
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.LookupDao;
 import com.ccinfom.model.*;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -198,5 +197,46 @@ public class LookupDaoImpl implements LookupDao {
         }
 
         return vehicles;
+    }
+
+    @Override
+    public Product findProductById(Long productId) throws SQLException {
+        String sql = "SELECT product_id, sku, product_name, category, unit_price, unit_of_measure, " +
+                     "on_hand_qty, reserved_qty, active_flag, created_at, updated_at, updated_by " +
+                     "FROM products WHERE product_id = ?";
+        Product p = null;
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setLong(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    p = new Product();
+                    p.setProductId(rs.getLong("product_id"));
+                    p.setSku(rs.getString("sku"));
+                    p.setProductName(rs.getString("product_name"));
+                    p.setCategory(rs.getString("category"));
+                    p.setUnitPrice(rs.getBigDecimal("unit_price"));
+                    p.setUnitOfMeasure(rs.getString("unit_of_measure"));
+                    p.setOnHandQty(rs.getBigDecimal("on_hand_qty"));
+                    p.setReservedQty(rs.getBigDecimal("reserved_qty"));
+                    p.setActiveFlag(rs.getBoolean("active_flag"));
+
+                    Timestamp createdTs = rs.getTimestamp("created_at");
+                    p.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
+
+                    Timestamp updatedTs = rs.getTimestamp("updated_at");
+                    p.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
+
+                    p.setUpdatedBy(rs.getString("updated_by"));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("LookupDaoImpl.findProductById() failed: " + e.getMessage());
+            // Re-throw the exception to the caller as per the interface contract
+            throw e;
+        }
+        return p;
     }
 }

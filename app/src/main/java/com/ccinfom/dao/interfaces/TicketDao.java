@@ -21,6 +21,8 @@ package com.ccinfom.dao.interfaces;
 
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickTicketLine;
+
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -34,12 +36,14 @@ public interface TicketDao {
     List<PickTicketLine> listTicketLines(long pickTicketId) throws SQLException;
 
     // -------------------- CREATE --------------------
-    long insertTicketHeader(PickTicketHdr hdr) throws SQLException;
+    long insertTicketHeader(PickTicketHdr hdr, Connection conn) throws SQLException;
 
-    void insertTicketLines(long pickTicketId, List<PickTicketLine> lines) throws SQLException;
+    void insertTicketLines(List<PickTicketLine> lines, Connection conn) throws SQLException;
 
     // -------------------- UPDATE --------------------
     void updateTicketStatus(long pickTicketId, PickTicketHdr.TicketStatus status, String updatedBy) throws SQLException;
+
+    void updateTicketStatus(long pickTicketId, PickTicketHdr.TicketStatus status, String updatedBy, Connection conn) throws SQLException;
 
     // -------------------- DELETE / CLOSE --------------------
     void closeOrCancelTicket(long pickTicketId, PickTicketHdr.TicketStatus status, String updatedBy) throws SQLException;

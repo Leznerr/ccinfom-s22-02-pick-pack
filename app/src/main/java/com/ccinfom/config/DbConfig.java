@@ -1,18 +1,20 @@
 /*
  * CCINFOM — Phase D
  * File: DbConfig.java
- * Purpose: Load DB settings from classpath resource `dbconfig.properties`
- *          and (optionally) an external path override via system property:
- *          -Dccinfom.dbconfig=/path/to/dbconfig.properties
+ * Purpose: Load DB settings from environment variables or a properties file.
+ *          The load order is: 
+ *          1. Environment Variables (e.g., DB_HOST, DB_USER)
+ *          2. Java System Property (-Dccinfom.dbconfig=/path/to/dbconfig.properties)
+ *          3. Classpath resource (dbconfig.properties)
  *
  * Responsibilities:
  *  - Load and validate: db.host, db.port, db.schema, db.user, db.password.
  *  - Provide getters for other classes (no UI code here).
  *
  * TODOs:
- *  [ ] Implement load order: external override > classpath.
- *  [ ] Validate required keys; throw clear IllegalStateException if missing.
- *  [ ] Never log or print passwords.
+ *  [x] Implement load order: env > external override > classpath.
+ *  [x] Validate required keys; throw clear IllegalStateException if missing.
+ *  [x] Never log or print passwords.
  *
  * Definition of Done:
  *  - Calling new DbConfig().getHost()/getUser() returns correct values.
@@ -50,31 +52,49 @@ public class DbConfig {
                 : getClass().getClassLoader().getResourceAsStream("dbconfig.properties")) {
 
             if (input == null) {
-                throw new IllegalStateException("dbconfig.properties not found in classpath or external path.");
+                // This is not a fatal error; we can still proceed if environment variables are set
+                System.out.println("INFO: dbconfig.properties not found. Relying on environment variables.");
+            } else {
+                props.load(input);
             }
-
-            props.load(input);
 
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load dbconfig.properties: " + e.getMessage(), e);
         }
 
-        // Validate required properties
-        host = require(props, "db.host");
-        port = require(props, "db.port");
-        schema = require(props, "db.schema");
-        user = require(props, "db.user");
-        password = require(props, "db.password");
+        // Validate required properties, prioritizing environment variables
+        host = getenvOrElse(props, "db.host");
+        port = getenvOrElse(props, "db.port");
+        schema = getenvOrElse(props, "db.schema");
+        user = getenvOrElse(props, "db.user");
+        password = getenvOrElse(props, "db.password");
+    }
+
+    private static String getenvOrElse(Properties props, String key) {
+        String envVar = getEnvVarForKey(key);
+        String value = System.getenv(envVar);
+        if (value != null && !value.trim().isEmpty()) {
+            return value.trim();
+        }
+        // Fallback to properties file
+        return require(props, key);
     }
 
     private static String require(Properties props, String key) {
         String value = props.getProperty(key);
 
         if (value == null || value.trim().isEmpty()) {
-            throw new IllegalStateException("Missing required DB config key: " + key);
+            // If we are here, it means env var was not set and property is missing.
+            String envVar = getEnvVarForKey(key);
+            throw new IllegalStateException(
+                "Missing required DB config. Set environment variable \"" + envVar + "\" or add '" + key + "' to dbconfig.properties");
         }
         
         return value.trim();
+    }
+
+    private static String getEnvVarForKey(String key) {
+        return key.replace("db.", "DB_").toUpperCase();
     }
 
     // Getters

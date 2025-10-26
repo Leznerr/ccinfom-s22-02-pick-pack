@@ -1,0 +1,30 @@
+########################################
+# Build / compiled output
+########################################
+app/bin/
+app/out_test/
+out/
+bin/
+target/
+*.class
+
+########################################
+# IDE / editor noise
+########################################
+.vscode/
+.idea/
+*.iml
+
+########################################
+# OS junk files
+########################################
+.DS_Store
+Thumbs.db
+
+########################################
+# Local / secret config
+########################################
+app/src/main/resources/dbconfig.properties
+*.local.properties
+*.env
+.env
