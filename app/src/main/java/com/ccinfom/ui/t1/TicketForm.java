@@ -451,7 +451,7 @@ public class TicketForm extends JFrame {
      *
      * @param <T> domain model type
      */
-    private static final class ComboItem<T> {
+    public static final class ComboItem<T> {
         private final T value;
         private final String label;
 
@@ -530,7 +530,7 @@ public class TicketForm extends JFrame {
     /**
      * Custom table model managing the product lines staged for ticket creation.
      */
-    private static final class LineTableModel extends AbstractTableModel {
+    public static final class LineTableModel extends AbstractTableModel {
 
         private static final String[] COLUMN_NAMES = {
             "Product ID", "SKU", "Product Name", "Requested Qty", "UOM"
