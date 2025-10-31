@@ -473,7 +473,7 @@ public class TicketForm extends JFrame {
     /**
      * Lightweight holder of ticket line data for the table model.
      */
-    private static final class LineEntry {
+    public static final class LineEntry {
         private final long productId;
         private final String sku;
         private final String productName;
@@ -488,23 +488,23 @@ public class TicketForm extends JFrame {
             this.quantity = quantity;
         }
 
-        long getProductId() {
+        public long getProductId() {
             return productId;
         }
 
-        String getSku() {
+        public String getSku() {
             return sku;
         }
 
-        String getProductName() {
+        public String getProductName() {
             return productName;
         }
 
-        String getUom() {
+        public String getUom() {
             return uom;
         }
 
-        BigDecimal getQuantity() {
+        public BigDecimal getQuantity() {
             return quantity;
         }
     }
@@ -584,7 +584,7 @@ public class TicketForm extends JFrame {
             }
         }
 
-        void addLine(LineEntry entry) {
+        public void addLine(LineEntry entry) {
             entries.add(entry);
             int newRow = entries.size() - 1;
             fireTableRowsInserted(newRow, newRow);
@@ -609,7 +609,7 @@ public class TicketForm extends JFrame {
             return new ArrayList<>(entries);
         }
 
-        void clear() {
+        public void clear() {
             if (entries.isEmpty()) {
                 return;
             }
