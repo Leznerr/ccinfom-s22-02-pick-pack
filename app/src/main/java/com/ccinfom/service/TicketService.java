@@ -207,6 +207,34 @@ public class TicketService {
     }
 
     // ---------------------------------------------------------------------
+    // Read helpers exposed to UI layer
+    // ---------------------------------------------------------------------
+
+    /**
+     * Loads ticket lines after ensuring the ticket exists. Keeps the UI away from
+     * direct DAO calls so business rules can evolve here.
+     *
+     * @param pickTicketId target ticket identifier
+     * @return list of lines bound to the ticket
+     * @throws ValidationException if the ticket id is invalid or missing
+     * @throws SQLException        if a database error occurs during retrieval
+     */
+    public List<PickTicketLine> listTicketLines(long pickTicketId)
+            throws ValidationException, SQLException {
+
+        if (pickTicketId <= 0) {
+            throw new ValidationException("Ticket id must be positive.");
+        }
+
+        PickTicketHdr ticket = ticketDao.findTicketById(pickTicketId);
+        if (ticket == null) {
+            throw new ValidationException("Ticket not found.");
+        }
+
+        return ticketDao.listTicketLines(pickTicketId);
+    }
+
+    // ---------------------------------------------------------------------
     // Connection helpers
     // ---------------------------------------------------------------------
 
