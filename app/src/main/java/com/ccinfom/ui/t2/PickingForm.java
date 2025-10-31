@@ -196,12 +196,15 @@ public class PickingForm extends JFrame {
             @Override
             protected Void doInBackground(){
                 try {
-                    lines = ticketService.listTicketLines(TicketId);//missing method(?)
+                    lines = ticketService.listTicketLines(currentTicket.getPickTicketId());//missing method(?)
 
                     for(PickTicketLine line : lines){
 
                     }
-                }
+                }catch (){
+
+                };
+                return null;
             }
 
         }
