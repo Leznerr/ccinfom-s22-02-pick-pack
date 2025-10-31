@@ -5,44 +5,22 @@ import com.ccinfom.dao.impl.PickingDaoImpl;
 import com.ccinfom.dao.interfaces.LookupDao;
 import com.ccinfom.dao.interfaces.TicketDao;
 import com.ccinfom.dao.impl.TicketDaoImpl;
-import com.ccinfom.model.Branch;
-import com.ccinfom.model.Customer;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickTicketLine;
-import com.ccinfom.model.Product;
 import com.ccinfom.service.TicketService;
-import com.ccinfom.service.ValidationException;
 import com.ccinfom.ui.t1.TicketForm;
 
 
 import java.awt.BorderLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.WindowConstants;
-import javax.swing.border.EmptyBorder;
 import javax.swing.JTable;
-import javax.swing.table.AbstractTableModel;
 
 /**
  * CCINFOM Phase D
@@ -211,7 +189,23 @@ public class PickingForm extends JFrame {
     // - List<PickingLine> collectPickedLines():
     //     * Convert table rows into PickingLine objects (set ticketLineId, productId, qtyPicked, updatedBy).
     //     * Use the same audit user as TicketForm (System.getProperty("user.name", "ui-operator")) until login is available.
+    private void loadTicketLines(){
+        SwingWorker<Void, Void> worker = new SwingWorker<>(){
+            private List<PickTicketHdr> lines;
+            private Exception error;
+            @Override
+            protected Void doInBackground(){
+                try {
+                    lines = ticketService.listTicketLines(TicketId);//missing method(?)
 
+                    for(PickTicketLine line : lines){
+
+                    }
+                }
+            }
+
+        }
+    }
     }
     // TODO: Member 4 - TABLE MODEL
     // - Create an inner class LineTableModel extends AbstractTableModel similar to TicketForm but with editable column.
