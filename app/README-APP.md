@@ -140,3 +140,12 @@ Service → transaction consistency.
 UI → end-to-end flow.
 
 Document successful runs in screenshots for QA.
+
+// TODO[E-DOC-XCUT-003] Update README for Phase E workflows.
+// Why: Run instructions must include Pack/Dispatch/Close forms, demo scripts, and ServiceTestRunner usage.
+// Steps:
+//   1) Add new section "Phase E Additions" summarizing T3/T4/T5 flows and launcher buttons.
+//   2) Document how to run demo-T1-to-T4.sql and demo-full-flow.sql in Workbench.
+//   3) Document how to execute PhaseEServiceTestRunner and expected outputs.
+// Acceptance: README reflects latest UI buttons, demo order, and test commands; reviewers can follow without guesswork.
+// Owner: Joshua | Links: scripts/demo, docs/decisions.md, qa/validation_queries.sql

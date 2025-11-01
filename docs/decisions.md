@@ -168,3 +168,20 @@ AREA: Java sequence (heads-up for Phase D)
 DECISION: After Phase C is green, bootstrap Java Swing (config, DAO, UI shells for T1/T2) using the frozen contract; no hardcoded creds; show DB errors verbatim.
 RATIONALE: Early, live integration catches mismatches fast and sets the stage for T3–T5 with minimal rework.
 OWNER: TEAM
+
+DATE: 2025-11-01
+AREA: Phase E preflight (ID + branching)
+DECISION: Maintain `/docs/seed-id-map.md` as canonical ID register before coding; each Phase E seed PR must update it. Work occurs on feature branches named `feat/phase-e-<scope>` (T3, T4, infra, T5) merged into `phase-e/bootstrap-java` after tests/QA pass and peer review.
+RATIONALE: Avoids mismatched foreign keys across seeds/demos/tests and keeps concurrent work isolated with traceable reviews.
+OWNER: TEAM
+
+// TODO[E-DOC-XCUT-001] Record Phase E decisions (MySQL CHECK policy, inventory logging, PoD alignment, status transitions).
+// Why: Documentation must match final implementation to aid reviewers and defense.
+// Steps:
+//   1) Add entry noting packed_qty ≤ picked_qty enforced in PackService (MySQL limitation).
+//   2) Add entry stating inventory_txn_log writes only for RESERVE (T2) and CLOSE (T5).
+//   3) Clarify pod_ref/pod_ts alignment between dispatch_hdr and close_hdr, and Seed ID coordination map.
+// Acceptance:
+//   - docs/DECISIONS.md updated before Phase E merge.
+//   - README references decisions section.
+// Owner: Renzel | Links: docs/seed-id-map.md, qa/validation_queries.sql

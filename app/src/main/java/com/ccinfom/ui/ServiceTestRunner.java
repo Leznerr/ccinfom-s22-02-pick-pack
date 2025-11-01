@@ -25,6 +25,16 @@ public class ServiceTestRunner {
     // DAOs and Services are shared across all test methods
     private static TicketService ticketService;
     private static PickingService pickingService;
+    // TODO[E-TEST-XCUT-001] Extend runner for Phase E services (Pack/Dispatch/Close).
+    // Why: Automated coverage must include new transactions with happy + exception paths.
+    // Steps:
+    //   1) Instantiate PackService, DispatchService, CloseService once InventoryHelper and DAOs exist.
+    //   2) Add test methods for each specified exception code (PACK_OVER_QTY, DISPATCH_UNSEALED_BOX, CLOSE_RECONCILE_MISMATCH, etc.).
+    //   3) Update main() to execute new tests and clearly label results.
+    // Acceptance:
+    //   - PhaseEServiceTestRunner (new or extended) prints PASS/FAIL per scenario.
+    //   - Tests run green in CI before merge.
+    // Owner: Joshua | Links: PhaseEServiceTestRunner.java (new scaffold)
 
     public static void main(String[] args) {
         System.out.println("--- Comprehensive Service Layer Test Suite ---");

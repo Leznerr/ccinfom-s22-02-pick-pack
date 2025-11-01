@@ -443,6 +443,16 @@ public class PickingForm extends JFrame {
                     "Success",
                     JOptionPane.INFORMATION_MESSAGE
                 );
+
+                // TODO[E-UI-T3-002] Trigger Pack workflow hand-off after saving picks.
+                // Why: Phase E requires operator guidance to proceed to PackForm once picking completes.
+                // Steps:
+                //   1) Display deterministic dialog linking to PackForm or auto-open if policy allows.
+                //   2) Refresh ticketComboBox (remove tickets now in Picking/Packed status as needed).
+                // Acceptance:
+                //   - Manual: After saving, user sees actionable prompt and ticket list reflects new status.
+                //   - Demo: Phase E walkthrough shows transition from PickingForm to PackForm.
+                // Owner: Joshua
             }
         }.execute();
     }

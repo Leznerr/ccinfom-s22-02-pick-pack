@@ -310,5 +310,45 @@ SELECT picking_id, picking_status, req, got
 FROM req_vs_got
 WHERE (req = got    AND picking_status <> 'Done')
    OR (req <> got   AND picking_status  = 'Done');
+
+-- TODO[E-QA-T3-001] Add packed_vs_picked validation once pack_box tables exist.
+-- Why: Service enforces packed_qty ≤ picked_qty; QA must confirm zero violations.
+-- Query outline:
+--   SELECT pbl.picking_line_id, pbl.packed_qty, pl.picked_qty
+--     FROM pack_box_line pbl
+--     JOIN picking_line pl ON pl.picking_line_id = pbl.picking_line_id
+--    WHERE pbl.packed_qty > pl.picked_qty;
+-- Acceptance: query returns zero rows during QA run; referenced by PhaseEServiceTestRunner.testT3_overPack_throwsValidationException().
+-- Owner: Mark | Links: docs/decisions.md#phase-e
+
+-- TODO[E-QA-T4-002] Add sealed-only and duplicate-box dispatch validations.
+-- Why: DispatchService must load only sealed boxes once per manifest.
+-- Query outline:
+--   1) Unsealed: JOIN dispatch_line -> pack_box_hdr WHERE sealed_flag = 0.
+--   2) Duplicate: SELECT box_id FROM dispatch_line GROUP BY box_id HAVING COUNT(*) > 1.
+-- Acceptance: both queries return zero rows; demo-T1-to-T4.sql includes failing scenarios for manual proof.
+-- Owner: Carlo
+
+-- TODO[E-QA-T4-003] Add vehicle capacity/status QA query.
+-- Why: Ensure vehicles on manifests are available and loads respect capacity.
+-- Query outline:
+--   JOIN dispatch_hdr -> vehicles; compare SUM(estimated_weight) vs capacity (seed-supplied weight placeholder) and flag non-available statuses.
+-- Acceptance: returns zero rows when seeds obey rules; demo exception shows expected violation.
+-- Owner: Carlo
+
+-- TODO[E-QA-T5-004] Add inventory reconciliation via inventory_txn_log.
+-- Why: Only RESERVE and CLOSE transactions should affect balances; totals must match products table.
+-- Query outline:
+--   Aggregate inventory_txn_log by product_id; compare vs products.reserved_qty/on_hand_qty.
+--   Confirm no rows exist with source_txn_type='PACK'.
+-- Acceptance: QA check returns zero discrepancies; referenced in docs/decisions.md and README.
+-- Owner: Joshua
+
+-- TODO[E-QA-T5-005] Add close_variance reconciliation query.
+-- Why: CloseService must enforce delivered_qty + short_qty = requested_qty.
+-- Query outline:
+--   SELECT ticket_line_id FROM close_variance WHERE delivered_qty + short_qty <> requested_qty;
+-- Acceptance: zero rows post-close; demo-full-flow.sql short-close scenario used for manual verification.
+-- Owner: Renzel
    
    
