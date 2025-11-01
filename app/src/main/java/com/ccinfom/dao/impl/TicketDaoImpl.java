@@ -23,7 +23,7 @@ public class TicketDaoImpl implements TicketDao {
         try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, hdr.getCustomerId());
             stmt.setLong(2, hdr.getBranchId());
-            stmt.setString(3, hdr.getTicketStatus().name());
+            stmt.setString(3, hdr.getTicketStatus().getDbValue());
             stmt.setString(4, hdr.getRemarks());
             stmt.setString(5, hdr.getUpdatedBy());
 
@@ -133,7 +133,7 @@ public class TicketDaoImpl implements TicketDao {
             """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, status.name());
+            stmt.setString(1, status.getDbValue());
             stmt.setString(2, updatedBy);
             stmt.setLong(3, pickTicketId);
             stmt.executeUpdate();
@@ -155,7 +155,7 @@ public class TicketDaoImpl implements TicketDao {
         hdr.setPickTicketId(rs.getLong("pick_ticket_id"));
         hdr.setCustomerId(rs.getLong("customer_id"));
         hdr.setBranchId(rs.getLong("branch_id"));
-        hdr.setTicketStatus(PickTicketHdr.TicketStatus.valueOf(rs.getString("ticket_status")));
+        hdr.setTicketStatus(PickTicketHdr.TicketStatus.fromDb(rs.getString("ticket_status")));
         hdr.setRemarks(rs.getString("remarks"));
         hdr.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         hdr.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());

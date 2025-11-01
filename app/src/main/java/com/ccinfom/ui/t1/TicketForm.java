@@ -11,6 +11,7 @@ import com.ccinfom.model.PickTicketLine;
 import com.ccinfom.model.Product;
 import com.ccinfom.service.TicketService;
 import com.ccinfom.service.ValidationException;
+import com.ccinfom.ui.common.ComboItem;
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -443,31 +444,6 @@ public class TicketForm extends JFrame {
             TicketForm form = new TicketForm();
             form.setVisible(true);
         });
-    }
-
-    /**
-     * Type-safe wrapper for combo box entries holding both display text and the
-     * source model object.
-     *
-     * @param <T> domain model type
-     */
-    public static final class ComboItem<T> {
-        private final T value;
-        private final String label;
-
-        ComboItem(T value, String label) {
-            this.value = value;
-            this.label = label;
-        }
-
-        T getValue() {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return label;
-        }
     }
 
     /**

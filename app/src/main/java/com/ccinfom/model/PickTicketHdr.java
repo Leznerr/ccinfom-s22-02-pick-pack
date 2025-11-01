@@ -19,10 +19,42 @@ package com.ccinfom.model;
 
 import java.time.LocalDateTime;
 
- public class PickTicketHdr {
+public class PickTicketHdr {
 
     public enum TicketStatus {
-        Open, Picking, Packed, Dispatched, Delivered, Closed;
+        Open("Open"),
+        Picking("Picking"),
+        Packed("Packed"),
+        Dispatched("Dispatched"),
+        Delivered("Delivered"),
+        ShortClosed("Short-Closed");
+
+        private final String dbValue;
+
+        TicketStatus(String dbValue) {
+            this.dbValue = dbValue;
+        }
+
+        public String getDbValue() {
+            return dbValue;
+        }
+
+        @Override
+        public String toString() {
+            return dbValue;
+        }
+
+        public static TicketStatus fromDb(String value) {
+            if (value == null) {
+                throw new IllegalArgumentException("ticket_status cannot be null");
+            }
+            for (TicketStatus status : values()) {
+                if (status.dbValue.equalsIgnoreCase(value)) {
+                    return status;
+                }
+            }
+            throw new IllegalArgumentException("Unknown ticket_status value: " + value);
+        }
     }
 
     private Long pickTicketId;

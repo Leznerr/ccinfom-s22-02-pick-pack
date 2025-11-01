@@ -2,452 +2,659 @@ package com.ccinfom.ui.t2;
 
 import com.ccinfom.dao.impl.LookupDaoImpl;
 import com.ccinfom.dao.impl.PickingDaoImpl;
+import com.ccinfom.dao.impl.TicketDaoImpl;
 import com.ccinfom.dao.interfaces.LookupDao;
 import com.ccinfom.dao.interfaces.TicketDao;
-import com.ccinfom.dao.impl.TicketDaoImpl;
+import com.ccinfom.model.Branch;
+import com.ccinfom.model.Customer;
+import com.ccinfom.model.Employee;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickTicketLine;
+import com.ccinfom.model.PickingHdr;
+import com.ccinfom.model.PickingLine;
 import com.ccinfom.service.TicketService;
-import com.ccinfom.ui.t1.TicketForm;
-import com.ccinfom.model.Employee;
-
-import java.awt.*;
+import com.ccinfom.service.ValidationException;
+import com.ccinfom.ui.common.ComboItem;
+import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import javax.swing.*;
+import java.util.Map;
+import java.util.Objects;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.WindowConstants;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 
 /**
- * CCINFOM Phase D
- *
- * Swing shell for Transaction T2 (Allocate & Pick).
- * This file intentionally contains TODO guides for Member 4 so the screen
- * stays aligned with our TicketForm implementation and service layer rules.
+ * Phase D Swing form for Transaction T2 (Allocate & Pick).
+ * Mirrors the layering of TicketForm: UI -> Service -> DAO.
  */
 public class PickingForm extends JFrame {
 
-    // TODO: Member 4 - UI COMPONENTS
-    // - Declare Swing fields with domain aware types:
-    //     JComboBox<ComboItem<PickTicketHdr>> ticketComboBox   (label: ticket no + customer + branch)
-    //     JComboBox<ComboItem<Employee>>      pickerComboBox   (active pickers only)
-    //     JTable                              linesTable       (requested vs picked quantities)
-    //     LineTableModel                      tableModel       (columns: Product ID, SKU, Name, Requested Qty, Picked Qty [editable], UOM)
-    //     JButton                             startPickingButton (assign picker + create picking_hdr)
-    //     JButton                             saveResultsButton  (persist picked quantities)
-    //     Optional: JLabel or status footer showing current picking_id and validation messages.
-    //
-    // - Use helper ComboItem similar to TicketForm so combo boxes keep both id and label.
-    private JComboBox<TicketForm.ComboItem<PickTicketHdr>> ticketComboBox;
-    private JComboBox<TicketForm.ComboItem<Employee>> pickerBox;
-    private JTable linesTable;
-    private TicketForm.LineTableModel tableModel;
-    private JButton startPickingButton;
-    private JButton saveResults;
-    private JLabel statusLabel;
+    private static final String DEFAULT_UPDATED_BY =
+        System.getProperty("user.name", "ui-operator");
 
-    // TODO: Member 4 - SERVICE & DAO WIRING
-    // - Add fields:
-    //     private final PickingService pickingService;
-    //     private final TicketService  ticketService;
-    //     private final LookupDao      lookupDao;
-    // - Provide:
-    //     1) Default constructor that instantiates LookupDaoImpl, TicketDaoImpl, PickingDaoImpl,
-    //        then wires ticketService and pickingService (mirroring TicketForm).
-    //     2) Package-private constructor accepting these dependencies (supports UI tests).
-    private final LookupDao lookupdao;
+    private final LookupDao lookupDao;
     private final TicketDao ticketDao;
-    private final com.ccinfom.dao.interfaces.PickingDao pickingDao ;
+    private final com.ccinfom.dao.interfaces.PickingDao pickingDao;
     private final TicketService ticketService;
     private final com.ccinfom.service.PickingService pickingService;
 
-    private Long currentPickingId;
+    private JComboBox<ComboItem<PickTicketHdr>> ticketComboBox;
+    private JComboBox<ComboItem<Employee>> pickerComboBox;
+    private JButton startPickingButton;
+    private JButton saveResultsButton;
+    private JLabel statusLabel;
+    private PickingLineTableModel tableModel;
+    private JTable linesTable;
+
     private PickTicketHdr currentTicket;
+    private Long currentPickingId;
 
     public PickingForm() {
-        // TODO: Member 4 - DEFAULT CONSTRUCTOR BODY
-        // - Instantiate LookupDaoImpl, TicketDaoImpl, PickingDaoImpl.
-        // - Build ticketService = new TicketService(ticketDao, lookupDao).
-        // - Build pickingService = new PickingService(pickingDao, ticketDao, lookupDao).
-        // - Delegate to an overloaded constructor to avoid duplicate setup logic.
+        this(new LookupDaoImpl(), new TicketDaoImpl(), new PickingDaoImpl());
+    }
 
-        this.lookupdao = new LookupDaoImpl();
-        this.ticketDao = new TicketDaoImpl();
-        this.pickingDao = new PickingDaoImpl();
-        this.ticketService = new TicketService(ticketDao,lookupdao);
-        this.pickingService = new com.ccinfom.service.PickingService(pickingDao,ticketDao,lookupdao);
+    PickingForm(LookupDao lookupDao,
+                TicketDao ticketDao,
+                com.ccinfom.dao.interfaces.PickingDao pickingDao) {
+        super("T2: Picking Process");
+        this.lookupDao = Objects.requireNonNull(lookupDao, "lookupDao");
+        this.ticketDao = Objects.requireNonNull(ticketDao, "ticketDao");
+        this.pickingDao = Objects.requireNonNull(pickingDao, "pickingDao");
+        this.ticketService = new TicketService(ticketDao, lookupDao);
+        this.pickingService = new com.ccinfom.service.PickingService(pickingDao, ticketDao, lookupDao);
 
-        // TODO: Member 4 - FRAME SETUP
-        // - setTitle("T2: Picking Process");
-        // - setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        // - setLayout(new BorderLayout()) and call helper methods:
-        //       initComponents();
-        //       layoutComponents();
-        //       registerListeners();
-        // - Follow TicketForm's GridBagLayout approach for consistency.
-        setTitle("T2: Picking process");
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(800,600);//frame size x y
-
-
-        initComponents();
+        initializeComponents();
         layoutComponents();
         registerListeners();
-
-
-        // TODO: Member 4 - INITIAL DATA LOAD
-        // - Call loadPickersAndTickets(); this should use SwingWorker to prevent UI freeze.
-        //     * lookupDao.listActivePickers() => populate picker combo.
-        //     * ticketService.listOpenTickets() (add helper that filters ticketDao.listAllTickets()).
-        // - After load completes, enable combos and preselect the first entries if available.
         loadPickersAndTickets();
-        // TODO: Member 4 - STATE VARIABLES
-        // - Track Long currentPickingId (null until assignPickerAndStartPicking succeeds).
-        // - Track PickTicketHdr currentTicket (for validations / refresh).
+
+        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+        pack();
     }
-    private void initComponents(){
+
+    // -------------------------------------------------------------------------
+    // Initialisation
+    // -------------------------------------------------------------------------
+
+    private void initializeComponents() {
         ticketComboBox = new JComboBox<>();
-        pickerBox = new JComboBox<>();
-        tableModel = new TicketForm.LineTableModel();
-        linesTable = new JTable(tableModel);
+        pickerComboBox = new JComboBox<>();
         startPickingButton = new JButton("Start Picking");
-        saveResults = new JButton("Save Results");
-        statusLabel = new JLabel("STATUS: READY");
+        saveResultsButton = new JButton("Save Picked Qty");
+        statusLabel = new JLabel("Status: Loading reference data...");
+
+        tableModel = new PickingLineTableModel();
+        linesTable = new JTable(tableModel);
+        linesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        linesTable.setFillsViewportHeight(true);
 
         ticketComboBox.setEnabled(false);
-        pickerBox.setEnabled(false);
+        pickerComboBox.setEnabled(false);
         startPickingButton.setEnabled(false);
-        saveResults.setEnabled(false);
+        saveResultsButton.setEnabled(false);
     }
 
-    private void layoutComponents(){
-        JPanel mainPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(5,5,5,5);
-        c.fill = GridBagConstraints.HORIZONTAL;
+    private void layoutComponents() {
+        setLayout(new BorderLayout(8, 8));
+        ((JPanel) getContentPane()).setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        //ticket
-        c.gridx = 0;
-        c.gridy = 0;
-        mainPanel.add(new JLabel("TICKET: "), c);
+        JPanel header = new JPanel(new GridBagLayout());
+        header.setBorder(BorderFactory.createTitledBorder("Picking Session"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        header.add(new JLabel("Ticket"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        header.add(ticketComboBox, gbc);
 
-        c.gridx = 1;
-        c.weightx = 1.0;
-        mainPanel.add(ticketComboBox, c);
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        header.add(new JLabel("Picker"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        header.add(pickerComboBox, gbc);
 
-        //picker
-        c.gridx = 0;
-        c.gridy = 1;
-        c.weightx = 0;
-        mainPanel.add(new JLabel("PICKER: "), c);
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
+        header.add(statusLabel, gbc);
 
-        c.gridx = 0;
-        c.gridy = 1;
-        c.weightx = 0;
-        mainPanel.add(pickerBox, c);
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(startPickingButton);
+        buttonPanel.add(saveResultsButton);
 
-        //start
-        c.gridx = 0;
-        c.weightx = 0;
-        mainPanel.add(startPickingButton, c);
+        JScrollPane tableScroll = new JScrollPane(linesTable);
+        tableScroll.setBorder(BorderFactory.createTitledBorder("Ticket Lines"));
 
-        //table
-        c.gridx = 3;
-        c.fill = GridBagConstraints.BOTH;
-        c.weightx = 1.0;
-        mainPanel.add(new JScrollPane(linesTable), c);
-
-        //save
-        c.gridy = 4;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weighty = 0;
-        mainPanel.add(saveResults, c);
-
-        //status
-        c.gridy = 5;
-        mainPanel.add(statusLabel, c);
-
-        add(mainPanel,BorderLayout.CENTER);
+        add(header, BorderLayout.NORTH);
+        add(tableScroll, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    // TODO: Member 4 - EVENT HANDLERS
-    // - ticketComboBox listener:
-    //     * When selection changes, call loadTicketLines(selectedTicketId).
-    //     * If a picking session already exists (pickingService via pickingDao.findByTicketId),
-    //       store the picking_id and disable start button.
-    // - pickerComboBox listener:
-    //     * Optional: display picker details in a label.
-    // - startPickingButton:
-    //     * Validate ticket + picker chosen.
-    //     * Invoke pickingService.assignPickerAndStartPicking(ticketId, pickerId).
-    //     * After success, fetch picking_id, disable ticket combo, enable save button, show success dialog.
-    //     * Catch ValidationException (show JOptionPane warning) and SQLException (error dialog) and re-enable controls.
-    // - saveResultsButton:
-    //     * Read edited values from table model (collectPickedLines()).
-    //     * Ensure pickedQty >= 0 and <= requestedQty per line before calling service.
-    //     * Call pickingService.savePickedItems(currentPickingId, pickedLines).
-
-    //     * On success, show confirmation, refresh ticket list (removing the ticket if fully picked), clear table.
     private void registerListeners() {
         ticketComboBox.addActionListener(e -> onTicketSelected());
-        startPickingButton.addActionListener(e -> onStartPicking());
-        saveResults.addActionListener(e -> onSaveResults);
-    }
-
-    private void onTicketSelected(){
-        TicketForm.ComboItem<PickTicketHdr> selected = (TicketForm.ComboItem<PickTicketHdr>) ticketComboBox.getSelectedItem();
-        if(selected!=null){
-            //currentTicket = selected.getData();
-            loadTicketLines(currentPickingId);
-        }
-    }
-
-    private void onStartPicking(){
-        TicketForm.ComboItem<PickTicketHdr> ticketItem =
-                (TicketForm.ComboItem<PickTicketHdr>) ticketComboBox.getSelectedItem();
-        TicketForm.ComboItem<Employee> pickerItem =
-                (TicketForm.ComboItem<Employee>) pickerBox.getSelectedItem();
-
-        if(pickerItem ==null || pickerItem == null){
-            JOptionPane.showMessageDialog(this, "Please select BOTH ticket and picker",
-                    "ERROR: Validation Error",
-                    JOptionPane.WARNING_MESSAGE);
-        }
-        startPickingButton.setEnabled(false);
-        statusLabel.setText("STATUS: starting picking");
-
-        SwingWorker<Void, Void> worker = new SwingWorker<>(){
-            private Exception error;
-
-            @Override
-            protected Void doInBackground() throws Exception {
-                try {
-                    pickingService.savePickedItems(currentPickingId);
-                }catch (Exception e){
-                    error = e;
-                }
-                return null;
+        pickerComboBox.addActionListener(e -> {
+            if (currentTicket != null && currentPickingId == null) {
+                startPickingButton.setEnabled(pickerComboBox.getSelectedItem() != null);
             }
-        };
+        });
+        startPickingButton.addActionListener(e -> onStartPicking());
+        saveResultsButton.addActionListener(e -> onSaveResults());
     }
 
-    // TODO: Member 4 - DATA HELPERS
-    // - void loadPickersAndTickets():
-    //     * Use SwingWorker; disable combos while loading.
-    //     * Handle SQLException by showing an error dialog and leaving controls disabled for retry.
+    // -------------------------------------------------------------------------
+    // Data loading
+    // -------------------------------------------------------------------------
 
-    private void loadPickersAndTickets(){
-        SwingWorker<Void, Void> worker = new SwingWorker<>(){
+    private void loadPickersAndTickets() {
+        ticketComboBox.setEnabled(false);
+        pickerComboBox.setEnabled(false);
+        startPickingButton.setEnabled(false);
+        saveResultsButton.setEnabled(false);
+        statusLabel.setText("Status: Loading pickers and open tickets...");
+
+        new SwingWorker<Void, Void>() {
             private List<Employee> pickers;
             private List<PickTicketHdr> tickets;
+            private Map<Long, String> customerNames;
+            private Map<Long, String> branchNames;
             private Exception error;
+
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 try {
-                    pickers = lookupdao.listActivePickers();//package location of employee issue here; lowk dk what the issue is anymore
+                    pickers = lookupDao.listActivePickers();
                     tickets = ticketDao.listAllTickets();
-                } catch (SQLException e) {
-                    error = e;
+                    customerNames = buildCustomerNameMap();
+                    branchNames = buildBranchNameMap();
+                } catch (Exception ex) {
+                    error = ex;
                 }
                 return null;
             }
+
             @Override
             protected void done() {
-                if(error != null){
-                    JOptionPane.showMessageDialog(
-                            PickingForm.this,
-                            "Failed to load data" + error.getMessage(),
-                            "Database Error",
-                            JOptionPane.ERROR_MESSAGE
-                    );
+                if (error != null) {
+                    showError("Failed to load reference data: " + error.getMessage());
+                    statusLabel.setText("Status: Failed to load reference data.");
+                    return;
                 }
-                DefaultComboBoxModel<TicketForm.ComboItem<Employee>> pickerModel
-                        = new  DefaultComboBoxModel<>();
-                for(Employee emp : pickers){
-                    pickerModel.addElement(new TicketForm.ComboItem<>(emp.getEmployeeId(),
-                            emp.getFirstName()+""+emp.getLastName(),
-                            emp));
-                }
-                pickerBox.setModel(pickerModel);
 
-                DefaultComboBoxModel<TicketForm.ComboItem<PickTicketHdr>> ticketModel
-                        = new DefaultComboBoxModel<>();
-                for(PickTicketHdr ticket : tickets){
-                    if ("OPEN".equals(ticket.getTicketStatus())){
-                        ticketModel.addElement(new TicketForm.ComboItem<>(ticket.getPickTicketId(),//comboitem method kinda broke atm fix later
-                                "TICKET NO: " + ticket.getPickTicketId() +
-                                " - CUSTOMER: " + ticket.getCustomerId() +
-                                " - BRANCH: " + ticket.getBranchId(),
-                                ticket
-                        ));
+                DefaultComboBoxModel<ComboItem<Employee>> pickerModel = new DefaultComboBoxModel<>();
+                if (pickers != null) {
+                    for (Employee emp : pickers) {
+                        String display = emp.getLastName() + ", " + emp.getFirstName() + " (ID: " + emp.getEmployeeId() + ")";
+                        pickerModel.addElement(new ComboItem<>(emp, display));
                     }
                 }
+                pickerComboBox.setModel(pickerModel);
+                pickerComboBox.setEnabled(pickerModel.getSize() > 0);
+
+                DefaultComboBoxModel<ComboItem<PickTicketHdr>> ticketModel = new DefaultComboBoxModel<>();
+                if (tickets != null) {
+                    for (PickTicketHdr ticket : tickets) {
+                        if (ticket.getTicketStatus() == PickTicketHdr.TicketStatus.Open) {
+                            String customerLabel = customerNames.getOrDefault(ticket.getCustomerId(), "Customer " + ticket.getCustomerId());
+                            String branchLabel = branchNames.getOrDefault(ticket.getBranchId(), "Branch " + ticket.getBranchId());
+                            String display = String.format("Ticket #%d - %s \u2192 %s",
+                                    ticket.getPickTicketId(), customerLabel, branchLabel);
+                            ticketModel.addElement(new ComboItem<>(ticket, display));
+                        }
+                    }
+                }
+
                 ticketComboBox.setModel(ticketModel);
+                ticketComboBox.setEnabled(ticketModel.getSize() > 0);
 
-                ticketComboBox.setEnabled(true);
-                pickerBox.setEnabled(true);
-                startPickingButton.setEnabled(ticketModel.getSize() > 0 &&
-                        pickerModel.getSize() > 0);
+                if (ticketModel.getSize() == 0) {
+                    statusLabel.setText("Status: No open tickets available.");
+                } else {
+                    statusLabel.setText("Status: Select a ticket to begin.");
+                }
             }
-        };
-        worker.execute();
+        }.execute();
     }
-    // - void loadTicketLines(long ticketId):
-    //     * Fetch PickTicketLine list via ticketService.listTicketLines(ticketId).
-    //     * Optionally join product metadata via lookupDao.findProductById to display SKU/name/UOM.
-    //     * Reset table model rows with requested qty defaulting picked qty equal to requested qty (user may adjust down).
-    // - List<PickingLine> collectPickedLines():
-    //     * Convert table rows into PickingLine objects (set ticketLineId, productId, qtyPicked, updatedBy).
-    //     * Use the same audit user as TicketForm (System.getProperty("user.name", "ui-operator")) until login is available.
-    private void loadTicketLines(long ticketId){
+
+    private Map<Long, String> buildCustomerNameMap() {
+        List<Customer> customers = lookupDao.listCustomers();
+        Map<Long, String> map = new HashMap<>();
+        for (Customer customer : customers) {
+            map.put(customer.getCustomerId(), customer.getCustomerName());
+        }
+        return map;
+    }
+
+    private Map<Long, String> buildBranchNameMap() {
+        List<Branch> branches = lookupDao.listBranches();
+        Map<Long, String> map = new HashMap<>();
+        for (Branch branch : branches) {
+            map.put(branch.getBranchId(), branch.getBranchName());
+        }
+        return map;
+    }
+
+    private void loadTicketLines(long ticketId) {
         tableModel.clear();
-        statusLabel.setText("STATUS: loading ticket lines");
-        SwingWorker<Void, Void> worker = new SwingWorker<>(){
-            private List<PickTicketLine> lines;
+        startPickingButton.setEnabled(false);
+        saveResultsButton.setEnabled(false);
+        statusLabel.setText("Status: Loading ticket lines...");
+
+        new SwingWorker<Void, Void>() {
+            private List<PickingLineEntry> entries = new ArrayList<>();
+            private PickingHdr existingPicking;
             private Exception error;
+
             @Override
-            protected Void doInBackground(){
+            protected Void doInBackground() {
                 try {
-                    lines = ticketService.listTicketLines(currentTicket.getPickTicketId());//missing method(?)
-                }catch (Exception e){
-                    error = e;
-                };
+                    List<PickTicketLine> lines = ticketService.listTicketLines(ticketId);
+                    existingPicking = pickingDao.findByTicketId(ticketId);
+                    for (PickTicketLine line : lines) {
+                        com.ccinfom.model.Product product = lookupDao.findProductById(line.getProductId());
+                        entries.add(PickingLineEntry.from(line, product));
+                    }
+                } catch (ValidationException | SQLException ex) {
+                    error = ex;
+                }
                 return null;
             }
+
             @Override
             protected void done() {
-                if(error != null){
-                    JOptionPane.showMessageDialog(PickingForm.this,
-                            "ERROR LOADING TICKET LINES: " +
-                                    error.getMessage(), "ERROR",
-                            JOptionPane.ERROR_MESSAGE);
-                    //statusLabel.setText("Status: ERROR LOADING LINES");
+                if (error != null) {
+                    showError("Failed to load ticket lines: " + error.getMessage());
+                    statusLabel.setText("Status: Error loading ticket lines.");
+                    return;
                 }
-                List<TicketForm.LineEntry> entries = new ArrayList<>();
-                for(PickTicketLine line : lines){
-                    try{
-                        com.ccinfom.model.Product product = lookupdao.findProductById(line.getProductId());//package import issue also here
-                        entries.add(new TicketForm.LineEntry(line.getTicketLineId(),//package import issue here
-                                line.getProductId(),
-                                product != null ? product.getSku() : "N/A",
-                                product != null ? product.getProductName() : "Unknown",
-                                line.getRequestedQty(),
-                                line.getRequestedQty(),
-                                product != null ? product.getUnitOfMeasure() : "EA"
 
-                        ));
-                    }catch(Exception e){
-                        System.err.println("ERROR: error loading product" + line.getProductId() + ": " + e.getMessage());
-                    }
+                tableModel.setEntries(entries);
+
+                if (existingPicking != null) {
+                    currentPickingId = existingPicking.getPickingId();
+                    startPickingButton.setEnabled(false);
+                    saveResultsButton.setEnabled(true);
+                    statusLabel.setText("Status: Picking session #" + currentPickingId + " active.");
+                } else {
+                    currentPickingId = null;
+                    startPickingButton.setEnabled(pickerComboBox.getSelectedItem() != null);
+                    saveResultsButton.setEnabled(false);
+                    statusLabel.setText("Status: Ready to start picking.");
                 }
-                tableModel.addLine(entries);
-                statusLabel.setText("STATUS: READY");
             }
-        };
-        worker.execute();
+        }.execute();
     }
-    }
-    // TODO: Member 4 - TABLE MODEL
-    // - Create an inner class LineTableModel extends AbstractTableModel similar to TicketForm but with editable column.
-    // - Override isCellEditable to allow edits only on the picked quantity column.
-    // - Provide helper methods:
-    //       setLines(List<PickTicketLine>),
-    //       List<LineEntry> getLines(),
-    //       void clear().
 
-    private static class LineTableModel extends AbstractTableModel{
-    private final String[] columnNames = {
-            "Product ID","SKU","Name","Requested QTY","Picked QTY", "UOM"
-    };
-        private List<TicketForm.LineEntry> lines = new ArrayList<>();
+    // -------------------------------------------------------------------------
+    // Event handlers
+    // -------------------------------------------------------------------------
+
+    private void onTicketSelected() {
+        ComboItem<PickTicketHdr> selected = (ComboItem<PickTicketHdr>) ticketComboBox.getSelectedItem();
+        currentTicket = selected != null ? selected.getValue() : null;
+        currentPickingId = null;
+        tableModel.clear();
+
+        if (currentTicket != null) {
+            loadTicketLines(currentTicket.getPickTicketId());
+        } else {
+            statusLabel.setText("Status: Select a ticket to begin.");
+            startPickingButton.setEnabled(false);
+            saveResultsButton.setEnabled(false);
+        }
+    }
+
+    private void onStartPicking() {
+        ComboItem<PickTicketHdr> ticketItem = (ComboItem<PickTicketHdr>) ticketComboBox.getSelectedItem();
+        ComboItem<Employee> pickerItem = (ComboItem<Employee>) pickerComboBox.getSelectedItem();
+
+        if (ticketItem == null) {
+            showWarning("Please select a ticket.");
+            return;
+        }
+        if (pickerItem == null) {
+            showWarning("Please select a picker.");
+            return;
+        }
+
+        long ticketId = ticketItem.getValue().getPickTicketId();
+        long pickerId = pickerItem.getValue().getEmployeeId();
+
+        startPickingButton.setEnabled(false);
+        statusLabel.setText("Status: Starting picking session...");
+
+        new SwingWorker<Long, Void>() {
+            private Exception error;
+
+            @Override
+            protected Long doInBackground() {
+                try {
+                    pickingService.assignPickerAndStartPicking(ticketId, pickerId);
+                    PickingHdr hdr = pickingDao.findByTicketId(ticketId);
+                    return hdr != null ? hdr.getPickingId() : null;
+                } catch (ValidationException | SQLException ex) {
+                    error = ex;
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                if (error != null) {
+                    showWarning(error.getMessage());
+                    startPickingButton.setEnabled(true);
+                    statusLabel.setText("Status: Failed to start picking.");
+                    return;
+                }
+                try {
+                    currentPickingId = get();
+                } catch (Exception e) {
+                    currentPickingId = null;
+                }
+
+                if (currentPickingId != null) {
+                    statusLabel.setText("Status: Picking session #" + currentPickingId + " started.");
+                    saveResultsButton.setEnabled(true);
+                    ticketComboBox.setEnabled(false);
+                    pickerComboBox.setEnabled(false);
+                } else {
+                    statusLabel.setText("Status: Unable to retrieve picking session id.");
+                }
+            }
+        }.execute();
+    }
+
+    private void onSaveResults() {
+        if (currentPickingId == null) {
+            showWarning("Start a picking session before saving results.");
+            return;
+        }
+
+        List<PickingLineEntry> entries = tableModel.getEntries();
+        if (entries.isEmpty()) {
+            showWarning("No lines available to save.");
+            return;
+        }
+
+        List<PickingLine> linesToSave;
+        try {
+            linesToSave = buildPickingLines(entries);
+        } catch (ValidationException ex) {
+            showWarning(ex.getMessage());
+            return;
+        }
+
+        saveResultsButton.setEnabled(false);
+        statusLabel.setText("Status: Saving picked quantities...");
+
+        new SwingWorker<Void, Void>() {
+            private Exception error;
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    pickingService.savePickedItems(currentPickingId, linesToSave);
+                } catch (ValidationException | SQLException ex) {
+                    error = ex;
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                if (error != null) {
+                    showWarning(error.getMessage());
+                    saveResultsButton.setEnabled(true);
+                    statusLabel.setText("Status: Failed to save picked quantities.");
+                    return;
+                }
+                statusLabel.setText("Status: Picked quantities saved.");
+                JOptionPane.showMessageDialog(
+                    PickingForm.this,
+                    "Picking results saved for session #" + currentPickingId,
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+            }
+        }.execute();
+    }
+
+    private List<PickingLine> buildPickingLines(List<PickingLineEntry> entries) throws ValidationException {
+        List<PickingLine> result = new ArrayList<>();
+        for (PickingLineEntry entry : entries) {
+            BigDecimal picked = entry.getPickedQty();
+            if (picked == null) {
+                throw new ValidationException("Picked quantity cannot be empty.");
+            }
+            if (picked.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ValidationException("Picked quantity cannot be negative.");
+            }
+            if (picked.compareTo(entry.getRequestedQty()) > 0) {
+                throw new ValidationException("Picked quantity cannot exceed requested quantity for product " + entry.getProductId());
+            }
+
+            PickingLine line = new PickingLine();
+            line.setPickingId(currentPickingId);
+            line.setTicketLineId(entry.getTicketLineId());
+            line.setProductId(entry.getProductId());
+            line.setPickedQty(picked);
+            line.setUom(entry.getUom());
+            line.setUpdatedBy(DEFAULT_UPDATED_BY);
+            result.add(line);
+        }
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper methods
+    // -------------------------------------------------------------------------
+
+    private void showWarning(String message) {
+        JOptionPane.showMessageDialog(this, message, "Validation", JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // -------------------------------------------------------------------------
+    // Table model
+    // -------------------------------------------------------------------------
+
+    private static final class PickingLineTableModel extends AbstractTableModel {
+        private static final String[] COLUMN_NAMES = {
+            "Product ID", "SKU", "Product Name", "Requested Qty", "Picked Qty", "UOM"
+        };
+
+        private final List<PickingLineEntry> entries = new ArrayList<>();
 
         @Override
-        public int getRowCOunt() {
-            return lines.size();
+        public int getRowCount() {
+            return entries.size();
         }
 
         @Override
         public int getColumnCount() {
-            return columnNames.length;
+            return COLUMN_NAMES.length;
         }
 
         @Override
         public String getColumnName(int column) {
-            return columnNames[column];
+            return COLUMN_NAMES[column];
         }
 
         @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-            TicketForm.LineEntry entry = lines.get(rowIndex);
-            switch(columnIndex){
-                case 0: return entry.getProductId();
-                case 1: return entry.getSku();
-                case 2: return entry.getProductName();
-                case 3: return  entry.getQuantity();
-                case 4: return entry.getUom();
-                default: return null;
-            }
+        public Class<?> getColumnClass(int columnIndex) {
+            return switch (columnIndex) {
+                case 0 -> Long.class;
+                case 3, 4 -> BigDecimal.class;
+                default -> String.class;
+            };
         }
+
         @Override
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return columnIndex == 4;
         }
+
         @Override
-        public void setValueAt(Object value, int rowIndex, int columnIndex) {
-            if(columnIndex == 4){
-                try{
-                    int pickedQty = Integer.parseInt(value.toString());
-                    lines.get(rowIndex).getQuantity();
-                }catch(NumberFormatException e){
-                    //ignore
-                }
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            PickingLineEntry entry = entries.get(rowIndex);
+            return switch (columnIndex) {
+                case 0 -> entry.getProductId();
+                case 1 -> entry.getSku();
+                case 2 -> entry.getProductName();
+                case 3 -> entry.getRequestedQty();
+                case 4 -> entry.getPickedQty();
+                case 5 -> entry.getUom();
+                default -> null;
+            };
+        }
+
+        @Override
+        public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+            if (columnIndex != 4) {
+                return;
+            }
+            PickingLineEntry entry = entries.get(rowIndex);
+            try {
+                BigDecimal newValue = new BigDecimal(aValue.toString());
+                entry.setPickedQty(newValue);
+                fireTableCellUpdated(rowIndex, columnIndex);
+            } catch (NumberFormatException ex) {
+                // revert to old value, notify user silently
+                fireTableCellUpdated(rowIndex, columnIndex);
             }
         }
-        public void setLines(List<TicketForm.LineEntry> lines){
-            this.lines = new ArrayList<>(lines);
+
+        void setEntries(List<PickingLineEntry> newEntries) {
+            entries.clear();
+            entries.addAll(newEntries);
             fireTableDataChanged();
         }
-        public List<TicketForm.LineEntry> getLines(){
-            return new ArrayList<>(lines);
-        }
-        public void clear(){
-            lines.clear();
+
+        void clear() {
+            if (entries.isEmpty()) {
+                return;
+            }
+            entries.clear();
             fireTableDataChanged();
+        }
+
+        List<PickingLineEntry> getEntries() {
+            return new ArrayList<>(entries);
         }
     }
 
-    static class LineEntry{
-        long ticketLineId;
-        long productId;
-        String sku;
-        String productName;
-        int quantity;
-        String uom;
+    private static final class PickingLineEntry {
+        private final long ticketLineId;
+        private final long productId;
+        private final String sku;
+        private final String productName;
+        private final BigDecimal requestedQty;
+        private BigDecimal pickedQty;
+        private final String uom;
 
-        LineEntry(long ticketLineId, long productId, String sku, String productName, int quantity, String uom){
+        private PickingLineEntry(long ticketLineId,
+                                 long productId,
+                                 String sku,
+                                 String productName,
+                                 BigDecimal requestedQty,
+                                 BigDecimal pickedQty,
+                                 String uom) {
             this.ticketLineId = ticketLineId;
             this.productId = productId;
             this.sku = sku;
             this.productName = productName;
-            this.quantity = quantity;
+            this.requestedQty = requestedQty;
+            this.pickedQty = pickedQty;
             this.uom = uom;
+        }
+
+        static PickingLineEntry from(PickTicketLine line, com.ccinfom.model.Product product) {
+            String sku = product != null ? product.getSku() : "N/A";
+            String name = product != null ? product.getProductName() : "Unknown";
+            String uom = product != null ? product.getUnitOfMeasure() : "EA";
+            return new PickingLineEntry(
+                line.getTicketLineId(),
+                line.getProductId(),
+                sku,
+                name,
+                line.getRequestedQty(),
+                line.getRequestedQty(),
+                uom
+            );
+        }
+
+        long getTicketLineId() {
+            return ticketLineId;
+        }
+
+        long getProductId() {
+            return productId;
+        }
+
+        String getSku() {
+            return sku;
+        }
+
+        String getProductName() {
+            return productName;
+        }
+
+        BigDecimal getRequestedQty() {
+            return requestedQty;
+        }
+
+        BigDecimal getPickedQty() {
+            return pickedQty;
+        }
+
+        void setPickedQty(BigDecimal pickedQty) {
+            this.pickedQty = pickedQty;
+        }
+
+        String getUom() {
+            return uom;
         }
     }
 
-    // TODO: Member 4 - ERROR HANDLING
-    // - Wrap service calls in SwingWorker to keep UI responsive.
-    // - Show ValidationException messages via JOptionPane.WARNING_MESSAGE.
-    // - Show SQLException messages via JOptionPane.ERROR_MESSAGE and log to System.err for Phase D.
-    // - Ensure buttons are disabled during background work and re-enabled in done().
+    // -------------------------------------------------------------------------
+    // Standalone launcher for manual testing
+    // -------------------------------------------------------------------------
 
-    // TODO: Member 4 - MAIN METHOD FOR STANDALONE TEST
-    // - Provide:
-           public static void main(String[] args) {
-               SwingUtilities.invokeLater(() -> {
-                  PickingForm form = new PickingForm();
-                   form.setVisible(true);
-               });
-           }
-    // - Optional: call DbConnection.ping() before showing to print a friendly message if config is missing.
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            PickingForm form = new PickingForm();
+            form.setVisible(true);
+        });
+    }
 }
