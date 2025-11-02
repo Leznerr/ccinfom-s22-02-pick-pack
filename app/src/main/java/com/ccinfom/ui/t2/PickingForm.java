@@ -1,4 +1,4 @@
-package com.ccinfom.ui.t2;
+﻿package com.ccinfom.ui.t2;
 
 import com.ccinfom.dao.impl.LookupDaoImpl;
 import com.ccinfom.dao.impl.PickingDaoImpl;
@@ -452,7 +452,6 @@ public class PickingForm extends JFrame {
                 // Acceptance:
                 //   - Manual: After saving, user sees actionable prompt and ticket list reflects new status.
                 //   - Demo: Phase E walkthrough shows transition from PickingForm to PackForm.
-                // Owner: Joshua
             }
         }.execute();
     }

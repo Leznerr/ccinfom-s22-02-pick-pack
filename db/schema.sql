@@ -1,5 +1,5 @@
--- ==========================================================
--- CCINFOM DEV — Phase B (Cores) + Phase C (T1 + T2)
+﻿-- ==========================================================
+-- CCINFOM DEV â€” Phase B (Cores) + Phase C (T1 + T2)
 -- Database: ccinfom_dev
 -- ==========================================================
 
@@ -38,7 +38,7 @@ DROP TABLE IF EXISTS vehicles;
 SET FOREIGN_KEY_CHECKS = @old_fk;
 
 -- ==========================================================
--- Phase B — CORES (no foreign keys in cores)
+-- Phase B â€” CORES (no foreign keys in cores)
 -- ==========================================================
 
 CREATE TABLE products (
@@ -106,7 +106,7 @@ CREATE TABLE branches (
 );
 
 -- ==========================================================
--- Phase C — T1 (Pick Ticket)
+-- Phase C â€” T1 (Pick Ticket)
 -- ==========================================================
 
 CREATE TABLE pick_ticket_hdr (
@@ -151,7 +151,7 @@ CREATE INDEX idx_pt_line_product_id ON pick_ticket_line (product_id);
 CREATE INDEX idx_pt_line_ticket_id  ON pick_ticket_line (pick_ticket_id);
 
 -- ==========================================================
--- Phase C — T2 (Picking) + triggers
+-- Phase C â€” T2 (Picking) + triggers
 -- ==========================================================
 
 CREATE TABLE picking_hdr (
@@ -400,7 +400,7 @@ END$$
 DELIMITER ;
 
 -- TODO[E-DDL-T3-001] SOURCE Phase E DDL scripts (pack_box, dispatch, close, inventory_txn_log).
--- Why: T3–T5 tables must be created in separate files to keep base schema clean and reusable across phases.
+-- Why: T3â€“T5 tables must be created in separate files to keep base schema clean and reusable across phases.
 -- Steps:
 --   1) Author db/ddl/phaseE/pack_box.sql with pack_box_hdr / pack_box_line definitions (FK picking_line_id, UNIQUE(picking_line_id), packed_qty >= 0).
 --   2) Author db/ddl/phaseE/dispatch.sql with dispatch_hdr / dispatch_line (manifest_no UNIQUE, box_id UNIQUE, pod_ref/pod_ts fields).
@@ -411,5 +411,4 @@ DELIMITER ;
 --   - Fresh DB build succeeds with new SOURCE statements.
 --   - tx-T3.sql/tx-T4.sql/tx-T5.sql seeds load without FK/UNIQUE violations.
 --   - qa/validate.sql Phase E queries pass (packed_vs_picked, dispatch checks, inventory reconciliation).
--- Owner: Mark | Links: docs/decisions.md#phase-e, docs/seed-id-map.md
 SOURCE db/ddl/phaseE/pack_box.sql;

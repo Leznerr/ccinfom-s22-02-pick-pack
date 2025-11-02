@@ -1,4 +1,4 @@
-package com.ccinfom.dao.interfaces;
+﻿package com.ccinfom.dao.interfaces;
 
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
@@ -14,4 +14,3 @@ import java.util.List;
 //   - boolean isBoxLoaded(long boxId, Connection conn)
 //   - boolean isVehicleAvailable(long vehicleId, Connection conn)
 // Acceptance: DispatchDaoImpl implements contract; PhaseEServiceTestRunner dispatch tests compile.
-// Owner: Carlo

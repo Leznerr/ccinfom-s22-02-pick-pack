@@ -1,4 +1,4 @@
-package com.ccinfom.service.impl;
+﻿package com.ccinfom.service.impl;
 
 import com.ccinfom.dao.interfaces.DispatchDao;
 import com.ccinfom.dao.interfaces.PackDao;
@@ -21,4 +21,3 @@ import java.util.List;
 // Acceptance:
 //   - PhaseEServiceTestRunner dispatch tests (happy + exceptions) pass.
 //   - Demo errors show specified codes/messages.
-// Owner: Carlo | Links: qa/validation_queries.sql

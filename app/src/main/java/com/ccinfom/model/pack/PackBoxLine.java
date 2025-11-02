@@ -1,4 +1,4 @@
-package com.ccinfom.model.pack;
+﻿package com.ccinfom.model.pack;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -7,4 +7,3 @@ import java.time.LocalDateTime;
 // Why: Represents rows in pack_box_line used by DAO/Service.
 // Fields to include: boxLineId, boxId, pickingLineId, packedQty, createdAt, createdBy, updatedAt, updatedBy.
 // Acceptance: PackService/DAO compile; ServiceTestRunner uses builder/helper to create instances.
-// Owner: Mark

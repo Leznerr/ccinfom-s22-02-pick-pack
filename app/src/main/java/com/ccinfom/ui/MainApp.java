@@ -1,4 +1,4 @@
-package com.ccinfom.ui;
+﻿package com.ccinfom.ui;
 
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.ui.t1.TicketForm;
@@ -45,12 +45,11 @@ public final class MainApp {
         // Steps:
         //   1) Instantiate PackForm, DispatchForm, CloseForm using SwingUtilities.invokeLater like existing buttons.
         //   2) Update button panel layout to accommodate five buttons with consistent spacing.
-        //   3) Update frame title to “Phase E” once forms are wired.
+        //   3) Update frame title to â€œPhase Eâ€ once forms are wired.
         // Acceptance:
         //   - Manual: Launching buttons opens respective forms without exceptions.
         //   - README: app/README-APP.md includes instructions referencing these buttons.
         //   - Demo: Phase E walkthrough uses launcher to access Pack/Dispatch/Close forms.
-        // Owner: Joshua | Links: docs/seed-id-map.md, README-APP.md#phase-e
 
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 10, 0));
         buttonPanel.add(ticketButton);
