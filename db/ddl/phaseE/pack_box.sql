@@ -15,7 +15,9 @@ CREATE TABLE pack_box_hdr (
   sealed_flag     BOOLEAN NOT NULL DEFAULT FALSE,
   seal_method     VARCHAR(50) NULL,
   sealed_at       TIMESTAMP NULL,
+  source_ref	  VARCHAR(100) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by	  VARCHAR(64) NOT NULL DEFAULT 'system',
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
 
@@ -48,7 +50,9 @@ CREATE TABLE pack_box_line (
   picking_line_id BIGINT UNSIGNED NOT NULL,
   packed_qty      DECIMAL(12,2) NOT NULL CHECK (packed_qty >= 0),
   uom             VARCHAR(50) NOT NULL,
+  source_ref	  VARCHAR(100) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by	  VARCHAR(64) NOT NULL DEFAULT 'system',
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
 
