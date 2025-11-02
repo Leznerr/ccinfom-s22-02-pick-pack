@@ -1,4 +1,4 @@
-﻿package com.ccinfom.dao.impl;
+package com.ccinfom.dao.impl;
 
 import com.ccinfom.dao.interfaces.DispatchDao;
 import com.ccinfom.model.dispatch.DispatchHeader;
@@ -15,3 +15,4 @@ import java.util.List;
 //   3) Provide helper queries: isBoxLoaded, isVehicleAvailable, sumLoadForManifest, etc.
 //   4) Utilize passed Connection (no auto-commit) and throw SQLException on violations.
 // Acceptance: DispatchServiceImpl tests (PhaseEServiceTestRunner) pass; duplicate load detection works.
+// Owner: Carlo

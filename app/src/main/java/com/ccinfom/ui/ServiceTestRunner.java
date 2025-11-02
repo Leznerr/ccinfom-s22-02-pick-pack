@@ -1,4 +1,4 @@
-﻿package com.ccinfom.ui;
+package com.ccinfom.ui;
 
 import com.ccinfom.dao.impl.LookupDaoImpl;
 import com.ccinfom.dao.impl.PickingDaoImpl;
@@ -34,6 +34,7 @@ public class ServiceTestRunner {
     // Acceptance:
     //   - PhaseEServiceTestRunner (new or extended) prints PASS/FAIL per scenario.
     //   - Tests run green in CI before merge.
+    // Owner: Joshua | Links: PhaseEServiceTestRunner.java (new scaffold)
 
     public static void main(String[] args) {
         System.out.println("--- Comprehensive Service Layer Test Suite ---");

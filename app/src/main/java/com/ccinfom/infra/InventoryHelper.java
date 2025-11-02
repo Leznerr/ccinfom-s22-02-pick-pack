@@ -1,4 +1,4 @@
-﻿package com.ccinfom.infra;
+package com.ccinfom.infra;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -7,7 +7,7 @@ import java.sql.SQLException;
 // Responsibilities:
 //   - Lock products row via SELECT ... FOR UPDATE.
 //   - Compute new reserved/on_hand balances based on provided deltas.
-//   - Update products table and insert log into inventory_txn_log when delta â‰  0.
+//   - Update products table and insert log into inventory_txn_log when delta ≠ 0.
 //   - Support RESERVE (T2) and CLOSE (T5) operations only.
 // API suggestion:
 //   public void applyDelta(Connection conn, long productId, String sourceType, long sourceId,
@@ -15,3 +15,4 @@ import java.sql.SQLException;
 // Acceptance:
 //   - Used by PickingService (reserve) and CloseService (deliver/short).
 //   - QA inventory reconciliation passes.
+// Owner: Joshua | Links: db/ddl/phaseE/inventory_txn_log.sql

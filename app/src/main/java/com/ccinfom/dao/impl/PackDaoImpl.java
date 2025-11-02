@@ -1,4 +1,4 @@
-﻿package com.ccinfom.dao.impl;
+package com.ccinfom.dao.impl;
 
 import com.ccinfom.dao.interfaces.PackDao;
 import com.ccinfom.model.pack.PackBox;
@@ -17,3 +17,4 @@ import java.util.List;
 // Acceptance:
 //   - PhaseEServiceTestRunner happy/exception tests pass.
 //   - Over-pack attempts fail before DAO insert (validation).
+// Owner: Mark | Links: docs/decisions.md#phase-e
