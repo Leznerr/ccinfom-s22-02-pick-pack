@@ -413,3 +413,4 @@ DELIMITER ;
 --   - qa/validate.sql Phase E queries pass (packed_vs_picked, dispatch checks, inventory reconciliation).
 -- | Links: docs/decisions.md#phase-e, docs/seed-id-map.md
 SOURCE db/ddl/phaseE/pack_box.sql;
+SOURCE db/ddl/phaseE/inventory_txn_log.sql;
