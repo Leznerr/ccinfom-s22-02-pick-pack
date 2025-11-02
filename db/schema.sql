@@ -414,3 +414,4 @@ DELIMITER ;
 -- | Links: docs/decisions.md#phase-e, docs/seed-id-map.md
 SOURCE db/ddl/phaseE/pack_box.sql;
 SOURCE db/ddl/phaseE/inventory_txn_log.sql;
+SOURCE db/ddl/phaseE/dispatch.sql;

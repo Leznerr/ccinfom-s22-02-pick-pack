@@ -26,6 +26,7 @@ CREATE TABLE dispatch_hdr (
   arrive_ts       TIMESTAMP NULL,
   pod_ref         VARCHAR(100) NULL,
   pod_ts          TIMESTAMP NULL,
+  source_ref      VARCHAR(100) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -54,6 +55,7 @@ CREATE TABLE dispatch_line (
   dispatch_line_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, -- unique id for each box line
   dispatch_id      BIGINT UNSIGNED NOT NULL, -- points to the header
   box_id           BIGINT UNSIGNED NOT NULL,
+  source_ref       VARCHAR(100) NULL,
   created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by       VARCHAR(64) NOT NULL DEFAULT 'system',
   updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
