@@ -1,20 +1,20 @@
-USE ccinfom_dev;
+﻿USE ccinfom_dev;
 
 -- ===========================================================
--- GATE A: Row counts (DoD ≥10; high bar ≥13 with exceptions)
+-- GATE A: Row counts (DoD â‰¥10; high bar â‰¥13 with exceptions)
 -- ===========================================================
 SELECT 'products'  AS table_name, COUNT(*) AS rows_count,
        IF(COUNT(*) >= 10,'OK','FAIL') AS meets_min_10,
-       IF(COUNT(*) >= 13,'OK','—')   AS meets_high_bar_13
+       IF(COUNT(*) >= 13,'OK','â€”')   AS meets_high_bar_13
 FROM products
 UNION ALL
-SELECT 'customers', COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM customers
+SELECT 'customers', COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','â€”') FROM customers
 UNION ALL
-SELECT 'branches',  COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM branches
+SELECT 'branches',  COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','â€”') FROM branches
 UNION ALL
-SELECT 'employees', COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM employees
+SELECT 'employees', COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','â€”') FROM employees
 UNION ALL
-SELECT 'vehicles',  COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','—') FROM vehicles
+SELECT 'vehicles',  COUNT(*), IF(COUNT(*) >= 10,'OK','FAIL'), IF(COUNT(*) >= 13,'OK','â€”') FROM vehicles
 ORDER BY table_name;
 
 -- ===========================================================
@@ -30,7 +30,7 @@ SELECT vehicle_id  AS id, 'vehicles'  AS tbl, created_at, updated_at, updated_by
 -- ===========================================================
 -- GATE C: Domain sanity (should return ZERO rows on clean data)
 -- ===========================================================
--- Products: non-negative & reserved ≤ on_hand
+-- Products: non-negative & reserved â‰¤ on_hand
 SELECT product_id, sku, unit_price, on_hand_qty, reserved_qty
 FROM products
 WHERE unit_price < 0 OR on_hand_qty < 0 OR reserved_qty < 0 OR reserved_qty > on_hand_qty;
@@ -123,10 +123,10 @@ ORDER BY employee_id;
 
 
 /* ==========================================
-   PHASE C — QA EXTENSIONS (T1/T2)
+   PHASE C â€” QA EXTENSIONS (T1/T2)
    Append after Phase B gates.
 
-   ROW COUNTS (all should be ≥ 1 after seeds)
+   ROW COUNTS (all should be â‰¥ 1 after seeds)
    [ ] SELECT COUNT(*) FROM pick_ticket_hdr;
    [ ] SELECT COUNT(*) FROM pick_ticket_line;
    [ ] SELECT COUNT(*) FROM picking_hdr;
@@ -139,9 +139,9 @@ ORDER BY employee_id;
 
    INVENTORY INVARIANTS
    [ ] on_hand unchanged by T2 (no UPDATE to products.on_hand_qty during T2)
-   [ ] Δreserved_qty BY product = SUM(picked_qty) from picking_line
+   [ ] Î”reserved_qty BY product = SUM(picked_qty) from picking_line
    [ ] No product where reserved_qty > on_hand_qty
-   [ ] Per ticket_line: SUM(picked_qty) ≤ requested_qty  -- requires ticket_line_id on picking_line
+   [ ] Per ticket_line: SUM(picked_qty) â‰¤ requested_qty  -- requires ticket_line_id on picking_line
 
    BUSINESS/STATUS
    [ ] UNIQUE pairs hold: (pick_ticket_id,product_id) and (picking_id,ticket_line_id)
@@ -149,14 +149,14 @@ ORDER BY employee_id;
    [ ] Picked SKU exists on ticket line (product match)  -- anti-join should return 0
 
    PERFORMANCE VIS
-   [ ] EXPLAIN joins use indexes: ticket→lines→products, picking→lines
+   [ ] EXPLAIN joins use indexes: ticketâ†’linesâ†’products, pickingâ†’lines
 
    DEFINITION OF DONE (QA)
    [ ] All checks return expected results; no orphans; all invariants pass
 ========================================== */
 
 /* ==========================================
-   PHASE C — QA EXTENSIONS (T1 AND T2)
+   PHASE C â€” QA EXTENSIONS (T1 AND T2)
    ========================================== */
 
 -- ROW COUNTS: Expect >=1 after seeds
@@ -197,7 +197,7 @@ WHERE p.product_id IS NULL;
 
 
 -- ===================================================================
--- T2-GATE A — Row counts (expect ≥1 after seeding tx-T2.sql)
+-- T2-GATE A â€” Row counts (expect â‰¥1 after seeding tx-T2.sql)
 -- ===================================================================
 SELECT 'picking_hdr'  AS table_name, COUNT(*) AS rows_count FROM picking_hdr
 UNION ALL
@@ -206,7 +206,7 @@ SELECT 'picking_line', COUNT(*) FROM picking_line;
 SELECT picking_status, COUNT(*) AS cnt FROM picking_hdr GROUP BY picking_status;
 
 -- ===================================================================
--- T2-GATE B — Referential integrity / Orphans (expect ZERO rows)
+-- T2-GATE B â€” Referential integrity / Orphans (expect ZERO rows)
 -- FK constraints should already prevent these; we surface any defect.
 -- ===================================================================
 -- picking_line has a header
@@ -229,9 +229,9 @@ LEFT JOIN employees e       ON e.employee_id   = ph.picker_employee_id
 WHERE h.pick_ticket_id IS NULL OR e.employee_id IS NULL;
 
 -- ===================================================================
--- T2-GATE C — Business rules (expect ZERO rows)
+-- T2-GATE C â€” Business rules (expect ZERO rows)
 -- ===================================================================
--- C1) Picked SKU must match the ticket line’s product
+-- C1) Picked SKU must match the ticket lineâ€™s product
 SELECT pl.picking_line_id, pl.product_id AS picked_product, tl.product_id AS ticket_product
 FROM picking_line pl
 JOIN pick_ticket_line tl ON tl.ticket_line_id = pl.ticket_line_id
@@ -244,7 +244,7 @@ JOIN picking_hdr ph  ON ph.picking_id      = pl.picking_id
 JOIN pick_ticket_line tl ON tl.ticket_line_id = pl.ticket_line_id
 WHERE ph.pick_ticket_id <> tl.pick_ticket_id;
 
--- C3) Over-pick guard: SUM(picked_qty) per ticket_line ≤ requested_qty
+-- C3) Over-pick guard: SUM(picked_qty) per ticket_line â‰¤ requested_qty
 SELECT tl.ticket_line_id, tl.requested_qty,
        COALESCE(SUM(pl.picked_qty),0) AS picked_qty
 FROM pick_ticket_line tl
@@ -259,7 +259,7 @@ GROUP BY picking_id, ticket_line_id
 HAVING COUNT(*) > 1;
 
 -- ===================================================================
--- T2-GATE D — Inventory invariants (expect ZERO rows in Phase C)
+-- T2-GATE D â€” Inventory invariants (expect ZERO rows in Phase C)
 -- In Phase C (before Close), reserved_qty should equal SUM of picked_qty.
 -- ===================================================================
 -- D1) Per product: reserved_qty = SUM(picked_qty)
@@ -281,7 +281,7 @@ WHERE reserved_qty > on_hand_qty;
 
 
 -- ===================================================================
--- T2-GATE E — Status transitions (expect ZERO rows in Phase C)
+-- T2-GATE E â€” Status transitions (expect ZERO rows in Phase C)
 -- Tickets that have a picking_hdr should no longer be 'Open'
 -- (Typically they are 'Picking' until Packed in T3.)
 -- ===================================================================
@@ -291,7 +291,7 @@ JOIN picking_hdr ph ON ph.pick_ticket_id = h.pick_ticket_id
 WHERE h.ticket_status = 'Open';
 
 -- ===================================================================
--- T2-GATE F — Picking completion consistency (expect ZERO rows)
+-- T2-GATE F â€” Picking completion consistency (expect ZERO rows)
 -- If SUM(requested) == SUM(picked) for a picking_hdr, status must be 'Done'.
 -- If SUM differs, status must NOT be 'Done'.
 -- ===================================================================
@@ -312,14 +312,13 @@ WHERE (req = got    AND picking_status <> 'Done')
    OR (req <> got   AND picking_status  = 'Done');
 
 -- TODO[E-QA-T3-001] Add packed_vs_picked validation once pack_box tables exist.
--- Why: Service enforces packed_qty ≤ picked_qty; QA must confirm zero violations.
+-- Why: Service enforces packed_qty â‰¤ picked_qty; QA must confirm zero violations.
 -- Query outline:
 --   SELECT pbl.picking_line_id, pbl.packed_qty, pl.picked_qty
 --     FROM pack_box_line pbl
 --     JOIN picking_line pl ON pl.picking_line_id = pbl.picking_line_id
 --    WHERE pbl.packed_qty > pl.picked_qty;
 -- Acceptance: query returns zero rows during QA run; referenced by PhaseEServiceTestRunner.testT3_overPack_throwsValidationException().
--- Owner: Mark | Links: docs/decisions.md#phase-e
 
 -- TODO[E-QA-T4-002] Add sealed-only and duplicate-box dispatch validations.
 -- Why: DispatchService must load only sealed boxes once per manifest.
@@ -327,14 +326,12 @@ WHERE (req = got    AND picking_status <> 'Done')
 --   1) Unsealed: JOIN dispatch_line -> pack_box_hdr WHERE sealed_flag = 0.
 --   2) Duplicate: SELECT box_id FROM dispatch_line GROUP BY box_id HAVING COUNT(*) > 1.
 -- Acceptance: both queries return zero rows; demo-T1-to-T4.sql includes failing scenarios for manual proof.
--- Owner: Carlo
 
 -- TODO[E-QA-T4-003] Add vehicle capacity/status QA query.
 -- Why: Ensure vehicles on manifests are available and loads respect capacity.
 -- Query outline:
 --   JOIN dispatch_hdr -> vehicles; compare SUM(estimated_weight) vs capacity (seed-supplied weight placeholder) and flag non-available statuses.
 -- Acceptance: returns zero rows when seeds obey rules; demo exception shows expected violation.
--- Owner: Carlo
 
 -- TODO[E-QA-T5-004] Add inventory reconciliation via inventory_txn_log.
 -- Why: Only RESERVE and CLOSE transactions should affect balances; totals must match products table.
@@ -342,13 +339,11 @@ WHERE (req = got    AND picking_status <> 'Done')
 --   Aggregate inventory_txn_log by product_id; compare vs products.reserved_qty/on_hand_qty.
 --   Confirm no rows exist with source_txn_type='PACK'.
 -- Acceptance: QA check returns zero discrepancies; referenced in docs/decisions.md and README.
--- Owner: Joshua
 
 -- TODO[E-QA-T5-005] Add close_variance reconciliation query.
 -- Why: CloseService must enforce delivered_qty + short_qty = requested_qty.
 -- Query outline:
 --   SELECT ticket_line_id FROM close_variance WHERE delivered_qty + short_qty <> requested_qty;
 -- Acceptance: zero rows post-close; demo-full-flow.sql short-close scenario used for manual verification.
--- Owner: Renzel
    
    

@@ -1,4 +1,4 @@
-package com.ccinfom.service;
+﻿package com.ccinfom.service;
 
 import com.ccinfom.model.close.CloseHeader;
 import com.ccinfom.model.close.CloseVariance;
@@ -10,4 +10,3 @@ import java.util.List;
 //   - void closeTicket(CloseHeader header, List<CloseVariance> variances) throws SQLException, ValidationException
 //   - CloseHeader getCloseSummary(long pickTicketId) throws SQLException
 // Acceptance: CloseServiceImpl implements interface; UI/tests compile.
-// Owner: Renzel

@@ -1,4 +1,4 @@
-package com.ccinfom.ui.t5;
+﻿package com.ccinfom.ui.t5;
 
 import javax.swing.JFrame;
 
@@ -11,7 +11,6 @@ import javax.swing.JFrame;
 // Acceptance:
 //   - Manual QA: closing a ticket via UI sets correct status and inventory adjustments.
 //   - Demo-full-flow showcases delivered + short-close scenarios.
-// Owner: Renzel
 
 public class CloseForm extends JFrame {
 

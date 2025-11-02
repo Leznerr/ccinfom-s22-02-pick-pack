@@ -1,4 +1,4 @@
-package com.ccinfom.dao.interfaces;
+﻿package com.ccinfom.dao.interfaces;
 
 import com.ccinfom.model.close.CloseHeader;
 import com.ccinfom.model.close.CloseVariance;
@@ -12,4 +12,3 @@ import java.util.List;
 //   - void insertCloseVariances(long closeId, List<CloseVariance> variances, Connection conn)
 //   - CloseHeader findByTicketId(long pickTicketId, Connection conn)
 // Acceptance: CloseDaoImpl implements interface; CloseService tests compile.
-// Owner: Renzel

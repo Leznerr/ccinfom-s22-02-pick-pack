@@ -1,4 +1,4 @@
-package com.ccinfom.ui.t1;
+﻿package com.ccinfom.ui.t1;
 
 import com.ccinfom.dao.impl.LookupDaoImpl;
 import com.ccinfom.dao.interfaces.LookupDao;
@@ -392,14 +392,13 @@ public class TicketForm extends JFrame {
                         clearForm();
 
                         // TODO[E-UI-T3-001] Surface next-step guidance when ticket enters Picking/Packed flow.
-                        // Why: Phase E should prompt user to continue with Picking → Packing steps after ticket creation.
+                        // Why: Phase E should prompt user to continue with Picking â†’ Packing steps after ticket creation.
                         // Steps:
                         //   1) Optionally show dialog linking to PickingForm when status transitions to 'Picking'.
                         //   2) Ensure combo models refresh if ticket listing is cached elsewhere.
                         // Acceptance:
                         //   - Manual: After creating ticket, user sees deterministic guidance message or status refresh.
                         //   - README: updated instructions mention new guidance.
-                        // Owner: Joshua
                     } else {
                         showError("Ticket creation failed. Please retry.");
                     }

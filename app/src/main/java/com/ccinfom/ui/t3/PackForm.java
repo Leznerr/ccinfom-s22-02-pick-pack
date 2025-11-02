@@ -1,4 +1,4 @@
-package com.ccinfom.ui.t3;
+﻿package com.ccinfom.ui.t3;
 
 import javax.swing.JFrame;
 
@@ -6,13 +6,12 @@ import javax.swing.JFrame;
 // Why: Operators need interface to move from Picking to Packing in Phase E.
 // Layout requirements:
 //   - ComboBox for picking sessions (ComboItem usage).
-//   - Table listing picking lines with editable packed_qty (≤ picked_qty).
+//   - Table listing picking lines with editable packed_qty (â‰¤ picked_qty).
 //   - Buttons: "Add to Box", "Seal Box", "Reset".
 //   - Status label with SwingWorker-driven data loads.
 // Acceptance:
 //   - Manual: Form opens from MainApp; happy path works end-to-end.
 //   - Demo: demo-T1-to-T4.sql references PackForm steps.
-// Owner: Mark | Links: README-APP.md, docs/seed-id-map.md
 
 public class PackForm extends JFrame {
 
