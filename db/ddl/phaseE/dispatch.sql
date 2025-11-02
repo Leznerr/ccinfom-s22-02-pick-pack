@@ -13,4 +13,65 @@
 -- Constraints: UNIQUE(box_id) to prevent duplicate loads.
 -- Acceptance: Duplicate load demo raises DISPATCH_BOX_ALREADY_LOADED; QA duplicate check returns zero.
 -- 
+-- Phase E DDL implementation: Dispatch (T4)
+USE ccinfom_dev;
 
+CREATE TABLE dispatch_hdr (
+  dispatch_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  pick_ticket_id  BIGINT UNSIGNED NOT NULL,
+  vehicle_id      BIGINT UNSIGNED NOT NULL,
+  driver_id       BIGINT UNSIGNED NOT NULL, -- references the employee who is driving
+  manifest_no     VARCHAR(100) NOT NULL UNIQUE, -- official dispatch num (unique)
+  depart_ts       TIMESTAMP NULL,
+  arrive_ts       TIMESTAMP NULL,
+  pod_ref         VARCHAR(100) NULL,
+  pod_ts          TIMESTAMP NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_dispatch_ticket
+    FOREIGN KEY (pick_ticket_id)
+    REFERENCES pick_ticket_hdr(pick_ticket_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_dispatch_vehicle
+    FOREIGN KEY (vehicle_id)
+    REFERENCES vehicles(vehicle_id),
+
+  CONSTRAINT fk_dispatch_driver
+    FOREIGN KEY (driver_id)
+    REFERENCES employees(employee_id)
+);
+
+-- Helpful indexes
+CREATE INDEX idx_dispatch_vehicle_id ON dispatch_hdr(vehicle_id);
+CREATE INDEX idx_dispatch_ticket_id ON dispatch_hdr(pick_ticket_id);
+CREATE INDEX idx_dispatch_driver_id ON dispatch_hdr(driver_id);
+
+CREATE TABLE dispatch_line (
+  dispatch_line_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, -- unique id for each box line
+  dispatch_id      BIGINT UNSIGNED NOT NULL, -- points to the header
+  box_id           BIGINT UNSIGNED NOT NULL,
+  created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by       VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by       VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_dispatch_line_hdr
+    FOREIGN KEY (dispatch_id)
+    REFERENCES dispatch_hdr(dispatch_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_dispatch_line_box
+    FOREIGN KEY (box_id)
+    REFERENCES pack_box_hdr(box_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT uq_dispatch_line_box UNIQUE (box_id) -- prevents the same box from being added to multiple dispatches
+);
+
+-- Helpful indexes
+CREATE INDEX idx_dispatch_line_hdr ON dispatch_line(dispatch_id);
+CREATE INDEX idx_dispatch_line_box ON dispatch_line(box_id);
