@@ -1,4 +1,4 @@
-package com.ccinfom.ui.t3;
+﻿package com.ccinfom.ui.t3;
 
 import javax.swing.JFrame;
 
@@ -12,7 +12,7 @@ import javax.swing.JFrame;
 // Acceptance:
 //   - Manual: Form opens from MainApp; happy path works end-to-end.
 //   - Demo: demo-T1-to-T4.sql references PackForm steps.
-// Owner: Mark | Links: README-APP.md, docs/seed-id-map.md
+// | Links: README-APP.md, docs/seed-id-map.md
 
 public class PackForm extends JFrame {
 
@@ -23,3 +23,4 @@ public class PackForm extends JFrame {
         // Acceptance per E2E UI requirements.
     }
 }
+

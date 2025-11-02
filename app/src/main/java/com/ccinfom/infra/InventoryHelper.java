@@ -1,4 +1,4 @@
-package com.ccinfom.infra;
+﻿package com.ccinfom.infra;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -15,4 +15,5 @@ import java.sql.SQLException;
 // Acceptance:
 //   - Used by PickingService (reserve) and CloseService (deliver/short).
 //   - QA inventory reconciliation passes.
-// Owner: Joshua | Links: db/ddl/phaseE/inventory_txn_log.sql
+// | Links: db/ddl/phaseE/inventory_txn_log.sql
+

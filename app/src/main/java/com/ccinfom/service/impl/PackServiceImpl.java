@@ -1,4 +1,4 @@
-package com.ccinfom.service.impl;
+﻿package com.ccinfom.service.impl;
 
 import com.ccinfom.dao.interfaces.PackDao;
 import com.ccinfom.dao.interfaces.TicketDao;
@@ -20,4 +20,5 @@ import java.util.List;
 // Acceptance:
 //   - PhaseEServiceTestRunner tests for T3 pass (happy + exceptions).
 //   - QA packed_vs_picked query shows zero violations.
-// Owner: Mark | Links: docs/decisions.md#phase-e
+// | Links: docs/decisions.md#phase-e
+

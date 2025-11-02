@@ -1,4 +1,4 @@
-package com.ccinfom.dao.interfaces;
+﻿package com.ccinfom.dao.interfaces;
 
 import com.ccinfom.model.pack.PackBox;
 import com.ccinfom.model.pack.PackBoxLine;
@@ -17,4 +17,5 @@ import java.util.List;
 // Acceptance:
 //   - PackDaoImpl implements the interface with JDBC and audit trio support.
 //   - PackService unit tests (PhaseEServiceTestRunner) pass using this contract.
-// Owner: Mark | Links: docs/seed-id-map.md, docs/decisions.md#phase-e
+// | Links: docs/seed-id-map.md, docs/decisions.md#phase-e
+

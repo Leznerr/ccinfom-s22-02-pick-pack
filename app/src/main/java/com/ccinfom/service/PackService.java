@@ -1,4 +1,4 @@
-package com.ccinfom.service;
+﻿package com.ccinfom.service;
 
 import com.ccinfom.model.pack.PackBox;
 import com.ccinfom.model.pack.PackBoxLine;
@@ -13,4 +13,5 @@ import java.util.List;
 //   - void sealBox(long boxId, String user) throws SQLException, ValidationException
 //   - Optional helper: boolean isTicketPacked(long pickTicketId)
 // Acceptance: PackServiceImpl implements this interface; UI + tests compile.
-// Owner: Mark
+// 
+

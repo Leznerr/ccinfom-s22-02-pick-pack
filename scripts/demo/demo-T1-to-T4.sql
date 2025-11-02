@@ -1,4 +1,4 @@
--- Phase C demo placeholder (T1/T2). Phase E will extend this script.
+﻿-- Phase C demo placeholder (T1/T2). Phase E will extend this script.
 
 -- TODO[E-DEMO-T3-001] Append Pack (T3) sequence with happy + over-pack exception.
 -- Why: Demo must illustrate box creation, sealing, and over-pack rollback with clear comments.
@@ -10,7 +10,7 @@
 --   - Script executes end-to-end without manual edits.
 --   - Over-pack step raises PACK_OVER_QTY message in Workbench.
 --   - Demo walkthrough references this section.
--- Owner: Mark | Links: docs/decisions.md#phase-e
+-- | Links: docs/decisions.md#phase-e
 
 -- TODO[E-DEMO-T4-002] Append Dispatch (T4) sequence after pack demo.
 -- Why: Show manifest creation, sealed-only enforcement, and duplicate load failure.
@@ -22,4 +22,5 @@
 --   - Happy path sets ticket status to 'Dispatched'.
 --   - Exceptions raise specified codes.
 --   - Referenced in README demo instructions.
--- Owner: Carlo | Links: qa/validation_queries.sql, docs/seed-id-map.md
+-- | Links: qa/validation_queries.sql, docs/seed-id-map.md
+

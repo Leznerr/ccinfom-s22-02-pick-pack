@@ -1,4 +1,4 @@
-package com.ccinfom.test;
+﻿package com.ccinfom.test;
 
 // TODO[E-TEST-XCUT-002] Implement automated tests for Phase E services.
 // Scope:
@@ -12,7 +12,7 @@ package com.ccinfom.test;
 // Acceptance:
 //   - Tests run green via `mvn test` (or configured build) before Phase E merge.
 //   - Readme documents how to execute these tests.
-// Owner: Joshua | Links: qa/validation_queries.sql, docs/decisions.md#phase-e
+// | Links: qa/validation_queries.sql, docs/decisions.md#phase-e
 
 public final class PhaseEServiceTestRunner {
 
@@ -25,3 +25,4 @@ public final class PhaseEServiceTestRunner {
         // Acceptance per test plan.
     }
 }
+

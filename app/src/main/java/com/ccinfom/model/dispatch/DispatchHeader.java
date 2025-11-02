@@ -1,4 +1,4 @@
-package com.ccinfom.model.dispatch;
+﻿package com.ccinfom.model.dispatch;
 
 import java.time.LocalDateTime;
 
@@ -6,4 +6,5 @@ import java.time.LocalDateTime;
 // Why: DAO/service/UI require structured access to dispatch header state.
 // Suggested fields: dispatchId, pickTicketId, vehicleId, driverId, manifestNo, departTs, arriveTs, podRef, podTs, createdAt/by, updatedAt/by.
 // Acceptance: DispatchService compiles and tests can instantiate this class.
-// Owner: Carlo
+// 
+

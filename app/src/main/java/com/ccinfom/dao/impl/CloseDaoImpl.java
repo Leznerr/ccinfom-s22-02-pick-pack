@@ -1,4 +1,4 @@
-package com.ccinfom.dao.impl;
+﻿package com.ccinfom.dao.impl;
 
 import com.ccinfom.dao.interfaces.CloseDao;
 import com.ccinfom.model.close.CloseHeader;
@@ -14,4 +14,5 @@ import java.util.List;
 //   2) insertCloseVariances: batch insert close_variance rows.
 //   3) Provide lookup helpers (findByTicketId) to prevent duplicate closures.
 // Acceptance: CloseServiceImpl tests (happy + short-close + reconciliation failure) pass.
-// Owner: Renzel
+// 
+

@@ -1,4 +1,4 @@
-package com.ccinfom.service.impl;
+﻿package com.ccinfom.service.impl;
 
 import com.ccinfom.dao.interfaces.CloseDao;
 import com.ccinfom.dao.interfaces.TicketDao;
@@ -21,4 +21,5 @@ import java.util.List;
 // Acceptance:
 //   - PhaseEServiceTestRunner close tests pass (happy + exceptions).
 //   - QA inventory reconciliation and close variance checks succeed.
-// Owner: Renzel | Links: qa/validation_queries.sql, docs/decisions.md#phase-e
+// | Links: qa/validation_queries.sql, docs/decisions.md#phase-e
+

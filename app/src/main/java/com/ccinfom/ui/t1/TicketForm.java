@@ -1,4 +1,4 @@
-package com.ccinfom.ui.t1;
+﻿package com.ccinfom.ui.t1;
 
 import com.ccinfom.dao.impl.LookupDaoImpl;
 import com.ccinfom.dao.interfaces.LookupDao;
@@ -399,7 +399,7 @@ public class TicketForm extends JFrame {
                         // Acceptance:
                         //   - Manual: After creating ticket, user sees deterministic guidance message or status refresh.
                         //   - README: updated instructions mention new guidance.
-                        // Owner: Joshua
+                        // 
                     } else {
                         showError("Ticket creation failed. Please retry.");
                     }
@@ -605,3 +605,4 @@ public class TicketForm extends JFrame {
         }
     }
 }
+

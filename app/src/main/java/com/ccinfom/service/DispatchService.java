@@ -1,4 +1,4 @@
-package com.ccinfom.service;
+﻿package com.ccinfom.service;
 
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
@@ -11,4 +11,5 @@ import java.util.List;
 //   - void registerDeparture(long dispatchId, DispatchHeader updated) throws SQLException, ValidationException
 //   - Optional: boolean canLoadBox(long boxId)
 // Acceptance: DispatchServiceImpl implements interface; UI/test layers compile.
-// Owner: Carlo
+// 
+

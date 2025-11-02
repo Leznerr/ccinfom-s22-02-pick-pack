@@ -14,4 +14,5 @@
 --   1) After happy path, run separate transaction showing short-close (reserved release only).
 --   2) Highlight QA queries to run after each branch.
 -- Acceptance: Demo used in defense; README references commands.
--- Owner: Renzel
+-- 
+

@@ -1,4 +1,4 @@
-package com.ccinfom.ui;
+﻿package com.ccinfom.ui;
 
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.ui.t1.TicketForm;
@@ -50,7 +50,7 @@ public final class MainApp {
         //   - Manual: Launching buttons opens respective forms without exceptions.
         //   - README: app/README-APP.md includes instructions referencing these buttons.
         //   - Demo: Phase E walkthrough uses launcher to access Pack/Dispatch/Close forms.
-        // Owner: Joshua | Links: docs/seed-id-map.md, README-APP.md#phase-e
+        // | Links: docs/seed-id-map.md, README-APP.md#phase-e
 
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 10, 0));
         buttonPanel.add(ticketButton);
@@ -65,3 +65,4 @@ public final class MainApp {
         frame.setVisible(true);
     }
 }
+
