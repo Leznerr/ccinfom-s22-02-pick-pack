@@ -15,12 +15,12 @@ This document tracks the canonical IDs created by the Phase E seed scripts. Upda
 ---
 
 ## Ticket A - Delivered (happy path)
-- pick_ticket_id: @TODO
-- ticket_line_id(s): @TODO
-- picking_id: @TODO
-- picking_line_id(s): @TODO
-- pack_box_id(s): @TODO
-- pack_box_line_id(s): @TODO
+- pick_ticket_id: 3
+- ticket_line_id(s): [1, 2]
+- picking_id: 1
+- picking_line_id(s): [1, 2]
+- pack_box_id(s): [3, 4]
+- pack_box_line_id(s): [44, 55]
 - dispatch_id: @TODO
 - manifest_no: @TODO
 - dispatch_line_id(s): @TODO
