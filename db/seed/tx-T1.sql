@@ -1,4 +1,4 @@
-/* ==========================================
+﻿/* ==========================================
    PHASE C — SEEDS FOR T1 (Create Pick Ticket)
    Goal: 3 tickets (2–3 lines each) using existing core data. No failing inserts.
    Guidance:
@@ -40,3 +40,5 @@ INSERT INTO pick_ticket_line (pick_ticket_id, product_id, requested_qty, uom, up
 VALUES
   (LAST_INSERT_ID(), 6, 12, 'pcs', 'seed'),
   (LAST_INSERT_ID(), 7, 6, 'pcs', 'seed');
+
+COMMIT;

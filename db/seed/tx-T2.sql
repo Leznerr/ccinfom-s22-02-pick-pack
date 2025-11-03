@@ -191,4 +191,19 @@ JOIN (
  WHERE @picking_a IS NOT NULL
    AND ph.picking_id = @picking_a;
 
+-- Safety: ensure at least one picking session is marked Done for T3 seeds
+UPDATE picking_hdr
+   SET picking_status = 'Done',
+       completed_at   = COALESCE(completed_at, CURRENT_TIMESTAMP),
+       updated_at     = CURRENT_TIMESTAMP,
+       updated_by     = 'seed'
+ WHERE @picking_a IS NOT NULL
+   AND picking_id = @picking_a
+   AND EXISTS (
+         SELECT 1
+           FROM picking_line pl
+          WHERE pl.picking_id = @picking_a
+       )
+   AND picking_status <> 'Done';
+
 COMMIT;

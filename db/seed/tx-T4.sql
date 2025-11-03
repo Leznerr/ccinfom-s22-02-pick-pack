@@ -1,11 +1,24 @@
-USE ccinfom_dev;
+﻿USE ccinfom_dev;
 
 -- ----------------------------------------------------------
 -- 0) Clean up previous T4 seed data (scoped by source_ref)
 -- ----------------------------------------------------------
 SET SQL_SAFE_UPDATES = 0;
-DELETE FROM dispatch_line WHERE source_ref LIKE 'seed-T4%';
-DELETE FROM dispatch_hdr  WHERE source_ref LIKE 'seed-T4%';
+DELETE FROM dispatch_line
+ WHERE source_ref LIKE 'seed-T4%'
+    OR box_id IN (
+         SELECT box_id
+           FROM pack_box_hdr
+          WHERE source_ref IN ('seed-T3-box1','seed-T3-box2')
+             OR source_ref LIKE 'seed-T4-capacity-box-%'
+       );
+DELETE FROM dispatch_hdr
+ WHERE source_ref LIKE 'seed-T4%'
+    OR pick_ticket_id IN (
+         SELECT pick_ticket_id
+           FROM pack_box_hdr
+          WHERE source_ref IN ('seed-T3-box1','seed-T3-box2')
+       );
 SET SQL_SAFE_UPDATES = 1;
 
 -- ----------------------------------------------------------
@@ -54,7 +67,177 @@ SELECT employee_id
  LIMIT 1;
 
 -- ----------------------------------------------------------
--- 2) Happy path �?" sealed boxes loaded onto a manifest
+-- 2) Exception scaffolds (each rolled back)
+-- ----------------------------------------------------------
+
+-- 2a. Vehicle under maintenance
+START TRANSACTION;
+
+UPDATE vehicles
+   SET vehicle_status = 'maintenance'
+ WHERE vehicle_id = @vehicle_secondary_id;
+
+INSERT INTO dispatch_hdr (
+    pick_ticket_id,
+    vehicle_id,
+    driver_id,
+    manifest_no,
+    depart_ts,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @sealed_ticket_id,
+    @vehicle_secondary_id,
+    COALESCE(@driver_secondary_id, @driver_primary_id),
+    'MANIFEST-MAINT',
+    CURRENT_TIMESTAMP,
+    'seed',
+    'seed',
+    'seed-T4-maint'
+WHERE @sealed_ticket_id IS NOT NULL
+  AND @vehicle_secondary_id IS NOT NULL;
+
+ROLLBACK;
+
+-- 2b. Unsealed box attempt
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (
+    pick_ticket_id,
+    vehicle_id,
+    driver_id,
+    manifest_no,
+    depart_ts,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @sealed_ticket_id,
+    @vehicle_primary_id,
+    COALESCE(@driver_secondary_id, @driver_primary_id),
+    'MANIFEST-UNSEALED',
+    CURRENT_TIMESTAMP,
+    'seed',
+    'seed',
+    'seed-T4-unsealed'
+WHERE @sealed_ticket_id IS NOT NULL
+  AND @vehicle_primary_id IS NOT NULL;
+
+SET @dispatch_unsealed_id := LAST_INSERT_ID();
+
+INSERT INTO dispatch_line (
+    dispatch_id,
+    box_id,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @dispatch_unsealed_id,
+    @unsealed_box_id,
+    'seed',
+    'seed',
+    'seed-T4-unsealed-line'
+WHERE @dispatch_unsealed_id IS NOT NULL
+  AND @unsealed_box_id IS NOT NULL;
+
+ROLLBACK;
+
+-- 2c. Capacity breach (temporary boxes inside transaction)
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (
+    pick_ticket_id,
+    vehicle_id,
+    driver_id,
+    manifest_no,
+    depart_ts,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @sealed_ticket_id,
+    @vehicle_primary_id,
+    COALESCE(@driver_primary_id, @driver_secondary_id),
+    'MANIFEST-CAPACITY',
+    CURRENT_TIMESTAMP,
+    'seed',
+    'seed',
+    'seed-T4-capacity'
+WHERE @sealed_ticket_id IS NOT NULL
+  AND @vehicle_primary_id IS NOT NULL;
+
+SET @dispatch_capacity_id := LAST_INSERT_ID();
+
+INSERT INTO pack_box_hdr (
+    pick_ticket_id,
+    picking_id,
+    sealed_flag,
+    seal_method,
+    sealed_at,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT @sealed_ticket_id, @sealed_picking_id, TRUE, 'strap', CURRENT_TIMESTAMP, 'seed', 'seed',
+       CONCAT('seed-T4-capacity-box-', seq.seq)
+  FROM (SELECT 1 AS seq UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) seq
+WHERE @sealed_ticket_id IS NOT NULL
+  AND @sealed_picking_id IS NOT NULL;
+
+INSERT INTO dispatch_line (
+    dispatch_id,
+    box_id,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @dispatch_capacity_id,
+    box_id,
+    'seed',
+    'seed',
+    CONCAT('seed-T4-capacity-line-', ROW_NUMBER() OVER (ORDER BY box_id))
+  FROM pack_box_hdr
+ WHERE source_ref LIKE 'seed-T4-capacity-box-%';
+
+ROLLBACK;
+
+-- 2d. Duplicate load staging (service will attempt duplicate)
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (
+    pick_ticket_id,
+    vehicle_id,
+    driver_id,
+    manifest_no,
+    depart_ts,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @sealed_ticket_id,
+    @vehicle_secondary_id,
+    COALESCE(@driver_primary_id, @driver_secondary_id),
+    'MANIFEST-DUPLOAD',
+    CURRENT_TIMESTAMP,
+    'seed',
+    'seed',
+    'seed-T4-duplicate'
+WHERE @sealed_ticket_id IS NOT NULL
+  AND @vehicle_secondary_id IS NOT NULL;
+
+-- Only stage the header; the service layer will attempt to add the same box
+-- and should hit DISPATCH_BOX_ALREADY_LOADED.
+ROLLBACK;
+
+-- ----------------------------------------------------------
+-- 3) Happy path — sealed boxes loaded onto a manifest
 -- ----------------------------------------------------------
 START TRANSACTION;
 
@@ -100,194 +283,6 @@ WHERE @dispatch_happy_id IS NOT NULL
   AND @sealed_box_id IS NOT NULL;
 
 COMMIT;
-
--- ----------------------------------------------------------
--- 3) Exception scaffolds (each rolled back)
--- ----------------------------------------------------------
-
--- 3a. Vehicle under maintenance
-START TRANSACTION;
-
-UPDATE vehicles
-   SET vehicle_status = 'maintenance'
- WHERE vehicle_id = @vehicle_secondary_id;
-
-INSERT INTO dispatch_hdr (
-    pick_ticket_id,
-    vehicle_id,
-    driver_id,
-    manifest_no,
-    depart_ts,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @sealed_ticket_id,
-    @vehicle_secondary_id,
-    COALESCE(@driver_secondary_id, @driver_primary_id),
-    'MANIFEST-MAINT',
-    CURRENT_TIMESTAMP,
-    'seed',
-    'seed',
-    'seed-T4-maint'
-WHERE @sealed_ticket_id IS NOT NULL
-  AND @vehicle_secondary_id IS NOT NULL;
-
-ROLLBACK;
-
--- 3b. Unsealed box
-START TRANSACTION;
-
-INSERT INTO dispatch_hdr (
-    pick_ticket_id,
-    vehicle_id,
-    driver_id,
-    manifest_no,
-    depart_ts,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @sealed_ticket_id,
-    @vehicle_primary_id,
-    COALESCE(@driver_secondary_id, @driver_primary_id),
-    'MANIFEST-UNSEALED',
-    CURRENT_TIMESTAMP,
-    'seed',
-    'seed',
-    'seed-T4-unsealed'
-WHERE @sealed_ticket_id IS NOT NULL
-  AND @vehicle_primary_id IS NOT NULL;
-
-SET @dispatch_unsealed_id := LAST_INSERT_ID();
-
-INSERT INTO dispatch_line (
-    dispatch_id,
-    box_id,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @dispatch_unsealed_id,
-    @unsealed_box_id,
-    'seed',
-    'seed',
-    'seed-T4-unsealed-line'
-WHERE @dispatch_unsealed_id IS NOT NULL
-  AND @unsealed_box_id IS NOT NULL;
-
-ROLLBACK;
-
--- 3c. Capacity breach (temporary boxes inside transaction)
-START TRANSACTION;
-
-INSERT INTO dispatch_hdr (
-    pick_ticket_id,
-    vehicle_id,
-    driver_id,
-    manifest_no,
-    depart_ts,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @sealed_ticket_id,
-    @vehicle_primary_id,
-    COALESCE(@driver_primary_id, @driver_secondary_id),
-    'MANIFEST-CAPACITY',
-    CURRENT_TIMESTAMP,
-    'seed',
-    'seed',
-    'seed-T4-capacity'
-WHERE @sealed_ticket_id IS NOT NULL
-  AND @vehicle_primary_id IS NOT NULL;
-
-SET @dispatch_capacity_id := LAST_INSERT_ID();
-
--- create temporary sealed boxes
-INSERT INTO pack_box_hdr (
-    pick_ticket_id,
-    picking_id,
-    sealed_flag,
-    seal_method,
-    sealed_at,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT @sealed_ticket_id, @sealed_picking_id, TRUE, 'strap', CURRENT_TIMESTAMP, 'seed', 'seed',
-       CONCAT('seed-T4-capacity-box-', seq.seq)
-  FROM (SELECT 1 AS seq UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5) seq
-WHERE @sealed_ticket_id IS NOT NULL
-  AND @sealed_picking_id IS NOT NULL;
-
-INSERT INTO dispatch_line (
-    dispatch_id,
-    box_id,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @dispatch_capacity_id,
-    box_id,
-    'seed',
-    'seed',
-    CONCAT('seed-T4-capacity-line-', ROW_NUMBER() OVER (ORDER BY box_id))
-  FROM pack_box_hdr
- WHERE source_ref LIKE 'seed-T4-capacity-box-%';
-
-ROLLBACK;
-
--- 3d. Duplicate load staging (service will trigger actual duplicate)
-START TRANSACTION;
-
-INSERT INTO dispatch_hdr (
-    pick_ticket_id,
-    vehicle_id,
-    driver_id,
-    manifest_no,
-    depart_ts,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @sealed_ticket_id,
-    @vehicle_secondary_id,
-    COALESCE(@driver_primary_id, @driver_secondary_id),
-    'MANIFEST-DUPLOAD',
-    CURRENT_TIMESTAMP,
-    'seed',
-    'seed',
-    'seed-T4-duplicate'
-WHERE @sealed_ticket_id IS NOT NULL
-  AND @vehicle_secondary_id IS NOT NULL;
-
-SET @dispatch_duplicate_id := LAST_INSERT_ID();
-
-INSERT INTO dispatch_line (
-    dispatch_id,
-    box_id,
-    created_by,
-    updated_by,
-    source_ref
-)
-SELECT
-    @dispatch_duplicate_id,
-    @sealed_box_id,
-    'seed',
-    'seed',
-    'seed-T4-duplicate-line'
-WHERE @dispatch_duplicate_id IS NOT NULL
-  AND @sealed_box_id IS NOT NULL;
-
--- A second insert with the same box_id should trigger DISPATCH_BOX_ALREADY_LOADED in service tests.
-ROLLBACK;
 
 -- ----------------------------------------------------------
 -- 4) Reference counts for verification
