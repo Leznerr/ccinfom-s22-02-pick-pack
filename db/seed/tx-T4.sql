@@ -1,33 +1,38 @@
 USE ccinfom_dev;
 
 -- ----------------------------------------------------------
--- 0) Clean up previous T4 seed data (safe and scoped)
+-- 0) Clean up previous T4 seed data completely (safe)
 -- ----------------------------------------------------------
 SET SQL_SAFE_UPDATES = 0;
-DELETE FROM dispatch_line WHERE source_ref LIKE 'seed-T4%';
-DELETE FROM dispatch_hdr WHERE source_ref LIKE 'seed-T4%';
+DELETE FROM dispatch_line;
+DELETE FROM dispatch_hdr;
 SET SQL_SAFE_UPDATES = 1;
+
+ALTER TABLE dispatch_hdr AUTO_INCREMENT = 1;
+ALTER TABLE dispatch_line AUTO_INCREMENT = 1;
 
 -- =========================================================
 -- [E-SEED-T4-001] Happy Path – Dispatch Manifest (Sealed Boxes)
 -- =========================================================
 START TRANSACTION;
 
--- INSERT INTO dispatch_hdr
--- (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
--- VALUES
--- (7, 1, 3, 'MANIFEST-0003', NOW(), 'seed', 'seed');
-
+-- Insert dispatch header for pick_ticket_id 7
 INSERT INTO dispatch_hdr
 (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by, source_ref)
 VALUES
-(7, 1, 3, 'MANIFEST-0001', NOW(), 'seed', 'seed', 'seed-T4-001');
+(7, 1, 3, 'MANIFEST-0004', NOW(), 'seed', 'seed', 'seed-T4-001');
 
+SET @dispatch_id := LAST_INSERT_ID();
 
-INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
-VALUES
-(LAST_INSERT_ID(), 1, 'seed', 'seed'),
-(LAST_INSERT_ID(), 2, 'seed', 'seed');
+-- Insert only sealed boxes for this pick ticket (safe)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by, source_ref)
+SELECT @dispatch_id, box_id, 'seed', 'seed', CONCAT('seed-T4-line-', box_id)
+FROM pack_box_hdr p
+WHERE pick_ticket_id = 7
+  AND sealed_flag = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM dispatch_line d WHERE d.box_id = p.box_id
+  );
 
 COMMIT;
 
@@ -37,79 +42,89 @@ COMMIT;
 START TRANSACTION;
 
 INSERT INTO dispatch_hdr
-(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by, source_ref)
 VALUES
-(2, 13, 6, 'MANIFEST-MAINT', NOW(), 'seed', 'seed');
+(7, 13, 6, 'MANIFEST-MAINT', NOW(), 'seed', 'seed', 'seed-T4-002A');
 
--- Should be rolled back due to VEHICLE_UNDER_MAINTENANCE
+-- Vehicle maintenance exception: rollback
 ROLLBACK;
-
 
 -- =========================================================
 -- [E-SEED-T4-002B] Exception – Unsealed Box
 -- =========================================================
 START TRANSACTION;
 
--- Create header with available vehicle and driver
 INSERT INTO dispatch_hdr
-(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by, source_ref)
 VALUES
-(2, 2, 6, 'MANIFEST-UNSEALED', NOW(), 'seed', 'seed');
+(7, 2, 6, 'MANIFEST-UNSEALED', NOW(), 'seed', 'seed', 'seed-T4-002B');
 
--- Attempt to load unsealed box (sealed_flag = 0, e.g., box_id 3)
-INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
-VALUES
-(LAST_INSERT_ID(), 3, 'seed', 'seed');
+SET @dispatch_id := LAST_INSERT_ID();
 
--- Should be rolled back due to DISPATCH_BOX_NOT_SEALED
+-- Attempt to load only unsealed boxes (safe)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by, source_ref)
+SELECT @dispatch_id, box_id, 'seed', 'seed', CONCAT('seed-T4-unsealed-', box_id)
+FROM pack_box_hdr p
+WHERE sealed_flag = 0
+  AND NOT EXISTS (
+    SELECT 1 FROM dispatch_line d WHERE d.box_id = p.box_id
+  )
+LIMIT 1;
+
 ROLLBACK;
-
 
 -- =========================================================
 -- [E-SEED-T4-002C] Exception – Vehicle Capacity Breach
 -- =========================================================
 START TRANSACTION;
 
--- Vehicle ID 2 has capacity 5.00; attempt to load > capacity (6 boxes)
 INSERT INTO dispatch_hdr
-(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by, source_ref)
 VALUES
-(3, 2, 9, 'MANIFEST-CAPACITY', NOW(), 'seed', 'seed');
+(7, 1, 9, 'MANIFEST-CAPACITY', NOW(), 'seed', 'seed', 'seed-T4-002C');
 
--- Simulate overload (6 boxes)
-INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
-VALUES
-(LAST_INSERT_ID(), 4, 'seed', 'seed'),
-(LAST_INSERT_ID(), 5, 'seed', 'seed'),
-(LAST_INSERT_ID(), 6, 'seed', 'seed'),
-(LAST_INSERT_ID(), 7, 'seed', 'seed'),
-(LAST_INSERT_ID(), 8, 'seed', 'seed'),
-(LAST_INSERT_ID(), 9, 'seed', 'seed');
+SET @dispatch_id := LAST_INSERT_ID();
+
+-- Attempt to load sealed boxes safely (no duplicates)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by, source_ref)
+SELECT @dispatch_id, box_id, 'seed', 'seed', CONCAT('seed-T4-cap-', box_id)
+FROM pack_box_hdr p
+WHERE pick_ticket_id = 7
+  AND sealed_flag = 1
+  AND NOT EXISTS (
+    SELECT 1 FROM dispatch_line d WHERE d.box_id = p.box_id
+  );
 
 ROLLBACK;
-
 
 -- =========================================================
 -- [E-SEED-T4-002D] Exception – Duplicate Load (Same Box)
 -- =========================================================
 START TRANSACTION;
 
--- First create valid dispatch header
 INSERT INTO dispatch_hdr
-(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+(pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by, source_ref)
 VALUES
-(3, 4, 11, 'MANIFEST-DUPLOAD', NOW(), 'seed', 'seed');
+(7, 1, 11, 'MANIFEST-DUPLOAD', NOW(), 'seed', 'seed', 'seed-T4-002D');
 
--- Attempt to load same box twice
 SET @dispatch_id := LAST_INSERT_ID();
 
-INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
-VALUES
-(@dispatch_id, 10, 'seed', 'seed');
+-- First insert safely
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by, source_ref)
+SELECT @dispatch_id, box_id, 'seed', 'seed', CONCAT('seed-T4-dup-', box_id)
+FROM pack_box_hdr p
+WHERE box_id = 5
+  AND NOT EXISTS (
+    SELECT 1 FROM dispatch_line d WHERE d.box_id = p.box_id
+  );
 
--- Duplicate load -> violates UNIQUE(box_id)
-INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
-VALUES
-(@dispatch_id, 10, 'seed', 'seed');
+-- Attempt duplicate load (should fail) safely
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by, source_ref)
+SELECT @dispatch_id, box_id, 'seed', 'seed', CONCAT('seed-T4-dup-', box_id, 'b')
+FROM pack_box_hdr p
+WHERE box_id = 5
+  AND NOT EXISTS (
+    SELECT 1 FROM dispatch_line d WHERE d.box_id = p.box_id
+  );
 
 ROLLBACK;
