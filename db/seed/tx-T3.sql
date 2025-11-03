@@ -150,7 +150,7 @@ LIMIT 1 OFFSET 1;
 
 
 -- ----------------------------------------------------------
--- 4) Exception: Over-Pack Scenario (Expect to Fail)
+-- 4a) Exception: Over-Pack Scenario (Expect to Fail)
 -- ----------------------------------------------------------
 
 BEGIN;
