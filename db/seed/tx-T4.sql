@@ -1,4 +1,4 @@
-﻿USE ccinfom_dev;
+USE ccinfom_dev;
 
 -- ----------------------------------------------------------
 -- 0) Clean up previous T4 seed data (scoped by source_ref)
