@@ -1,4 +1,4 @@
-﻿-- Phase E DDL scaffold: Pack (T3)
+-- Phase E DDL scaffold: Pack (T3)
 USE ccinfom_dev;
 
 -- TODO[E-DDL-T3-002] Implement pack_box_hdr table definition.
