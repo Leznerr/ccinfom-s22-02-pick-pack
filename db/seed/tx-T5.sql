@@ -47,6 +47,7 @@ INSERT INTO close_hdr (
 );
 
 -- Variance for Line 1: Product 1, requested 5
+SET @current_close_id = LAST_INSERT_ID();
 INSERT INTO close_variance (
   close_id,
   ticket_line_id,
@@ -60,7 +61,7 @@ INSERT INTO close_variance (
   updated_at,
   updated_by
 ) VALUES (
-  LAST_INSERT_ID(),
+  @current_close_id,
   1,  
   5.00,    
   5.00,                
@@ -74,6 +75,8 @@ INSERT INTO close_variance (
 );
 
 -- Variance for Line 2: Product 2, requested 10
+
+
 INSERT INTO close_variance (
   close_id,
   ticket_line_id,
@@ -87,7 +90,7 @@ INSERT INTO close_variance (
   updated_at,
   updated_by
 ) VALUES (
-  LAST_INSERT_ID(),
+  @current_close_id,
   2,                         
   10.00,                      
   10.00,                      
@@ -137,6 +140,9 @@ INSERT INTO close_hdr (
 );
 
 -- Variance for Line 3: Product 3, requested 8 (shortage)
+
+
+
 INSERT INTO close_variance (
   close_id,
   ticket_line_id,
@@ -150,7 +156,7 @@ INSERT INTO close_variance (
   updated_at,
   updated_by
 ) VALUES (
-  LAST_INSERT_ID(),
+  @current_close_id,
   3,                         
   8.00,                      
   5.00,                     
@@ -164,6 +170,9 @@ INSERT INTO close_variance (
 );
 
 -- Variance for Line 4: Product 4, requested 4 (shortage)
+
+
+
 INSERT INTO close_variance (
   close_id,
   ticket_line_id,
@@ -177,7 +186,7 @@ INSERT INTO close_variance (
   updated_at,
   updated_by
 ) VALUES (
-  LAST_INSERT_ID(),
+  @current_close_id,
   4,                          
   4.00,                       
   3.00,                       
@@ -191,6 +200,7 @@ INSERT INTO close_variance (
 );
 
 -- Variance for Line 5: Product 5, requested 2 (fully delivered in mixed ticket)
+
 INSERT INTO close_variance (
   close_id,
   ticket_line_id,
@@ -204,7 +214,7 @@ INSERT INTO close_variance (
   updated_at,
   updated_by
 ) VALUES (
-  LAST_INSERT_ID(),
+  @current_close_id,
   5,                          
   2.00,                       
   2.00,                       
