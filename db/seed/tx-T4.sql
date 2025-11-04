@@ -36,6 +36,14 @@ SELECT box_id
  WHERE source_ref = 'seed-T3-box2'
  LIMIT 1;
 
+SELECT box_id,
+       pick_ticket_id
+  INTO @variance_box_id,
+       @variance_ticket_id
+  FROM pack_box_hdr
+ WHERE source_ref = 'seed-T3B-box1'
+ LIMIT 1;
+
 SELECT vehicle_id
   INTO @vehicle_primary_id
   FROM vehicles
@@ -281,6 +289,56 @@ SELECT
     'seed-T4-line-001'
 WHERE @dispatch_happy_id IS NOT NULL
   AND @sealed_box_id IS NOT NULL;
+
+COMMIT;
+
+-- ----------------------------------------------------------
+-- 3b) Variance path — sealed box for short-close demo
+-- ----------------------------------------------------------
+START TRANSACTION;
+
+SET @dispatch_variance_id := NULL;
+
+INSERT INTO dispatch_hdr (
+    pick_ticket_id,
+    vehicle_id,
+    driver_id,
+    manifest_no,
+    depart_ts,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @variance_ticket_id,
+    @vehicle_primary_id,
+    COALESCE(@driver_secondary_id, @driver_primary_id),
+    CONCAT('MANIFEST-B-', LPAD(@variance_ticket_id, 4, '0')),
+    CURRENT_TIMESTAMP,
+    'seed',
+    'seed',
+    'seed-T4-hdr-002'
+WHERE @variance_ticket_id IS NOT NULL
+  AND @vehicle_primary_id IS NOT NULL
+  AND ( @driver_primary_id IS NOT NULL OR @driver_secondary_id IS NOT NULL );
+
+SET @dispatch_variance_id := IF(ROW_COUNT() > 0, LAST_INSERT_ID(), NULL);
+
+INSERT INTO dispatch_line (
+    dispatch_id,
+    box_id,
+    created_by,
+    updated_by,
+    source_ref
+)
+SELECT
+    @dispatch_variance_id,
+    @variance_box_id,
+    'seed',
+    'seed',
+    'seed-T4-line-002'
+WHERE @dispatch_variance_id IS NOT NULL
+  AND @variance_box_id IS NOT NULL;
 
 COMMIT;
 

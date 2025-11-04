@@ -7,25 +7,26 @@ SET SQL_SAFE_UPDATES = 1;
 
 START TRANSACTION;
 
-SELECT dispatch_id, pick_ticket_id
-  INTO @dispatch_delivered, @ticket_delivered
+SELECT dispatch_id,
+       pick_ticket_id
+  INTO @dispatch_delivered,
+       @ticket_delivered
   FROM dispatch_hdr
  WHERE source_ref = 'seed-T4-hdr-001'
  LIMIT 1;
 
-SELECT ticket_line_id, product_id, requested_qty
-  INTO @ticket_line_a, @product_a, @requested_qty_a
-  FROM pick_ticket_line
- WHERE pick_ticket_id = @ticket_delivered
- ORDER BY ticket_line_id
+SELECT dispatch_id,
+       pick_ticket_id
+  INTO @dispatch_short,
+       @ticket_short
+  FROM dispatch_hdr
+ WHERE source_ref = 'seed-T4-hdr-002'
  LIMIT 1;
 
-SELECT ticket_line_id, product_id, requested_qty
-  INTO @ticket_line_b, @product_b, @requested_qty_b
-  FROM pick_ticket_line
- WHERE pick_ticket_id = @ticket_delivered
- ORDER BY ticket_line_id DESC
- LIMIT 1;
+-- ----------------------------------------------------------
+-- Delivered flow (Ticket A)
+-- ----------------------------------------------------------
+SET @close_delivered_id := NULL;
 
 INSERT INTO close_hdr (
     pick_ticket_id,
@@ -51,7 +52,7 @@ SELECT
 WHERE @ticket_delivered   IS NOT NULL
   AND @dispatch_delivered IS NOT NULL;
 
-SET @close_delivered_id := LAST_INSERT_ID();
+SET @close_delivered_id := IF(ROW_COUNT() > 0, LAST_INSERT_ID(), NULL);
 
 INSERT INTO close_variance (
     close_id,
@@ -66,16 +67,22 @@ INSERT INTO close_variance (
 )
 SELECT
     @close_delivered_id,
-    @ticket_line_a,
-    @requested_qty_a,
-    @requested_qty_a,
+    ptl.ticket_line_id,
+    ptl.requested_qty,
+    ptl.requested_qty,
     0,
     NULL,
-    'seed-T5-var-delivered-1',
+    CONCAT('seed-T5-var-delivered-', ROW_NUMBER() OVER (ORDER BY ptl.ticket_line_id)),
     'seed',
     'seed'
+FROM pick_ticket_line ptl
 WHERE @close_delivered_id IS NOT NULL
-  AND @ticket_line_a      IS NOT NULL;
+  AND ptl.pick_ticket_id = @ticket_delivered;
+
+-- ----------------------------------------------------------
+-- Short-close flow (Ticket B)
+-- ----------------------------------------------------------
+SET @close_short_id := NULL;
 
 INSERT INTO close_hdr (
     pick_ticket_id,
@@ -89,19 +96,19 @@ INSERT INTO close_hdr (
     updated_by
 )
 SELECT
-    @ticket_delivered,
-    @dispatch_delivered,
+    @ticket_short,
+    @dispatch_short,
     'Short-Closed',
-    CONCAT('POD-', @dispatch_delivered, '-SHORT'),
+    CONCAT('POD-', @dispatch_short),
     CURRENT_TIMESTAMP,
     'Partial delivery due to damaged items.',
     'seed-T5-hdr-short',
     'seed',
     'seed'
-WHERE @ticket_delivered   IS NOT NULL
-  AND @dispatch_delivered IS NOT NULL;
+WHERE @ticket_short   IS NOT NULL
+  AND @dispatch_short IS NOT NULL;
 
-SET @close_short_id := LAST_INSERT_ID();
+SET @close_short_id := IF(ROW_COUNT() > 0, LAST_INSERT_ID(), NULL);
 
 INSERT INTO close_variance (
     close_id,
@@ -116,16 +123,22 @@ INSERT INTO close_variance (
 )
 SELECT
     @close_short_id,
-    @ticket_line_b,
-    @requested_qty_b,
-    GREATEST(0.01, ROUND(@requested_qty_b * 0.40, 2)),
-    GREATEST(0, ROUND(@requested_qty_b - GREATEST(0.01, ROUND(@requested_qty_b * 0.40, 2)), 2)),
-    'Damaged in transit',
-    'seed-T5-var-short-1',
+    ptl.ticket_line_id,
+    ptl.requested_qty,
+    ROUND(GREATEST(0, COALESCE(pl.picked_qty, 0)), 2) AS delivered_qty,
+    ROUND(GREATEST(0, ptl.requested_qty - COALESCE(pl.picked_qty, 0)), 2) AS short_qty,
+    CASE
+      WHEN ROUND(GREATEST(0, ptl.requested_qty - COALESCE(pl.picked_qty, 0)), 2) > 0 THEN 'Damaged in transit'
+      ELSE NULL
+    END AS reason,
+    CONCAT('seed-T5-var-short-', ROW_NUMBER() OVER (ORDER BY ptl.ticket_line_id)),
     'seed',
     'seed'
+FROM pick_ticket_line ptl
+LEFT JOIN picking_line pl
+  ON pl.ticket_line_id = ptl.ticket_line_id
 WHERE @close_short_id IS NOT NULL
-  AND @ticket_line_b     IS NOT NULL;
+  AND ptl.pick_ticket_id = @ticket_short;
 
 COMMIT;
 
