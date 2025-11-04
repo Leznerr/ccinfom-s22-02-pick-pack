@@ -38,7 +38,7 @@ CREATE INDEX idx_dispatch_driver_id ON dispatch_hdr(driver_id);
 
 CREATE TABLE dispatch_line (
   dispatch_line_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, -- unique id for each box line
-  dispatch_id      BIGINT UNSIGNED NOT NULL, -- points to the header
+  dispatch_id      BIGINT UNSIGNED NOT NULL, -- points to the header6666
   box_id           BIGINT UNSIGNED NOT NULL,
   source_ref       VARCHAR(100) NULL,
   created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

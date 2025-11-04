@@ -1,17 +1,25 @@
-﻿-- Phase E Seeds: T5 Close Ticket
 
--- TODO[E-SEED-T5-001] Insert fully delivered close scenario.
--- Steps:
---   1) Reference dispatch_hdr/dispatch_line records.
---   2) Insert close_hdr (final_status='Delivered') and close_variance rows with short_qty=0.
--- Acceptance: CloseService sets ticket to Delivered and logs inventory deltas (reserved -, on_hand -).
--- | Links: docs/seed-id-map.md
 USE ccinfom_dev;
 
 -- ==========================================================
 -- TODO[E-SEED-T5-001] Fully delivered close scenario
 -- ==========================================================
 
+
+-- Dispatch for Ticket 1 (from happy path)
+SELECT dispatch_id INTO @dispatch_first_id
+  FROM dispatch_hdr
+ WHERE source_ref = 'seed-T4-hdr-001'
+ LIMIT 1;
+
+-- Dispatch for Ticket 2 (you need to add this to tx-T4.sql first!)
+SELECT dispatch_id INTO @dispatch_second_id
+  FROM dispatch_hdr
+ WHERE pick_ticket_id = 2
+   AND source_ref LIKE 'seed-T4%'
+ LIMIT 1;
+ 
+ 
 INSERT INTO close_hdr (
   pick_ticket_id,
   dispatch_id,
@@ -26,9 +34,9 @@ INSERT INTO close_hdr (
   updated_by
 ) VALUES (
   1,                          -- Ticket 1 (gadgets)
-  @dispatch_unsealed_id,                          
+  @dispatch_first_id,                          
   'Delivered',
-  'POD-2024-001',             -- TODO: Match pod_ref from dispatch_hdr
+  CONCAT('POD-',@dispatch_first_id),             
   CURRENT_TIMESTAMP,
   'Full delivery completed - all gadgets delivered',
   'CLOSE-FULL-001',
@@ -116,9 +124,9 @@ INSERT INTO close_hdr (
   updated_by
 ) VALUES (
   2,                          -- Ticket 2 (tools)
-  @dispatch_unsealed_id,                          
+  @dispatch_second_id,                          
   'Short-Closed',
-  'POD-2024-002',             -- TODO: Match pod_ref from dispatch_hdr
+   CONCAT('POD-',@dispatch_second_id),              
   CURRENT_TIMESTAMP,
   'Partial delivery - some tools damaged in transit',
   'CLOSE-SHORT-002',

@@ -412,7 +412,7 @@ DELIMITER ;
 --   - tx-T3.sql/tx-T4.sql/tx-T5.sql seeds load without FK/UNIQUE violations.
 --   - qa/validate.sql Phase E queries pass (packed_vs_picked, dispatch checks, inventory reconciliation).
 -- | Links: docs/decisions.md#phase-e, docs/seed-id-map.md
-SOURCE db/ddl/phaseE/pack_box.sql;
+/*SOURCE db/ddl/phaseE/pack_box.sql;
 SOURCE db/ddl/phaseE/inventory_txn_log.sql;
 SOURCE db/ddl/phaseE/dispatch.sql;
-SOURCE db/ddl/phaseE/close.sql;
+SOURCE db/ddl/phaseE/close.sql;*/
