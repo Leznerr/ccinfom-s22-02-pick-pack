@@ -101,6 +101,50 @@ WHERE vehicle_status <> 'available'
 ORDER BY vehicle_id;
 
 -- ===========================================================
+-- PHASE E QA: T3, T4, T5 Transaction Integrity
+-- ===========================================================
+
+-- T3: packed quantities must never exceed picked quantities
+SELECT pbl.box_id,
+       pbl.packed_qty,
+       pl.picked_qty,
+       pbl.source_ref
+FROM pack_box_line pbl
+JOIN picking_line pl
+  ON pl.picking_line_id = pbl.picking_line_id
+WHERE pbl.packed_qty > pl.picked_qty;
+
+-- T4: only sealed boxes may be dispatched (should be empty)
+SELECT dl.dispatch_id,
+       dl.box_id,
+       pb.sealed_flag,
+       dl.source_ref
+FROM dispatch_line dl
+JOIN pack_box_hdr pb
+  ON pb.box_id = dl.box_id
+WHERE pb.sealed_flag = 0;
+
+-- T5: delivered + short must equal requested (zero rows expected)
+SELECT cv.close_id,
+       cv.ticket_line_id,
+       cv.requested_qty,
+       cv.delivered_qty,
+       cv.short_qty,
+       cv.reason
+FROM close_variance cv
+WHERE ROUND(IFNULL(cv.delivered_qty,0) + IFNULL(cv.short_qty,0), 2) <> ROUND(cv.requested_qty, 2);
+
+-- T5: delivered closes must not carry variances
+SELECT ch.close_id,
+       ch.final_status,
+       cv.short_qty
+FROM close_hdr ch
+JOIN close_variance cv
+  ON cv.close_id = ch.close_id
+WHERE ch.final_status = 'Delivered'
+  AND cv.short_qty > 0;
+
+-- ===========================================================
 -- EMPLOYEES QA (kept for clarity; overlaps Gate A/B/C)
 -- ===========================================================
 SELECT 'employees' AS table_name, COUNT(*) AS rows_count,

@@ -1,228 +1,133 @@
-
 USE ccinfom_dev;
 
--- ==========================================================
--- TODO[E-SEED-T5-001] Fully delivered close scenario
--- ==========================================================
+SET SQL_SAFE_UPDATES = 0;
+DELETE FROM close_variance WHERE source_ref LIKE 'seed-T5%';
+DELETE FROM close_hdr      WHERE source_ref LIKE 'seed-T5%';
+SET SQL_SAFE_UPDATES = 1;
 
+START TRANSACTION;
 
--- Dispatch for Ticket 1 (from happy path)
-SELECT dispatch_id INTO @dispatch_first_id
+SELECT dispatch_id, pick_ticket_id
+  INTO @dispatch_delivered, @ticket_delivered
   FROM dispatch_hdr
  WHERE source_ref = 'seed-T4-hdr-001'
  LIMIT 1;
 
--- Dispatch for Ticket 2 (you need to add this to tx-T4.sql first!)
-SELECT dispatch_id INTO @dispatch_second_id
-  FROM dispatch_hdr
- WHERE pick_ticket_id = 2
-   AND source_ref LIKE 'seed-T4%'
+SELECT ticket_line_id, product_id, requested_qty
+  INTO @ticket_line_a, @product_a, @requested_qty_a
+  FROM pick_ticket_line
+ WHERE pick_ticket_id = @ticket_delivered
+ ORDER BY ticket_line_id
  LIMIT 1;
- 
- 
-INSERT INTO close_hdr (
-  pick_ticket_id,
-  dispatch_id,
-  final_status,
-  pod_ref,
-  pod_ts,
-  notes,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  1,                          -- Ticket 1 (gadgets)
-  @dispatch_first_id,                          
-  'Delivered',
-  CONCAT('POD-',@dispatch_first_id),             
-  CURRENT_TIMESTAMP,
-  'Full delivery completed - all gadgets delivered',
-  'CLOSE-FULL-001',
-  CURRENT_TIMESTAMP,
-  'seed_t5_001',
-  CURRENT_TIMESTAMP,
-  'seed_t5_001'
-);
 
--- Variance for Line 1: Product 1, requested 5
-SET @current_close_id = LAST_INSERT_ID();
-INSERT INTO close_variance (
-  close_id,
-  ticket_line_id,
-  requested_qty,
-  delivered_qty,
-  short_qty,
-  reason,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  @current_close_id,
-  1,  
-  5.00,    
-  5.00,                
-  0.00,
-  NULL,
-  'VAR-FULL-001-1',
-  CURRENT_TIMESTAMP,
-  'seed_t5_001',
-  CURRENT_TIMESTAMP,
-  'seed_t5_001'
-);
-
--- Variance for Line 2: Product 2, requested 10
-
-
-INSERT INTO close_variance (
-  close_id,
-  ticket_line_id,
-  requested_qty,
-  delivered_qty,
-  short_qty,
-  reason,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  @current_close_id,
-  2,                         
-  10.00,                      
-  10.00,                      
-  0.00,                       
-  NULL,
-  'VAR-FULL-001-2',
-  CURRENT_TIMESTAMP,
-  'seed_t5_001',
-  CURRENT_TIMESTAMP,
-  'seed_t5_001'
-);
--- TODO[E-SEED-T5-002] Insert short-close scenario with variance reasons.
--- Steps:
---   1) Provide close_hdr final_status='Short-Closed'.
---   2) close_variance rows with delivered < requested, short_qty recorded.
---   3) Ensure pod_ref reuses dispatch seed value.
--- Acceptance: QA reconciliation query passes; demo-full-flow.sql highlights short-close handling.
--- 
--- ==========================================================
--- TODO[E-SEED-T5-002] Short-close scenario with variances
--- ==========================================================
+SELECT ticket_line_id, product_id, requested_qty
+  INTO @ticket_line_b, @product_b, @requested_qty_b
+  FROM pick_ticket_line
+ WHERE pick_ticket_id = @ticket_delivered
+ ORDER BY ticket_line_id DESC
+ LIMIT 1;
 
 INSERT INTO close_hdr (
-  pick_ticket_id,
-  dispatch_id,
-  final_status,
-  pod_ref,
-  pod_ts,
-  notes,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  2,                          -- Ticket 2 (tools)
-  @dispatch_second_id,                          
-  'Short-Closed',
-   CONCAT('POD-',@dispatch_second_id),              
-  CURRENT_TIMESTAMP,
-  'Partial delivery - some tools damaged in transit',
-  'CLOSE-SHORT-002',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002'
-);
+    pick_ticket_id,
+    dispatch_id,
+    final_status,
+    pod_ref,
+    pod_ts,
+    notes,
+    source_ref,
+    created_by,
+    updated_by
+)
+SELECT
+    @ticket_delivered,
+    @dispatch_delivered,
+    'Delivered',
+    CONCAT('POD-', @dispatch_delivered),
+    CURRENT_TIMESTAMP,
+    'All items delivered successfully.',
+    'seed-T5-hdr-delivered',
+    'seed',
+    'seed'
+WHERE @ticket_delivered   IS NOT NULL
+  AND @dispatch_delivered IS NOT NULL;
 
--- Variance for Line 3: Product 3, requested 8 (shortage)
-
-
+SET @close_delivered_id := LAST_INSERT_ID();
 
 INSERT INTO close_variance (
-  close_id,
-  ticket_line_id,
-  requested_qty,
-  delivered_qty,
-  short_qty,
-  reason,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  @current_close_id,
-  3,                         
-  8.00,                      
-  5.00,                     
-  3.00,                     
-  'damaged',                  
-  'VAR-SHORT-002-1',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002'
-);
+    close_id,
+    ticket_line_id,
+    requested_qty,
+    delivered_qty,
+    short_qty,
+    reason,
+    source_ref,
+    created_by,
+    updated_by
+)
+SELECT
+    @close_delivered_id,
+    @ticket_line_a,
+    @requested_qty_a,
+    @requested_qty_a,
+    0,
+    NULL,
+    'seed-T5-var-delivered-1',
+    'seed',
+    'seed'
+WHERE @close_delivered_id IS NOT NULL
+  AND @ticket_line_a      IS NOT NULL;
 
--- Variance for Line 4: Product 4, requested 4 (shortage)
+INSERT INTO close_hdr (
+    pick_ticket_id,
+    dispatch_id,
+    final_status,
+    pod_ref,
+    pod_ts,
+    notes,
+    source_ref,
+    created_by,
+    updated_by
+)
+SELECT
+    @ticket_delivered,
+    @dispatch_delivered,
+    'Short-Closed',
+    CONCAT('POD-', @dispatch_delivered, '-SHORT'),
+    CURRENT_TIMESTAMP,
+    'Partial delivery due to damaged items.',
+    'seed-T5-hdr-short',
+    'seed',
+    'seed'
+WHERE @ticket_delivered   IS NOT NULL
+  AND @dispatch_delivered IS NOT NULL;
 
-
-
-INSERT INTO close_variance (
-  close_id,
-  ticket_line_id,
-  requested_qty,
-  delivered_qty,
-  short_qty,
-  reason,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  @current_close_id,
-  4,                          
-  4.00,                       
-  3.00,                       
-  1.00,                      
-  'not_available',            
-  'VAR-SHORT-002-2',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002'
-);
-
--- Variance for Line 5: Product 5, requested 2 (fully delivered in mixed ticket)
+SET @close_short_id := LAST_INSERT_ID();
 
 INSERT INTO close_variance (
-  close_id,
-  ticket_line_id,
-  requested_qty,
-  delivered_qty,
-  short_qty,
-  reason,
-  source_ref,
-  created_at,
-  created_by,
-  updated_at,
-  updated_by
-) VALUES (
-  @current_close_id,
-  5,                          
-  2.00,                       
-  2.00,                       
-  0.00,                       
-  NULL,                      
-  'VAR-SHORT-002-3',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002',
-  CURRENT_TIMESTAMP,
-  'seed_t5_002'
-);
+    close_id,
+    ticket_line_id,
+    requested_qty,
+    delivered_qty,
+    short_qty,
+    reason,
+    source_ref,
+    created_by,
+    updated_by
+)
+SELECT
+    @close_short_id,
+    @ticket_line_b,
+    @requested_qty_b,
+    GREATEST(0.01, ROUND(@requested_qty_b * 0.40, 2)),
+    GREATEST(0, ROUND(@requested_qty_b - GREATEST(0.01, ROUND(@requested_qty_b * 0.40, 2)), 2)),
+    'Damaged in transit',
+    'seed-T5-var-short-1',
+    'seed',
+    'seed'
+WHERE @close_short_id IS NOT NULL
+  AND @ticket_line_b     IS NOT NULL;
+
+COMMIT;
+
+SELECT 'close_hdr' AS table_name, COUNT(*) AS row_count FROM close_hdr WHERE source_ref LIKE 'seed-T5%';
+SELECT 'close_variance' AS table_name, COUNT(*) AS row_count FROM close_variance WHERE source_ref LIKE 'seed-T5%';

@@ -15,34 +15,34 @@ This document tracks the canonical IDs created by the Phase E seed scripts. Upda
 ---
 
 ## Ticket A - Delivered (happy path)
-- pick_ticket_id: 3
+- pick_ticket_id: 1
 - ticket_line_id(s): [1, 2]
 - picking_id: 1
 - picking_line_id(s): [1, 2]
-- pack_box_id(s): [3, 4]
-- pack_box_line_id(s): [44, 55]
-- dispatch_id: @TODO
-- manifest_no: @TODO
-- dispatch_line_id(s): @TODO
-- close_id: @TODO
-- close_variance_id(s): @TODO
+- pack_box_id(s): [1, 2]
+- pack_box_line_id(s): [1, 2]
+- dispatch_id: 5  <!-- first committed dispatch header after rollback scaffolds -->
+- manifest_no: MANIFEST-0001
+- dispatch_line_id(s): [7]  <!-- auto increment jumps because capacity/unsealed scaffolds roll back -->
+- close_id: 1
+- close_variance_id(s): [1]
 
 Use Ticket A for the full Delivered flow (no shortages). QA queries should show zero variances once populated.
 
 ---
 
 ## Ticket B - Short-Closed (variance scenario)
-- pick_ticket_id: @TODO
-- ticket_line_id(s): @TODO
-- picking_id: @TODO
-- picking_line_id(s): @TODO
-- pack_box_id(s): @TODO
-- pack_box_line_id(s): @TODO
-- dispatch_id: @TODO
-- manifest_no: @TODO
-- dispatch_line_id(s): @TODO
-- close_id: @TODO
-- close_variance_id(s): @TODO
+- pick_ticket_id: 1
+- ticket_line_id(s): [2]
+- picking_id: 1
+- picking_line_id(s): [2]
+- pack_box_id(s): [1]  <!-- same sealed box; delivered short by reconciliation -->
+- pack_box_line_id(s): [1]
+- dispatch_id: 5
+- manifest_no: MANIFEST-0001
+- dispatch_line_id(s): [7]
+- close_id: 2
+- close_variance_id(s): [2]
 
 Use Ticket B for the Short-Closed flow with at least one variance row where delivered < requested.
 
