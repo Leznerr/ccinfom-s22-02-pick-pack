@@ -1,5 +1,5 @@
 /*
- * CCINFOM — Phase D
+ * CCINFOM â€" Phase D
  * File: LookupDao.java
  * Purpose: Read-only lookups for UI dropdowns (customers, branches, employees, products).
  *
@@ -27,3 +27,4 @@ public interface LookupDao {
     List<Vehicle> listActiveVehicles();
     Product findProductById(Long productId) throws SQLException;
 }
+

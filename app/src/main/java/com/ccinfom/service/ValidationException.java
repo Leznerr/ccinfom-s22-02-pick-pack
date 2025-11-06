@@ -2,15 +2,24 @@ package com.ccinfom.service;
 
 /**
  * Custom exception to represent business rule or data validation failures.
- * This helps in providing clear, user-friendly error messages to the UI layer.
+ * Optionally carries a short code so tests/UI can react deterministically.
  */
 public class ValidationException extends Exception {
 
-    /**
-     * Constructs a new ValidationException with the specified detail message.
-     * @param message the detail message.
-     */
+    private final String code;
+
     public ValidationException(String message) {
         super(message);
+        this.code = null;
+    }
+
+    public ValidationException(String code, String message) {
+        super(message);
+        this.code = code;
+    }
+
+    public String getCode() {
+        return code;
     }
 }
+

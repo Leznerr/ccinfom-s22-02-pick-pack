@@ -1,19 +1,278 @@
-﻿package com.ccinfom.dao.impl;
+package com.ccinfom.dao.impl;
 
 import com.ccinfom.dao.interfaces.DispatchDao;
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-// TODO[E-DAO-T4-002] Implement DispatchDao JDBC logic.
-// Why: Required to persist dispatch headers/lines and enforce uniqueness checks.
-// Steps:
-//   1) insertDispatchHeader: INSERT dispatch_hdr with audit trio; return generated key.
-//   2) insertDispatchLines: batch insert dispatch_line respecting UNIQUE(box_id).
-//   3) Provide helper queries: isBoxLoaded, isVehicleAvailable, sumLoadForManifest, etc.
-//   4) Utilize passed Connection (no auto-commit) and throw SQLException on violations.
-// Acceptance: DispatchServiceImpl tests (PhaseEServiceTestRunner) pass; duplicate load detection works.
-// 
+public class DispatchDaoImpl implements DispatchDao {
+
+    private static final String INSERT_HEADER_SQL = """
+        INSERT INTO dispatch_hdr
+            (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, arrive_ts,
+             pod_ref, pod_ts, source_ref, created_by, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+
+    private static final String INSERT_LINE_SQL = """
+        INSERT INTO dispatch_line
+            (dispatch_id, box_id, source_ref, created_by, updated_by)
+        VALUES (?, ?, ?, ?, ?)
+        """;
+
+    @Override
+    public long insertDispatchHeader(DispatchHeader header, Connection conn) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(INSERT_HEADER_SQL, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setLong(1, header.getPickTicketId());
+            stmt.setLong(2, header.getVehicleId());
+            stmt.setLong(3, header.getDriverId());
+            stmt.setString(4, header.getManifestNo());
+            if (header.getDepartTs() != null) {
+                stmt.setTimestamp(5, Timestamp.valueOf(header.getDepartTs()));
+            } else {
+                stmt.setNull(5, java.sql.Types.TIMESTAMP);
+            }
+            if (header.getArriveTs() != null) {
+                stmt.setTimestamp(6, Timestamp.valueOf(header.getArriveTs()));
+            } else {
+                stmt.setNull(6, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(7, header.getPodRef());
+            if (header.getPodTs() != null) {
+                stmt.setTimestamp(8, Timestamp.valueOf(header.getPodTs()));
+            } else {
+                stmt.setNull(8, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(9, header.getSourceRef());
+            stmt.setString(10, header.getCreatedBy());
+            stmt.setString(11, header.getUpdatedBy());
+            stmt.executeUpdate();
+
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        throw new SQLException("Failed to insert dispatch header.");
+    }
+
+    @Override
+    public void insertDispatchLines(long dispatchId, List<DispatchLine> lines, Connection conn) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(INSERT_LINE_SQL)) {
+            for (DispatchLine line : lines) {
+                stmt.setLong(1, dispatchId);
+                stmt.setLong(2, line.getBoxId());
+                stmt.setString(3, line.getSourceRef());
+                stmt.setString(4, line.getCreatedBy());
+                stmt.setString(5, line.getUpdatedBy());
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        }
+    }
+
+    @Override
+    public boolean isBoxLoaded(long boxId, Connection conn) throws SQLException {
+        String sql = "SELECT 1 FROM dispatch_line WHERE box_id = ? LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, boxId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    @Override
+    public boolean isManifestNoExists(String manifestNo, Connection conn) throws SQLException {
+        String sql = "SELECT 1 FROM dispatch_hdr WHERE manifest_no = ? LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, manifestNo);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    @Override
+    public Optional<DispatchHeader> findById(long dispatchId, Connection conn) throws SQLException {
+        String sql = "SELECT * FROM dispatch_hdr WHERE dispatch_id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, dispatchId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapHeader(rs));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public int countBoxesAssignedToVehicle(long vehicleId, Connection conn) throws SQLException {
+        String sql = """
+            SELECT COUNT(*)
+              FROM dispatch_line dl
+              JOIN dispatch_hdr dh ON dh.dispatch_id = dl.dispatch_id
+             WHERE dh.vehicle_id = ?
+               AND dh.arrive_ts IS NULL
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, vehicleId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public boolean isVehicleAvailable(long vehicleId, Connection conn) throws SQLException {
+        String sql = "SELECT vehicle_status FROM vehicles WHERE vehicle_id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, vehicleId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String status = rs.getString("vehicle_status");
+                    return status != null && status.equalsIgnoreCase("available");
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public int fetchVehicleCapacity(long vehicleId, Connection conn) throws SQLException {
+        String sql = "SELECT capacity FROM vehicles WHERE vehicle_id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, vehicleId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("capacity");
+                }
+            }
+        }
+        throw new SQLException("Vehicle not found for capacity lookup: " + vehicleId);
+    }
+
+    @Override
+    public void updateDispatchTimings(long dispatchId,
+                                      LocalDateTime departTs,
+                                      LocalDateTime arriveTs,
+                                      LocalDateTime podTs,
+                                      String podRef,
+                                      String updatedBy,
+                                      Connection conn) throws SQLException {
+        String sql = """
+            UPDATE dispatch_hdr
+               SET depart_ts = ?,
+                   arrive_ts = ?,
+                   pod_ts = ?,
+                   pod_ref = ?,
+                   updated_by = ?,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE dispatch_id = ?
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            if (departTs != null) {
+                stmt.setTimestamp(1, Timestamp.valueOf(departTs));
+            } else {
+                stmt.setNull(1, java.sql.Types.TIMESTAMP);
+            }
+            if (arriveTs != null) {
+                stmt.setTimestamp(2, Timestamp.valueOf(arriveTs));
+            } else {
+                stmt.setNull(2, java.sql.Types.TIMESTAMP);
+            }
+            if (podTs != null) {
+                stmt.setTimestamp(3, Timestamp.valueOf(podTs));
+            } else {
+                stmt.setNull(3, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(4, podRef);
+            stmt.setString(5, updatedBy);
+            stmt.setLong(6, dispatchId);
+            stmt.executeUpdate();
+        }
+    }
+
+    private DispatchHeader mapHeader(ResultSet rs) throws SQLException {
+        DispatchHeader header = new DispatchHeader();
+        header.setDispatchId(rs.getLong("dispatch_id"));
+        header.setPickTicketId(rs.getLong("pick_ticket_id"));
+        header.setVehicleId(rs.getLong("vehicle_id"));
+        header.setDriverId(rs.getLong("driver_id"));
+        header.setManifestNo(rs.getString("manifest_no"));
+        Timestamp depart = rs.getTimestamp("depart_ts");
+        if (depart != null) {
+            header.setDepartTs(depart.toLocalDateTime());
+        }
+        Timestamp arrive = rs.getTimestamp("arrive_ts");
+        if (arrive != null) {
+            header.setArriveTs(arrive.toLocalDateTime());
+        }
+        header.setPodRef(rs.getString("pod_ref"));
+        Timestamp podTs = rs.getTimestamp("pod_ts");
+        if (podTs != null) {
+            header.setPodTs(podTs.toLocalDateTime());
+        }
+        header.setSourceRef(rs.getString("source_ref"));
+        Timestamp created = rs.getTimestamp("created_at");
+        if (created != null) {
+            header.setCreatedAt(created.toLocalDateTime());
+        }
+        header.setCreatedBy(rs.getString("created_by"));
+        Timestamp updated = rs.getTimestamp("updated_at");
+        if (updated != null) {
+            header.setUpdatedAt(updated.toLocalDateTime());
+        }
+        header.setUpdatedBy(rs.getString("updated_by"));
+        return header;
+    }
+
+    private DispatchLine mapLine(ResultSet rs) throws SQLException {
+        DispatchLine line = new DispatchLine();
+        line.setDispatchLineId(rs.getLong("dispatch_line_id"));
+        line.setDispatchId(rs.getLong("dispatch_id"));
+        line.setBoxId(rs.getLong("box_id"));
+        line.setSourceRef(rs.getString("source_ref"));
+        Timestamp created = rs.getTimestamp("created_at");
+        if (created != null) {
+            line.setCreatedAt(created.toLocalDateTime());
+        }
+        line.setCreatedBy(rs.getString("created_by"));
+        Timestamp updated = rs.getTimestamp("updated_at");
+        if (updated != null) {
+            line.setUpdatedAt(updated.toLocalDateTime());
+        }
+        line.setUpdatedBy(rs.getString("updated_by"));
+        return line;
+    }
+
+    // Convenience method should tests need line details
+    public List<DispatchLine> listLinesByDispatchId(long dispatchId, Connection conn) throws SQLException {
+        String sql = "SELECT * FROM dispatch_line WHERE dispatch_id = ?";
+        List<DispatchLine> lines = new ArrayList<>();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, dispatchId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lines.add(mapLine(rs));
+                }
+            }
+        }
+        return lines;
+    }
+}
 

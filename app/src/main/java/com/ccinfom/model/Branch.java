@@ -1,5 +1,5 @@
 /*
- * CCINFOM — Phase D
+ * CCINFOM â€" Phase D
  * File: <ModelName>.java
  * Purpose: Simple data holder that mirrors table <table_name>.
  *
@@ -74,3 +74,4 @@ public class Branch {
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
 }
+

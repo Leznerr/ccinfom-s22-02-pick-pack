@@ -1,5 +1,5 @@
 /*
- * CCINFOM — Phase D
+ * CCINFOM â€" Phase D
  * File: DbConnection.java
  * Purpose: Create JDBC connections using MySQL Connector/J.
  *
@@ -100,3 +100,4 @@
         }
     }
  }
+

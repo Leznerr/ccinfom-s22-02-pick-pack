@@ -1,18 +1,41 @@
-﻿package com.ccinfom.dao.interfaces;
+package com.ccinfom.dao.interfaces;
 
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
-// TODO[E-DAO-T4-001] Define DispatchDao operations for manifest management.
-// Why: DispatchService needs DAO contract for creating headers/lines and validating uniqueness.
-// Methods to declare:
-//   - long insertDispatchHeader(DispatchHeader header, Connection conn)
-//   - void insertDispatchLines(long dispatchId, List<DispatchLine> lines, Connection conn)
-//   - boolean isBoxLoaded(long boxId, Connection conn)
-//   - boolean isVehicleAvailable(long vehicleId, Connection conn)
-// Acceptance: DispatchDaoImpl implements contract; PhaseEServiceTestRunner dispatch tests compile.
-// 
+/**
+ * DAO contract for T4 dispatch persistence/validations.
+ */
+public interface DispatchDao {
+
+    long insertDispatchHeader(DispatchHeader header, Connection conn) throws SQLException;
+
+    void insertDispatchLines(long dispatchId, List<DispatchLine> lines, Connection conn) throws SQLException;
+
+    boolean isBoxLoaded(long boxId, Connection conn) throws SQLException;
+
+    boolean isManifestNoExists(String manifestNo, Connection conn) throws SQLException;
+
+    Optional<DispatchHeader> findById(long dispatchId, Connection conn) throws SQLException;
+
+    int countBoxesAssignedToVehicle(long vehicleId, Connection conn) throws SQLException;
+
+    boolean isVehicleAvailable(long vehicleId, Connection conn) throws SQLException;
+
+    int fetchVehicleCapacity(long vehicleId, Connection conn) throws SQLException;
+
+    void updateDispatchTimings(long dispatchId,
+                               LocalDateTime departTs,
+                               LocalDateTime arriveTs,
+                               LocalDateTime podTs,
+                               String podRef,
+                               String updatedBy,
+                               Connection conn) throws SQLException;
+}
+
 

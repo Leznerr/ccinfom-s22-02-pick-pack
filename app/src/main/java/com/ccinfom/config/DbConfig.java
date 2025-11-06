@@ -1,5 +1,5 @@
 /*
- * CCINFOM — Phase D
+ * CCINFOM â€" Phase D
  * File: DbConfig.java
  * Purpose: Load DB settings from environment variables or a properties file.
  *          The load order is: 
@@ -18,11 +18,11 @@
  *
  * Definition of Done:
  *  - Calling new DbConfig().getHost()/getUser() returns correct values.
- *  - If a required key is missing → clear error message, no NPEs.
+ *  - If a required key is missing â†' clear error message, no NPEs.
  *  - Unit smoke: can print "DB host: <host>" without exposing secrets.
  *
  * Pitfalls:
- *  - Don’t swallow exceptions (bubble them up with context).
+ *  - Donâ€™t swallow exceptions (bubble them up with context).
  *  - Keep this class immutable after construction.
  */
 
@@ -144,3 +144,4 @@ public class DbConfig {
         }
     }
 }
+

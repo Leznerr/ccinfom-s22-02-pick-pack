@@ -1,5 +1,5 @@
 /*
- * CCINFOM — Phase D
+ * CCINFOM â€" Phase D
  * File: <ModelName>.java
  * Purpose: Simple data holder that mirrors table <table_name>.
  *
@@ -27,7 +27,7 @@ public class PickTicketHdr {
         Packed("Packed"),
         Dispatched("Dispatched"),
         Delivered("Delivered"),
-        ShortClosed("Short-Closed");
+        ShortClosed("Closed");
 
         private final String dbValue;
 
@@ -106,3 +106,4 @@ public class PickTicketHdr {
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
  }
+
