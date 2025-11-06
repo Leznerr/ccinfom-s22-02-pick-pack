@@ -78,6 +78,18 @@ public class PickingDaoImpl implements PickingDao {
         return null;
     }
 
+    public PickingHdr findByPickingId(long pickingId) throws SQLException {
+        String sql = "SELECT * FROM picking_hdr WHERE picking_id = ?";
+        try (Connection conn = DbConnection.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, pickingId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) return mapHeader(rs);
+            }
+        }
+        return null;
+    }
+
     public List<PickingLine> listLinesByPickingId(long pickingId) throws SQLException {
         String sql = "SELECT * FROM picking_line WHERE picking_id = ?";
         List<PickingLine> lines = new ArrayList<>();
@@ -92,6 +104,22 @@ public class PickingDaoImpl implements PickingDao {
             }
         }
         return lines;
+    }
+
+    public List<PickingHdr> listByStatus(String status) throws SQLException {
+        String sql = "SELECT * FROM picking_hdr WHERE picking_status = ? ORDER BY updated_at DESC";
+        List<PickingHdr> list = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapHeader(rs));
+                }
+            }
+        }
+        return list;
     }
 
     // -------------------- MAPPING HELPERS --------------------

@@ -20,24 +20,26 @@ import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Phase E UI form for Transaction T3 - Pack Boxes.
  *
- * <p>This class delivers the Member 1 responsibilities for the T3 Swing shell:
- * wiring the UI to the service layer, loading completed picking sessions from
- * {@link PickingDaoImpl}, displaying picking lines in a table, allowing the user
- * to edit packed quantities, adding lines to a {@link PackBox} via
- * {@link PackServiceImpl}, and sealing the box when packing is complete.</p>
+ * <p>Handles loading "Done" picking sessions, displaying lines,
+ * adding them to boxes, and sealing when complete.</p>
  */
 public class PackForm extends JFrame {
 
     private static final long serialVersionUID = 1L;
+    private static final String STATUS_DONE = "Done";
+    private static final String SOURCE_REF = "ui-T3-pack";
+    private static final String SEAL_METHOD = "tape";
 
     private final PackServiceImpl packService;
     private final PickingDaoImpl pickingDao;
+    private final TicketDaoImpl ticketDao;
 
     // UI Components
     private JComboBox<ComboItem<Long>> pickingCombo;
@@ -58,7 +60,7 @@ public class PackForm extends JFrame {
     public PackForm() {
         super("T3: Pack Boxes");
 
-        // Services
+        // Initialize services
         this.packService = new PackServiceImpl(
                 new PackDaoImpl(),
                 new PickingDaoImpl(),
@@ -66,6 +68,7 @@ public class PackForm extends JFrame {
                 new LookupDaoImpl()
         );
         this.pickingDao = new PickingDaoImpl();
+        this.ticketDao = new TicketDaoImpl();
 
         initializeComponents();
         layoutComponents();
@@ -95,7 +98,13 @@ public class PackForm extends JFrame {
         setLayout(new BorderLayout(8, 8));
         ((JPanel) getContentPane()).setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Top Panel - Picking Session
+        // Status Panel
+        add(statusPanel, BorderLayout.NORTH);
+
+        // Center Panel
+        JPanel centerPanel = new JPanel(new BorderLayout(8, 8));
+
+        // Picking Session Panel
         JPanel sessionPanel = new JPanel(new GridBagLayout());
         sessionPanel.setBorder(BorderFactory.createTitledBorder("Picking Session"));
 
@@ -119,16 +128,19 @@ public class PackForm extends JFrame {
         JScrollPane tableScroll = new JScrollPane(lineTable);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Picking Lines"));
 
-        // Action Panel
+        // Action Panel (bottom buttons)
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
         actionPanel.add(addButton);
         actionPanel.add(sealButton);
         actionPanel.add(resetButton);
 
-        add(statusPanel, BorderLayout.NORTH);
-        add(sessionPanel, BorderLayout.BEFORE_FIRST_LINE);
-        add(tableScroll, BorderLayout.CENTER);
-        add(actionPanel, BorderLayout.SOUTH);
+        // Add components to center panel
+        centerPanel.add(sessionPanel, BorderLayout.NORTH);
+        centerPanel.add(tableScroll, BorderLayout.CENTER);
+        centerPanel.add(actionPanel, BorderLayout.SOUTH);
+
+        // Add center panel to frame
+        add(centerPanel, BorderLayout.CENTER);
     }
 
     private void registerEventHandlers() {
@@ -138,27 +150,19 @@ public class PackForm extends JFrame {
         resetButton.addActionListener(e -> resetForm());
     }
 
+    // Loads only picking sessions that are "Done" (ready to pack)
     private void loadPickingSessions() {
         UiTaskRunner.run(statusPanel,
                 "Loading picking sessions...",
                 "Picking sessions loaded.",
-                () -> {
-                    List<PickingHdr> list = new ArrayList<>();
-                    for (long id = 1; id <= 10; id++) {
-                        try {
-                            PickingHdr hdr = pickingDao.findByTicketId(id);
-                            if (hdr != null) list.add(hdr);
-                        } catch (SQLException ignored) {}
-                    }
-                    return list;
-                },
+                () -> pickingDao.listByStatus(STATUS_DONE),
                 sessions -> {
                     pickingCombo.removeAllItems();
                     for (PickingHdr hdr : sessions) {
                         pickingCombo.addItem(new ComboItem<>(hdr.getPickingId(),
                                 "Picking #" + hdr.getPickingId() + " (Ticket " + hdr.getPickTicketId() + ")"));
                     }
-                    if (sessions.isEmpty()) statusPanel.setInfo("No picking sessions available.");
+                    if (sessions.isEmpty()) statusPanel.setInfo("No 'Done' picking sessions available.");
                 },
                 ex -> statusPanel.setError("Failed to load sessions: " + ex.getMessage()));
     }
@@ -190,7 +194,8 @@ public class PackForm extends JFrame {
                     if (!lines.isEmpty()) {
                         currentPickingId = pickingId;
                         try {
-                            PickingHdr hdr = pickingDao.findByTicketId(lines.get(0).getTicketLineId());
+                            // Correct lookup: find header by pickingId
+                            PickingHdr hdr = pickingDao.findByPickingId(pickingId);
                             currentPickTicketId = hdr != null ? hdr.getPickTicketId() : -1;
                         } catch (SQLException e) {
                             currentPickTicketId = -1;
@@ -225,23 +230,38 @@ public class PackForm extends JFrame {
                 "Packing lines...",
                 "Lines packed successfully.",
                 () -> {
+                    String user = currentUser();
+                    String ref = SOURCE_REF;
+
+                    if (currentPickTicketId < 0) {
+                        throw new ValidationException("NO_TICKET", "Missing pick ticket for selected picking session.");
+                    }
+
+                    // Create new box if none exists
                     if (currentBoxId < 0) {
                         PackBox newBox = new PackBox();
                         newBox.setPickTicketId(currentPickTicketId);
                         newBox.setPickingId(currentPickingId);
                         newBox.setSealedFlag(false);
-                        newBox.setSourceRef("ui-T3");
-                        newBox.setCreatedBy("ui");
-                        newBox.setUpdatedBy("ui");
+                        newBox.setSourceRef(ref);
+                        newBox.setCreatedBy(user);
+                        newBox.setUpdatedBy(user);
+                        newBox.setCreatedAt(LocalDateTime.now());
+                        newBox.setUpdatedAt(LocalDateTime.now());
                         currentBoxId = packService.createBox(newBox);
                     }
-                    packService.addLines(currentBoxId, lineTableModel.toPackBoxLines());
+                    packService.addLines(currentBoxId, lineTableModel.toPackBoxLines(user, ref));
                     return true;
                 },
-                result -> statusPanel.setSuccess("Box #" + currentBoxId + " updated."),
+                result -> {
+                    statusPanel.setSuccess("Box #" + currentBoxId + " updated.");
+                    resetForm();
+                },
                 err -> {
-                    String msg = (err instanceof ValidationException) ? ((ValidationException) err).getMessage() : err.getMessage();
-                    statusPanel.setError("Failed to pack: " + msg);
+                    if (err instanceof ValidationException ve)
+                        statusPanel.setError(ve.getCode() + ": " + ve.getMessage());
+                    else
+                        statusPanel.setError("Failed to pack: " + err.getMessage());
                 });
     }
 
@@ -250,16 +270,34 @@ public class PackForm extends JFrame {
             statusPanel.setError("No active box to seal.");
             return;
         }
+
+        // Ask user for confirmation
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Seal this box?", "Confirm", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
         UiTaskRunner.run(statusPanel,
                 "Sealing box...",
                 "Box sealed successfully.",
                 () -> {
-                    packService.sealBox(currentBoxId, "tape", "ui");
+                    // Perform sealing inside background task
+                    String user = currentUser();
+                    packService.sealBox(currentBoxId, SEAL_METHOD, user);
                     return true;
                 },
                 ok -> {
-                    statusPanel.setSuccess("Box #" + currentBoxId + " sealed.");
-                    currentBoxId = -1;
+                    // After sealing completes, verify ticket status (handle SQLException safely)
+                    try {
+                        boolean packed = packService.isTicketPacked(currentPickTicketId);
+                        if (packed) {
+                            statusPanel.setSuccess("Box #" + currentBoxId + " sealed. Ticket is now Packed.");
+                        } else {
+                            statusPanel.setInfo("Box sealed, but ticket not yet updated to 'Packed'.");
+                        }
+                    } catch (SQLException e) {
+                        statusPanel.setError("Failed to verify ticket status: " + e.getMessage());
+                    }
+                    resetForm(); // refresh combo and table
                 },
                 err -> statusPanel.setError(err.getMessage()));
     }
@@ -270,6 +308,10 @@ public class PackForm extends JFrame {
         currentBoxId = currentPickingId = currentPickTicketId = -1;
         statusPanel.setInfo("Ready");
         loadPickingSessions();
+    }
+
+    private String currentUser() {
+        return System.getProperty("user.name", "ui");
     }
 
     // --- Inner Classes for Table Model and Entry ---
@@ -296,12 +338,16 @@ public class PackForm extends JFrame {
         public void setPackedQty(BigDecimal packedQty) { this.packedQty = packedQty; }
         public String getUom() { return uom; }
 
-        public PackBoxLine toPackBoxLine() {
+        public PackBoxLine toPackBoxLine(String user, String ref) {
             PackBoxLine line = new PackBoxLine();
             line.setPickingLineId(pickingLineId);
             line.setPackedQty(packedQty);
             line.setUom(uom);
-            line.setSourceRef("ui-T3-pack");
+            line.setSourceRef(ref);
+            line.setCreatedBy(user);
+            line.setUpdatedBy(user);
+            line.setCreatedAt(LocalDateTime.now());
+            line.setUpdatedAt(LocalDateTime.now());
             return line;
         }
     }
@@ -332,7 +378,7 @@ public class PackForm extends JFrame {
         @Override
         public Object getValueAt(int row, int column) {
             PackLineEntry line = lines.get(row);
-            return switch(column) {
+            return switch (column) {
                 case 0 -> line.getPickingLineId();
                 case 1 -> line.getProductId();
                 case 2 -> line.getPickedQty();
@@ -344,7 +390,7 @@ public class PackForm extends JFrame {
 
         @Override
         public void setValueAt(Object value, int row, int column) {
-            if(column == 3) {
+            if (column == 3) {
                 try {
                     BigDecimal packed = new BigDecimal(value.toString());
                     lines.get(row).setPackedQty(packed);
@@ -353,14 +399,24 @@ public class PackForm extends JFrame {
             }
         }
 
-        public void addLine(PackLineEntry line) { lines.add(line); fireTableRowsInserted(lines.size()-1, lines.size()-1); }
+        public void addLine(PackLineEntry line) {
+            lines.add(line);
+            fireTableRowsInserted(lines.size() - 1, lines.size() - 1);
+        }
+
         public List<PackLineEntry> getLines() { return new ArrayList<>(lines); }
-        public List<PackBoxLine> toPackBoxLines() {
+
+        public List<PackBoxLine> toPackBoxLines(String user, String ref) {
             List<PackBoxLine> boxLines = new ArrayList<>();
-            for(PackLineEntry entry : lines) boxLines.add(entry.toPackBoxLine());
+            for (PackLineEntry entry : lines) boxLines.add(entry.toPackBoxLine(user, ref));
             return boxLines;
         }
-        public void clear() { int size = lines.size(); lines.clear(); if(size>0) fireTableRowsDeleted(0, size-1); }
+
+        public void clear() {
+            int size = lines.size();
+            lines.clear();
+            if (size > 0) fireTableRowsDeleted(0, size - 1);
+        }
     }
 
     public static void main(String[] args) {
