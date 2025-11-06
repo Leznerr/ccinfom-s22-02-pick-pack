@@ -170,6 +170,10 @@ public class PickingService {
                 line.setUpdatedBy(SYSTEM_USER);
             }
         }
+        String actor = pickedItems.get(0).getUpdatedBy();
+        if (actor == null || actor.isBlank()) {
+            actor = SYSTEM_USER;
+        }
 
         Connection conn = null;
         try {
@@ -196,6 +200,8 @@ public class PickingService {
                         line.getUpdatedBy()
                 );
             }
+
+            pickingDao.updatePickingStatus(pickingId, "Done", actor, conn);
 
             conn.commit();
             logger.info("Saved " + pickedItems.size() +

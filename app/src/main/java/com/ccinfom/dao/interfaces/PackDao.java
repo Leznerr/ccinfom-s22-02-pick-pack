@@ -20,6 +20,7 @@ public interface PackDao {
     void sealBox(long boxId, String sealMethod, String updatedBy, Connection conn) throws SQLException;
 
     Optional<PackBox> findBoxById(long boxId, Connection conn) throws SQLException;
+    Optional<PackBox> findOpenBoxByPickingId(long pickingId, Connection conn) throws SQLException;
 
     List<PackBoxLine> listLinesByBoxId(long boxId, Connection conn) throws SQLException;
 

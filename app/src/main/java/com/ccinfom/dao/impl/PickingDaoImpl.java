@@ -7,6 +7,7 @@ import com.ccinfom.model.PickingLine;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 public class PickingDaoImpl implements PickingDao {
 
@@ -120,6 +121,33 @@ public class PickingDaoImpl implements PickingDao {
             }
         }
         return list;
+    }
+
+    @Override
+    public void updatePickingStatus(long pickingId, String status, String updatedBy, Connection conn) throws SQLException {
+        final boolean markDone = "Done".equalsIgnoreCase(status);
+        final String sql = markDone
+                ? """
+                    UPDATE picking_hdr
+                       SET picking_status = ?, completed_at = CURRENT_TIMESTAMP,
+                           updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                     WHERE picking_id = ?
+                  """
+                : """
+                    UPDATE picking_hdr
+                       SET picking_status = ?, completed_at = NULL,
+                           updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                     WHERE picking_id = ?
+                  """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            stmt.setString(2, updatedBy);
+            stmt.setLong(3, pickingId);
+            int affected = stmt.executeUpdate();
+            if (affected == 0) {
+                throw new SQLException("Failed to update picking status for picking_id=" + pickingId);
+            }
+        }
     }
 
     // -------------------- MAPPING HELPERS --------------------

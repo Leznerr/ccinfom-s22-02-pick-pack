@@ -13,16 +13,18 @@ import com.ccinfom.service.impl.PackServiceImpl;
 import com.ccinfom.ui.common.ComboItem;
 import com.ccinfom.ui.common.StatusPanel;
 import com.ccinfom.ui.common.UiTaskRunner;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.AbstractTableModel;
 
 /**
  * Phase E UI form for Transaction T3 - Pack Boxes.
@@ -51,6 +53,7 @@ public class PackForm extends JFrame {
     private StatusPanel statusPanel;
 
     private PackLineTableModel lineTableModel;
+    private boolean boxReadyToSeal;
 
     // State
     private long currentBoxId = -1;
@@ -71,6 +74,7 @@ public class PackForm extends JFrame {
         this.ticketDao = new TicketDaoImpl();
 
         initializeComponents();
+        enterSelectionState();
         layoutComponents();
         registerEventHandlers();
         loadPickingSessions();
@@ -92,6 +96,9 @@ public class PackForm extends JFrame {
         resetButton = new JButton("Reset");
 
         statusPanel = new StatusPanel();
+
+        sealButton.setEnabled(false);
+        boxReadyToSeal = false;
     }
 
     private void layoutComponents() {
@@ -147,22 +154,40 @@ public class PackForm extends JFrame {
         loadLinesButton.addActionListener(e -> onLoadPickingLines());
         addButton.addActionListener(e -> onAddToBox());
         sealButton.addActionListener(e -> onSealBox());
-        resetButton.addActionListener(e -> resetForm());
+        resetButton.addActionListener(e -> onReset());
     }
 
     // Loads only picking sessions that are "Done" (ready to pack)
     private void loadPickingSessions() {
+        loadPickingSessions(null, null);
+    }
+
+    private void loadPickingSessions(String followUpMessage, StatusType followUpType) {
         UiTaskRunner.run(statusPanel,
                 "Loading picking sessions...",
-                "Picking sessions loaded.",
+                null,
                 () -> pickingDao.listByStatus(STATUS_DONE),
                 sessions -> {
                     pickingCombo.removeAllItems();
+                    pickingCombo.setSelectedItem(null);
+                    pickingCombo.revalidate();
+                    pickingCombo.repaint();
                     for (PickingHdr hdr : sessions) {
                         pickingCombo.addItem(new ComboItem<>(hdr.getPickingId(),
                                 "Picking #" + hdr.getPickingId() + " (Ticket " + hdr.getPickTicketId() + ")"));
                     }
-                    if (sessions.isEmpty()) statusPanel.setInfo("No 'Done' picking sessions available.");
+
+                    if (followUpMessage != null) {
+                        if (followUpType == StatusType.SUCCESS) {
+                            statusPanel.setSuccess(followUpMessage);
+                        } else {
+                            statusPanel.setInfo(followUpMessage);
+                        }
+                    } else if (sessions.isEmpty()) {
+                        statusPanel.setInfo("No 'Done' picking sessions available.");
+                    } else {
+                        statusPanel.setSuccess("Picking sessions loaded.");
+                    }
                 },
                 ex -> statusPanel.setError("Failed to load sessions: " + ex.getMessage()));
     }
@@ -181,6 +206,23 @@ public class PackForm extends JFrame {
                 () -> pickingDao.listLinesByPickingId(pickingId),
                 lines -> {
                     lineTableModel.clear();
+
+                    Map<Long, PackBoxLine> existingLines = new HashMap<>();
+                    currentBoxId = -1;
+                    try {
+                        Optional<PackBox> openBox = packService.findOpenBox(pickingId);
+                        if (openBox.isPresent()) {
+                            currentBoxId = openBox.get().getBoxId();
+                            List<PackBoxLine> packedLines = packService.listLinesByBoxId(currentBoxId);
+                            for (PackBoxLine packed : packedLines) {
+                                existingLines.put(packed.getPickingLineId(), packed);
+                            }
+                        }
+                    } catch (SQLException e) {
+                        statusPanel.setError("Failed to load existing box: " + e.getMessage());
+                        return;
+                    }
+
                     for (PickingLine line : lines) {
                         PackLineEntry entry = new PackLineEntry(
                                 line.getPickingLineId(),
@@ -188,17 +230,34 @@ public class PackForm extends JFrame {
                                 line.getPickedQty(),
                                 line.getUom()
                         );
+                        PackBoxLine packed = existingLines.get(line.getPickingLineId());
+                        if (packed != null) {
+                            entry.setPackedQty(packed.getPackedQty());
+                            entry.setBoxed(true);
+                        }
                         lineTableModel.addLine(entry);
                     }
 
                     if (!lines.isEmpty()) {
                         currentPickingId = pickingId;
                         try {
-                            // Correct lookup: find header by pickingId
                             PickingHdr hdr = pickingDao.findByPickingId(pickingId);
                             currentPickTicketId = hdr != null ? hdr.getPickTicketId() : -1;
                         } catch (SQLException e) {
                             currentPickTicketId = -1;
+                        }
+
+                        if (currentBoxId > 0) {
+                            if (lineTableModel.hasPendingLines()) {
+                                statusPanel.setInfo("Box #" + currentBoxId + " reopened. Pack remaining lines then seal.");
+                                enterSelectionState();
+                            } else {
+                                boxReadyToSeal = true;
+                                enterSealingState();
+                                statusPanel.setInfo("Box #" + currentBoxId + " already packed. Seal to complete.");
+                            }
+                        } else {
+                            enterSelectionState();
                         }
                     } else {
                         statusPanel.setInfo("No picking lines found for this session.");
@@ -226,11 +285,24 @@ public class PackForm extends JFrame {
             return;
         }
 
+        final String user = currentUser();
+        List<PackBoxLine> linesToAdd = lineTableModel.toPackBoxLines(user, SOURCE_REF);
+        if (linesToAdd.isEmpty()) {
+            boxReadyToSeal = true;
+            enterSealingState();
+            statusPanel.setInfo("All picking lines are already boxed. Seal the box to complete packing.");
+            return;
+        }
+
+        List<Long> lineIdsToMark = new ArrayList<>();
+        for (PackBoxLine boxLine : linesToAdd) {
+            lineIdsToMark.add(boxLine.getPickingLineId());
+        }
+
         UiTaskRunner.run(statusPanel,
                 "Packing lines...",
-                "Lines packed successfully.",
+                null,
                 () -> {
-                    String user = currentUser();
                     String ref = SOURCE_REF;
 
                     if (currentPickTicketId < 0) {
@@ -250,12 +322,20 @@ public class PackForm extends JFrame {
                         newBox.setUpdatedAt(LocalDateTime.now());
                         currentBoxId = packService.createBox(newBox);
                     }
-                    packService.addLines(currentBoxId, lineTableModel.toPackBoxLines(user, ref));
-                    return true;
+                    packService.addLines(currentBoxId, linesToAdd);
+                    return lineIdsToMark;
                 },
-                result -> {
-                    statusPanel.setSuccess("Box #" + currentBoxId + " updated.");
-                    resetForm();
+                ids -> {
+                    lineTableModel.markAsBoxed(ids);
+                    if (lineTableModel.hasPendingLines()) {
+                        boxReadyToSeal = false;
+                        enterSelectionState();
+                        statusPanel.setSuccess("Box #" + currentBoxId + " updated. Pack remaining lines or seal when finished.");
+                    } else {
+                        boxReadyToSeal = true;
+                        enterSealingState();
+                        statusPanel.setSuccess("Box #" + currentBoxId + " updated. Seal the box to complete packing.");
+                    }
                 },
                 err -> {
                     if (err instanceof ValidationException ve)
@@ -278,40 +358,87 @@ public class PackForm extends JFrame {
 
         UiTaskRunner.run(statusPanel,
                 "Sealing box...",
-                "Box sealed successfully.",
+                null,
                 () -> {
-                    // Perform sealing inside background task
                     String user = currentUser();
                     packService.sealBox(currentBoxId, SEAL_METHOD, user);
                     return true;
                 },
                 ok -> {
-                    // After sealing completes, verify ticket status (handle SQLException safely)
+                    String followUpMessage;
+                    StatusType followUpType;
                     try {
                         boolean packed = packService.isTicketPacked(currentPickTicketId);
                         if (packed) {
-                            statusPanel.setSuccess("Box #" + currentBoxId + " sealed. Ticket is now Packed.");
+                            followUpMessage = "Box #" + currentBoxId + " sealed. Ticket is now Packed.";
+                            followUpType = StatusType.SUCCESS;
                         } else {
-                            statusPanel.setInfo("Box sealed, but ticket not yet updated to 'Packed'.");
+                            followUpMessage = "Box sealed, but ticket not yet updated to 'Packed'.";
+                            followUpType = StatusType.INFO;
                         }
                     } catch (SQLException e) {
-                        statusPanel.setError("Failed to verify ticket status: " + e.getMessage());
+                        boxReadyToSeal = false;
+                        resetForm("Box sealed, but status verification failed: " + e.getMessage(), StatusType.INFO);
+                        return;
                     }
-                    resetForm(); // refresh combo and table
+                    boxReadyToSeal = false;
+                    resetForm(followUpMessage, followUpType);
                 },
                 err -> statusPanel.setError(err.getMessage()));
     }
 
+    private void onReset() {
+        if (boxReadyToSeal && currentBoxId > 0) {
+            int choice = JOptionPane.showConfirmDialog(this,
+                    "This will abandon Box #" + currentBoxId + " that is waiting to be sealed. Continue?",
+                    "Confirm Reset", JOptionPane.YES_NO_OPTION);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+        resetForm();
+    }
+
     private void resetForm() {
+        resetForm(null, null);
+    }
+
+    private void resetForm(String followUpMessage, StatusType type) {
         lineTableModel.clear();
         pickingCombo.removeAllItems();
+        pickingCombo.setSelectedItem(null);
         currentBoxId = currentPickingId = currentPickTicketId = -1;
-        statusPanel.setInfo("Ready");
-        loadPickingSessions();
+        boxReadyToSeal = false;
+        enterSelectionState();
+        if (followUpMessage == null) {
+            statusPanel.setInfo("Ready");
+        }
+        loadPickingSessions(followUpMessage, type);
     }
 
     private String currentUser() {
         return System.getProperty("user.name", "ui");
+    }
+
+    private enum StatusType {
+        SUCCESS,
+        INFO
+    }
+
+    private void enterSelectionState() {
+        pickingCombo.setEnabled(true);
+        loadLinesButton.setEnabled(true);
+        lineTable.setEnabled(true);
+        addButton.setEnabled(true);
+        sealButton.setEnabled(false);
+    }
+
+    private void enterSealingState() {
+        pickingCombo.setEnabled(false);
+        loadLinesButton.setEnabled(false);
+        lineTable.setEnabled(false);
+        addButton.setEnabled(false);
+        sealButton.setEnabled(true);
     }
 
     // --- Inner Classes for Table Model and Entry ---
@@ -321,6 +448,7 @@ public class PackForm extends JFrame {
         private final long productId;
         private final BigDecimal pickedQty;
         private BigDecimal packedQty;
+        private boolean boxed;
         private final String uom;
 
         public PackLineEntry(long pickingLineId, long productId, BigDecimal pickedQty, String uom) {
@@ -329,6 +457,7 @@ public class PackForm extends JFrame {
             this.pickedQty = pickedQty;
             this.packedQty = pickedQty;
             this.uom = uom;
+            this.boxed = false;
         }
 
         public long getPickingLineId() { return pickingLineId; }
@@ -337,6 +466,8 @@ public class PackForm extends JFrame {
         public BigDecimal getPackedQty() { return packedQty; }
         public void setPackedQty(BigDecimal packedQty) { this.packedQty = packedQty; }
         public String getUom() { return uom; }
+        public boolean isBoxed() { return boxed; }
+        public void setBoxed(boolean boxed) { this.boxed = boxed; }
 
         public PackBoxLine toPackBoxLine(String user, String ref) {
             PackBoxLine line = new PackBoxLine();
@@ -373,7 +504,10 @@ public class PackForm extends JFrame {
         @Override
         public String getColumnName(int column) { return COLUMN_NAMES[column]; }
         @Override
-        public boolean isCellEditable(int row, int column) { return column == 3; }
+        public boolean isCellEditable(int row, int column) {
+            if (column != 3) return false;
+            return !lines.get(row).isBoxed();
+        }
 
         @Override
         public Object getValueAt(int row, int column) {
@@ -393,7 +527,10 @@ public class PackForm extends JFrame {
             if (column == 3) {
                 try {
                     BigDecimal packed = new BigDecimal(value.toString());
-                    lines.get(row).setPackedQty(packed);
+                    PackLineEntry entry = lines.get(row);
+                    if (!entry.isBoxed()) {
+                        entry.setPackedQty(packed);
+                    }
                     fireTableCellUpdated(row, column);
                 } catch (NumberFormatException ignored) {}
             }
@@ -408,7 +545,11 @@ public class PackForm extends JFrame {
 
         public List<PackBoxLine> toPackBoxLines(String user, String ref) {
             List<PackBoxLine> boxLines = new ArrayList<>();
-            for (PackLineEntry entry : lines) boxLines.add(entry.toPackBoxLine(user, ref));
+            for (PackLineEntry entry : lines) {
+                if (!entry.isBoxed()) {
+                    boxLines.add(entry.toPackBoxLine(user, ref));
+                }
+            }
             return boxLines;
         }
 
@@ -416,6 +557,26 @@ public class PackForm extends JFrame {
             int size = lines.size();
             lines.clear();
             if (size > 0) fireTableRowsDeleted(0, size - 1);
+        }
+
+        public boolean hasPendingLines() {
+            for (PackLineEntry entry : lines) {
+                if (!entry.isBoxed()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void markAsBoxed(List<Long> pickingLineIds) {
+            if (pickingLineIds == null || pickingLineIds.isEmpty()) return;
+            for (int i = 0; i < lines.size(); i++) {
+                PackLineEntry entry = lines.get(i);
+                if (pickingLineIds.contains(entry.getPickingLineId())) {
+                    entry.setBoxed(true);
+                    fireTableRowsUpdated(i, i);
+                }
+            }
         }
     }
 

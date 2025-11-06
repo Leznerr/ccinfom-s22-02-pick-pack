@@ -28,4 +28,5 @@ public interface PickingDao {
     void insertPickingLines(long pickingId, List<PickingLine> lines, Connection conn) throws SQLException;
     PickingHdr findByTicketId(long pickTicketId) throws SQLException;
     List<PickingLine> listLinesByPickingId(long pickingId) throws SQLException;
+    void updatePickingStatus(long pickingId, String status, String updatedBy, Connection conn) throws SQLException;
 }

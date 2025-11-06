@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -188,6 +189,20 @@ public class PackServiceImpl implements PackService {
     public boolean isTicketPacked(long pickTicketId) throws SQLException {
         try (Connection conn = DbConnection.getConnection()) {
             return packDao.isTicketFullyPacked(pickTicketId, conn);
+        }
+    }
+
+    @Override
+    public Optional<PackBox> findOpenBox(long pickingId) throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return packDao.findOpenBoxByPickingId(pickingId, conn);
+        }
+    }
+
+    @Override
+    public List<PackBoxLine> listLinesByBoxId(long boxId) throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return packDao.listLinesByBoxId(boxId, conn);
         }
     }
 

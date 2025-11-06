@@ -104,6 +104,27 @@ public class PackDaoImpl implements PackDao {
     }
 
     @Override
+    public Optional<PackBox> findOpenBoxByPickingId(long pickingId, Connection conn) throws SQLException {
+        String sql = """
+            SELECT *
+              FROM pack_box_hdr
+             WHERE picking_id = ?
+               AND sealed_flag = 0
+             ORDER BY updated_at DESC
+             LIMIT 1
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, pickingId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapBox(rs));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public List<PackBoxLine> listLinesByBoxId(long boxId, Connection conn) throws SQLException {
         String sql = "SELECT * FROM pack_box_line WHERE box_id = ?";
         List<PackBoxLine> lines = new ArrayList<>();
