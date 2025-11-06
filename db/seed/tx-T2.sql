@@ -169,6 +169,21 @@ SELECT @picking_b, b.ticket_line_id, b.product_id,
        );
 
 -- ----------------------------------------------------------
+-- 6b) Refresh reserved quantities now that picking lines exist
+-- ----------------------------------------------------------
+UPDATE products p
+JOIN tmp_needed n
+  ON n.product_id = p.product_id
+   SET p.reserved_qty = (
+         SELECT COALESCE(SUM(pl.picked_qty), 0)
+           FROM picking_line pl
+          WHERE pl.product_id = p.product_id
+     ),
+       p.updated_at = CURRENT_TIMESTAMP,
+       p.updated_by = 'seed'
+ WHERE @can_pick = 1;
+
+-- ----------------------------------------------------------
 -- 7) If Ticket A fully satisfied, mark its picking as 'Done'
 --    Leave B as 'Picking' (by design for demo)
 -- ----------------------------------------------------------

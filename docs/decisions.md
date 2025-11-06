@@ -1,4 +1,4 @@
-﻿Decisions Log
+Decisions Log
 
 DATE: 2025-09-25
 AREA: Phase B scope
@@ -49,7 +49,7 @@ RATIONALE: City is mandatory for routing; address/contacts enable labeling and r
 
 
 DATE: 2025-09-25
-AREA: Branch â†” Customer link (cores)
+AREA: Branch ↔ Customer link (cores)
 DECISION: No core FK linkage; association handled in transactions and UI cross-reference.
 RATIONALE: Keeps masters decoupled; operational link is explicit on tickets/dispatches; easier customer/site merges.
 
@@ -57,12 +57,12 @@ RATIONALE: Keeps masters decoupled; operational link is explicit on tickets/disp
 DATE: 2025-09-25
 AREA: Charset/engine
 DECISION: Use server defaults (no explicit ENGINE/collation in Phase B).
-RATIONALE: Maximizes portability across lab machines and dump/restore; weâ€™ll lock collation only if needed.
+RATIONALE: Maximizes portability across lab machines and dump/restore; we’ll lock collation only if needed.
 
 
 DATE: 2025-09-25
 AREA: Seeds policy (cores)
-DECISION: â‰¥ 10 normal + â‰¥ 3 exception rows per core; normal rows match real data; exceptions are insert-only (no intended UNIQUE/FK failures).
+DECISION: ≥ 10 normal + ≥ 3 exception rows per core; normal rows match real data; exceptions are insert-only (no intended UNIQUE/FK failures).
 RATIONALE: Ensures realistic demos and QA coverage without breaking loads; negative cases will be shown via separate demos/QA, not failing seeds.
 
 
@@ -73,21 +73,21 @@ RATIONALE: Keeps DB flexible while letting QA flag non-compliant inputs.
 
 
 DATE: 2025-09-25
-AREA: Vehicles â€œavailableâ€ in normal seeds
+AREA: Vehicles “available” in normal seeds
 DECISION: All normal vehicle seeds default to vehicle_status='available'.
 RATIONALE: Simplifies early scheduling demos; exception seeds cover maintenance/inactive.
 
 
 DATE: 2025-09-25
 AREA: Validation harness (Phase B)
-DECISION: qa/validation_queries.sql implements Gate A (counts), Gate B (audit trio), Gate C (domain: non-negatives, email '@', phone regex, reservedâ‰¤on_hand), Gate D (surface exceptions).
+DECISION: qa/validation_queries.sql implements Gate A (counts), Gate B (audit trio), Gate C (domain: non-negatives, email '@', phone regex, reserved≤on_hand), Gate D (surface exceptions).
 RATIONALE: Repeatable acceptance for cores on any clean DB; catches regressions quickly.
 
 
 DATE: 2025-09-28
 AREA: Phase C scope & sequence
-DECISION: Implement T1 (Pick Ticket) and T2 (Allocate & Pick) first; freeze columns/enums; then proceed to Java Swing bootstrap; T3â€“T5 follow.
-RATIONALE: T2 contains the hardest rule (reserved vs on_hand); freezing the contract early de-risks later transactions and UI; matches rubricâ€™s â€œDDL â†’ Seeds â†’ Validation â†’ Demo â†’ UIâ€ slice.
+DECISION: Implement T1 (Pick Ticket) and T2 (Allocate & Pick) first; freeze columns/enums; then proceed to Java Swing bootstrap; T3–T5 follow.
+RATIONALE: T2 contains the hardest rule (reserved vs on_hand); freezing the contract early de-risks later transactions and UI; matches rubric’s “DDL → Seeds → Validation → Demo → UI” slice.
 
 
 DATE: 2025-09-28
@@ -100,9 +100,9 @@ pick_ticket_line (FK: product; requested_qty DECIMAL(12,2) > 0; UNIQUE(pick_tick
 
 picking_hdr (FKs: pick_ticket, picker; picking_status ENUM('Picking','Done','Cancelled'); UNIQUE(pick_ticket_id); audit)
 
-picking_line (FKs: picking, product and ticket_line_id â†’ pick_ticket_line; picked_qty > 0; UNIQUE(picking_id, ticket_line_id); audit)
+picking_line (FKs: picking, product and ticket_line_id → pick_ticket_line; picked_qty > 0; UNIQUE(picking_id, ticket_line_id); audit)
 Indexes on join/status columns as listed in schema TODO.
-RATIONALE: Normalized header/line modeling supports joins, prevents duplicates, and enables line-level validation (picked â‰¤ requested).
+RATIONALE: Normalized header/line modeling supports joins, prevents duplicates, and enables line-level validation (picked ≤ requested).
 
 
 DATE: 2025-09-28
@@ -115,7 +115,7 @@ AU: reserved += (NEW - OLD)
 
 AD: reserved -= OLD.picked_qty
 
-BEFORE: compute available = on_hand - reserved; SIGNAL SQLSTATE '45000' if available < delta; ensure picked â‰¤ requested per ticket line; ensure product is active; ensure ticket_line_id matches ticket & product.
+BEFORE: compute available = on_hand - reserved; SIGNAL SQLSTATE '45000' if available < delta; ensure picked ≤ requested per ticket line; ensure product is active; ensure ticket_line_id matches ticket & product.
 RATIONALE: Deterministic, DB-enforced rule at the exact write point; eliminates UI drift; safe under concurrency.
 
 
@@ -129,7 +129,7 @@ DATE: 2025-09-28
 AREA: T1/T2 seeds (Phase C)
 DECISION:
 
-tx-T1.sql: create 3 tickets with 2â€“3 lines each (active products only).
+tx-T1.sql: create 3 tickets with 2–3 lines each (active products only).
 
 tx-T2.sql: 1 full pick + 1 partial pick; no failing inserts.
 RATIONALE: Provides clean, reproducible scenarios for demos and QA invariants.
@@ -147,9 +147,9 @@ DECISION: Extend qa/validation_queries.sql to include T1/T2 gates:
 
 Row counts for all 4 T1/T2 tables; orphans=0
 
-Î”reserved = SUM(picked) per product; reserved â‰¤ on_hand
+Δreserved = SUM(picked) per product; reserved ≤ on_hand
 
-SUM(picked) â‰¤ requested per ticket_line_id
+SUM(picked) ≤ requested per ticket_line_id
 
 Anti-join to prove picked SKU exists on ticket
 
@@ -166,23 +166,32 @@ RATIONALE: Reproducibility for graders; single source of truth for schema; stabl
 DATE: 2025-09-28
 AREA: Java sequence (heads-up for Phase D)
 DECISION: After Phase C is green, bootstrap Java Swing (config, DAO, UI shells for T1/T2) using the frozen contract; no hardcoded creds; show DB errors verbatim.
-RATIONALE: Early, live integration catches mismatches fast and sets the stage for T3â€“T5 with minimal rework.
+RATIONALE: Early, live integration catches mismatches fast and sets the stage for T3–T5 with minimal rework.
 
 
 DATE: 2025-11-01
 AREA: Phase E preflight (ID + branching)
-DECISION: Maintain `/docs/seed-id-map.md` as canonical ID register before coding; each Phaseâ€¯E seed PR must update it. Work occurs on feature branches named `feat/phase-e-<scope>` (T3, T4, infra, T5) merged into `phase-e/bootstrap-java` after tests/QA pass and peer review.
+DECISION: Maintain `/docs/seed-id-map.md` as canonical ID register before coding; each Phase E seed PR must update it. Work occurs on feature branches named `feat/phase-e-<scope>` (T3, T4, infra, T5) merged into `phase-e/bootstrap-java` after tests/QA pass and peer review.
 RATIONALE: Avoids mismatched foreign keys across seeds/demos/tests and keeps concurrent work isolated with traceable reviews.
 
 
-// TODO[E-DOC-XCUT-001] Record Phase E decisions (MySQL CHECK policy, inventory logging, PoD alignment, status transitions).
-// Why: Documentation must match final implementation to aid reviewers and defense.
-// Steps:
-//   1) Add entry noting packed_qty â‰¤ picked_qty enforced in PackService (MySQL limitation).
-//   2) Add entry stating inventory_txn_log writes only for RESERVE (T2) and CLOSE (T5).
-//   3) Clarify pod_ref/pod_ts alignment between dispatch_hdr and close_hdr, and Seed ID coordination map.
-// Acceptance:
-//   - docs/DECISIONS.md updated before Phase E merge.
-//   - README references decisions section.
-// | Links: docs/seed-id-map.md, qa/validation_queries.sql
+
+DATE: 2025-11-06
+AREA: Phase E inventory safeguards
+DECISION: Keep `packed_qty <= picked_qty` enforced in PackService (service validation + QA query) rather than cross-table CHECK constraints.
+RATIONALE: MySQL 8 still lacks relational CHECK support; centralising the rule in code keeps behaviour portable and testable.
+IMPACTS: PackServiceImpl.validatePackLine(), qa/validate.sql (packed_vs_picked) update.
+
+DATE: 2025-11-06
+AREA: Inventory logging + audit trail
+DECISION: Route all reserve/close deltas through InventoryHelper with pessimistic locking; write inventory_txn_log entries (source_ref, created_by, created_at) only when delta != 0.
+RATIONALE: Single adjustment path prevents double-counting after removing legacy triggers and satisfies audit trio requirements.
+IMPACTS: PickingService.savePickedItems(), CloseServiceImpl.closeTicket(), InventoryHelper.applyDelta().
+
+DATE: 2025-11-06
+AREA: Proof of Delivery & ID coordination
+DECISION: Align dispatch_hdr/close_hdr pod_ref + pod_ts fields and source all canonical IDs from `/docs/seed-id-map.md`; seeds reuse dispatch PoD data during close.
+RATIONALE: Ensures UI/QA flows reference the same PoD metadata and prevents divergent seed identifiers across T3�T5.
+IMPACTS: db/ddl/phaseE/dispatch.sql, db/ddl/phaseE/close.sql, db/seed/tx-T5.sql, docs/seed-id-map.md.
+
 

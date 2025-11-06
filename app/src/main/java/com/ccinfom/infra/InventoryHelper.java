@@ -79,7 +79,7 @@ public class InventoryHelper {
         INSERT INTO inventory_txn_log
             (product_id, warehouse_id, ticket_id, source_txn_type, source_txn_id,
              delta_reserved, delta_on_hand, note, source_ref, created_by, updated_by)
-        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
 
     public InventoryAdjustment applyDelta(Connection conn,
@@ -90,10 +90,13 @@ public class InventoryHelper {
                                           BigDecimal deltaReserved,
                                           BigDecimal deltaOnHand,
                                           String note,
+                                          String sourceRef,
                                           String user) throws SQLException {
         Objects.requireNonNull(conn, "Connection is required");
         Objects.requireNonNull(sourceType, "sourceType is required");
         Objects.requireNonNull(user, "user is required");
+        Objects.requireNonNull(note, "note is required");
+        Objects.requireNonNull(sourceRef, "sourceRef is required");
 
         BigDecimal deltaRes = deltaReserved == null ? BigDecimal.ZERO : deltaReserved;
         BigDecimal deltaOnh = deltaOnHand == null ? BigDecimal.ZERO : deltaOnHand;
@@ -152,8 +155,9 @@ public class InventoryHelper {
                 logStmt.setBigDecimal(5, deltaRes);
                 logStmt.setBigDecimal(6, deltaOnh);
                 logStmt.setString(7, note);
-                logStmt.setString(8, user);
+                logStmt.setString(8, sourceRef);
                 logStmt.setString(9, user);
+                logStmt.setString(10, user);
                 logStmt.executeUpdate();
             }
         }
@@ -166,9 +170,10 @@ public class InventoryHelper {
                                        long pickingLineId,
                                        long ticketId,
                                        BigDecimal quantity,
+                                       String sourceRef,
                                        String user) throws SQLException {
         return applyDelta(conn, productId, SourceTxnType.RESERVE, pickingLineId, ticketId,
-                quantity, BigDecimal.ZERO, "T2 Reserve", user);
+                quantity, BigDecimal.ZERO, "T2 Reserve", sourceRef, user);
     }
 
     public InventoryAdjustment applyCloseAdjustment(Connection conn,
@@ -178,9 +183,10 @@ public class InventoryHelper {
                                                     BigDecimal deltaReserved,
                                                     BigDecimal deltaOnHand,
                                                     String note,
+                                                    String sourceRef,
                                                     String user) throws SQLException {
         return applyDelta(conn, productId, SourceTxnType.CLOSE, closeId, ticketId,
-                deltaReserved, deltaOnHand, note, user);
+                deltaReserved, deltaOnHand, note, sourceRef, user);
     }
 }
 

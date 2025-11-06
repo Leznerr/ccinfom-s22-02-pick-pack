@@ -141,11 +141,11 @@ UI → end-to-end flow.
 
 Document successful runs in screenshots for QA.
 
-// TODO[E-DOC-XCUT-003] Update README for Phase E workflows.
-// Why: Run instructions must include Pack/Dispatch/Close forms, demo scripts, and ServiceTestRunner usage.
-// Steps:
-//   1) Add new section "Phase E Additions" summarizing T3/T4/T5 flows and launcher buttons.
-//   2) Document how to run demo-T1-to-T4.sql and demo-full-flow.sql in Workbench.
-//   3) Document how to execute PhaseEServiceTestRunner and expected outputs.
-// Acceptance: README reflects latest UI buttons, demo order, and test commands; reviewers can follow without guesswork.
-// Owner: Joshua | Links: scripts/demo, docs/decisions.md, qa/validation_queries.sql
+
+Phase E additions:
+- Launcher now exposes Pack (T3), Dispatch (T4), and Close (T5) buttons alongside T1/T2. Each form uses ComboItem dropdowns, SwingWorker loaders, and status banners so operators see validation errors (e.g., over-pack, unsealed box) immediately.
+- Database prep: `mysql -u <user> -p < db/schema.sql` then load `db/seed/tx-T1.sql` through `db/seed/tx-T5.sql` in order. Seeds rely on Phase E tables, so run schema first.
+- Demo SQL scripts: run `scripts/demo/demo-T1-to-T4.sql` for pick -> pack -> dispatch (includes exception cases) and `scripts/demo/demo-full-flow.sql` to close tickets (delivered + short). Capture console output for QA evidence.
+- Automated service tests: from `app/`, compile with `javac -encoding UTF-8 -cp "lib/*" -d bin @sources.txt` (or equivalent) then run `java -cp "bin;lib/*;src/main/resources" com.ccinfom.test.PhaseEServiceTestRunner`. Expect "Summary: 18 passed, 0 failed" once picking/pack/dispatch/close scenarios pass.
+- Manual verification: after running PhaseEServiceTestRunner, open Pack/Dispatch/Close forms in sequence with seeded tickets. Confirm ticket statuses transition Packed -> Dispatched -> Delivered/Short and inventory logs reflect reserve/delivery deltas via `inventory_txn_log`.
+

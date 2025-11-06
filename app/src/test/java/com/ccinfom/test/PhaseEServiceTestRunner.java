@@ -3,6 +3,7 @@ package com.ccinfom.test;
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.infra.InventoryHelper;
 import com.ccinfom.model.PickTicketHdr;
+import com.ccinfom.model.PickingLine;
 import com.ccinfom.model.close.CloseHeader;
 import com.ccinfom.model.close.CloseVariance;
 import com.ccinfom.model.dispatch.DispatchHeader;
@@ -12,6 +13,7 @@ import com.ccinfom.model.pack.PackBoxLine;
 import com.ccinfom.service.CloseService;
 import com.ccinfom.service.DispatchService;
 import com.ccinfom.service.PackService;
+import com.ccinfom.service.PickingService;
 import com.ccinfom.service.ValidationException;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -27,13 +29,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Executes Phase E service scenarios to validate Pack/Dispatch/Close behaviour.
+ * Executes Phase E service scenarios to validate Picking/Pack/Dispatch/Close behaviour.
  */
 public final class PhaseEServiceTestRunner {
 
     private final PackService packService = PhaseETestSupport.createPackService();
     private final DispatchService dispatchService = PhaseETestSupport.createDispatchService();
     private final CloseService closeService = PhaseETestSupport.createCloseService();
+    private final PickingService pickingService = PhaseETestSupport.createPickingService();
     private final InventoryHelper inventoryHelper = PhaseETestSupport.getInventoryHelper();
 
     private int passed;
@@ -48,6 +51,9 @@ public final class PhaseEServiceTestRunner {
 
     private void runSuite() {
         System.out.println("--- Phase E Service Test Suite ---");
+
+        run("PickingService reserves inventory and logs delta",
+                this::testPickingServiceReserveLogging);
 
         run("PackService happy path seals box and updates status",
                 () -> withTicket("pack-happy", new long[]{1L, 2L}, new double[]{2, 3}, ctx ->
@@ -102,6 +108,67 @@ public final class PhaseEServiceTestRunner {
     @FunctionalInterface
     private interface TestCase {
         void execute() throws Exception;
+    }
+
+    /* -------------------------------------------------------------
+     * Picking service tests
+     * ------------------------------------------------------------- */
+
+    private void testPickingServiceReserveLogging() throws Exception {
+        BigDecimal qty = new BigDecimal("2.00");
+        PhaseETestSupport.TestTicketContext ctx = PhaseETestSupport.createEmptyPickingSession(
+                "pick-service", new long[]{7L}, new BigDecimal[]{qty}, null);
+        try {
+            PhaseETestSupport.LineInfo info = ctx.lines.get(0);
+            BigDecimal before;
+            try (Connection conn = DbConnection.getConnection()) {
+                before = queryBigDecimal(conn,
+                        "SELECT reserved_qty FROM products WHERE product_id = ?",
+                        info.productId);
+            }
+            PickingLine line = new PickingLine();
+            line.setPickingId(ctx.pickingId);
+            line.setTicketLineId(info.ticketLineId);
+            line.setProductId(info.productId);
+            line.setPickedQty(qty);
+            line.setUom(info.uom);
+            line.setUpdatedBy("pick-test");
+            String scanRef = unique("scan");
+            line.setScanRef(scanRef);
+
+            pickingService.savePickedItems(ctx.pickingId, List.of(line));
+
+            try (Connection conn = DbConnection.getConnection()) {
+                BigDecimal reserved = queryBigDecimal(conn,
+                        "SELECT reserved_qty FROM products WHERE product_id = ?",
+                        info.productId);
+                assertEquals(before.add(qty), reserved,
+                        "Reserved qty should include new picks");
+
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "SELECT delta_reserved, delta_on_hand, note, source_ref FROM inventory_txn_log "
+                                + "WHERE ticket_id = ? AND source_txn_type = 'RESERVE' "
+                                + "ORDER BY log_id DESC LIMIT 1")) {
+                    ps.setLong(1, ctx.ticketId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw new AssertionError("Expected inventory_txn_log entry for picking reserve.");
+                        }
+                        BigDecimal deltaReserved = rs.getBigDecimal("delta_reserved");
+                        BigDecimal deltaOnHand = rs.getBigDecimal("delta_on_hand");
+                        assertEquals(qty, deltaReserved, "Reserve log should match picked quantity");
+                        assertTrue(deltaOnHand.compareTo(BigDecimal.ZERO) == 0,
+                                "Reserve log must not change on-hand quantity");
+                        assertEquals("T2 Reserve", rs.getString("note"),
+                                "Log note should identify reserve action");
+                        assertEquals(scanRef, rs.getString("source_ref"),
+                                "Log should carry scan/source reference");
+                    }
+                }
+            }
+        } finally {
+            PhaseETestSupport.cleanupTicket(ctx);
+        }
     }
 
     /* -------------------------------------------------------------
@@ -272,7 +339,8 @@ public final class PhaseEServiceTestRunner {
                 conn.setAutoCommit(false);
                 setLockTimeout(conn, 5);
                 inventoryHelper.reserve(conn, line.productId, line.pickingLineId,
-                        ctx.ticketId, new BigDecimal("1.00"), "inv-reserve");
+                        ctx.ticketId, new BigDecimal("1.00"),
+                        unique("inv-reserve"), "inv-reserve");
                 BigDecimal reserved = queryBigDecimal(conn,
                         "SELECT reserved_qty FROM products WHERE product_id = ?", line.productId);
                 assertEquals(line.initialReserved.add(new BigDecimal("1.00")), reserved,
@@ -291,7 +359,7 @@ public final class PhaseEServiceTestRunner {
                 inventoryHelper.applyCloseAdjustment(conn, line.productId,
                         888L, ctx.ticketId,
                         line.requestedQty.negate(), line.requestedQty.negate(),
-                        "inv-close", "inv-close");
+                        "inv-close", unique("inv-close"), "inv-close");
                 BigDecimal reserved = queryBigDecimal(conn,
                         "SELECT reserved_qty FROM products WHERE product_id = ?", line.productId);
                 BigDecimal onHand = queryBigDecimal(conn,
@@ -327,7 +395,7 @@ public final class PhaseEServiceTestRunner {
                         inventoryHelper.applyCloseAdjustment(conn, line.productId,
                                 777L, ctx.ticketId,
                                 BigDecimal.ONE.negate(), BigDecimal.ONE.negate(),
-                                "inv-lock", "inv-lock");
+                                "inv-lock", unique("inv-lock"), "inv-lock");
                     } catch (SQLException e) {
                         ref.set(e);
                     } finally {
@@ -400,7 +468,7 @@ public final class PhaseEServiceTestRunner {
     }
 
     private void testDispatchVehicleUnavailable() throws Exception {
-        withTicket("dispatch-unavailable", new long[]{13L}, new double[]{2}, ctx ->
+        withTicket("dispatch-unavailable", new long[]{18L}, new double[]{2}, ctx ->
                 withBox(ctx, true, info -> info.requestedQty, (context, box) -> {
                     long vehicleId = PhaseETestSupport.findAvailableVehicleId();
                     String originalStatus = queryString("SELECT vehicle_status FROM vehicles WHERE vehicle_id = ?", vehicleId);
@@ -422,7 +490,7 @@ public final class PhaseEServiceTestRunner {
     }
 
     private void testDispatchDuplicateBox() throws Exception {
-        withTicket("dispatch-dup", new long[]{14L}, new double[]{3}, ctx ->
+        withTicket("dispatch-dup", new long[]{20L}, new double[]{3}, ctx ->
                 withBox(ctx, true, info -> info.requestedQty, (context, box) ->
                         withDispatch(context, box, dispatch -> {
                             DispatchHeader header = baseDispatchHeader(context.ticketId);
@@ -438,7 +506,7 @@ public final class PhaseEServiceTestRunner {
      * ------------------------------------------------------------- */
 
     private void testCloseDeliveredFlow() throws Exception {
-        withTicket("close-delivered", new long[]{15L, 16L}, new double[]{2, 3}, ctx ->
+        withTicket("close-delivered", new long[]{18L, 19L}, new double[]{2, 3}, ctx ->
                 withBox(ctx, true, info -> info.requestedQty, (context, box) ->
                         withDispatch(context, box, dispatch -> {
                             CloseHeader header = baseCloseHeader(context.ticketId, dispatch.dispatchId);

@@ -40,8 +40,8 @@ public class PickingDaoImpl implements PickingDao {
             INSERT INTO picking_line
               (picking_id, ticket_line_id, product_id, picked_qty, uom, short_reason, scan_ref, updated_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """;       
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             for (PickingLine line : lines) {
                 stmt.setLong(1, pickingId);
                 stmt.setLong(2, line.getTicketLineId());
@@ -51,9 +51,13 @@ public class PickingDaoImpl implements PickingDao {
                 stmt.setString(6, line.getShortReason());
                 stmt.setString(7, line.getScanRef());
                 stmt.setString(8, line.getUpdatedBy());
-                stmt.addBatch();
+                stmt.executeUpdate();
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        line.setPickingLineId(rs.getLong(1));
+                    }
+                }
             }
-            stmt.executeBatch();
         }
     }
 

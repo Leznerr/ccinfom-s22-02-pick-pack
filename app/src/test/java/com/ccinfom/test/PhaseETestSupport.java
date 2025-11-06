@@ -25,6 +25,7 @@ import com.ccinfom.model.pack.PackBox;
 import com.ccinfom.model.pack.PackBoxLine;
 import com.ccinfom.service.CloseService;
 import com.ccinfom.service.DispatchService;
+import com.ccinfom.service.PickingService;
 import com.ccinfom.service.PackService;
 import com.ccinfom.service.impl.CloseServiceImpl;
 import com.ccinfom.service.impl.DispatchServiceImpl;
@@ -71,6 +72,9 @@ final class PhaseETestSupport {
         return new CloseServiceImpl(CLOSE_DAO, TICKET_DAO, INVENTORY_HELPER);
     }
 
+    static PickingService createPickingService() {
+        return new PickingService(PICKING_DAO, TICKET_DAO, LOOKUP_DAO, INVENTORY_HELPER);
+    }
     static InventoryHelper getInventoryHelper() {
         return INVENTORY_HELPER;
     }
@@ -149,10 +153,23 @@ final class PhaseETestSupport {
                 line.setProductId(info.productId);
                 line.setPickedQty(info.requestedQty);
                 line.setUom(info.uom);
+                line.setScanRef("seed-pick-" + info.ticketLineId);
                 line.setUpdatedBy(TEST_USER);
                 pickingLines.add(line);
             }
             PICKING_DAO.insertPickingLines(pickingId, pickingLines, conn);
+
+            for (PickingLine line : pickingLines) {
+                INVENTORY_HELPER.reserve(
+                        conn,
+                        line.getProductId(),
+                        line.getPickingLineId(),
+                        ticketId,
+                        line.getPickedQty(),
+                        line.getScanRef(),
+                        TEST_USER
+                );
+            }
 
             conn.commit();
 
@@ -161,6 +178,81 @@ final class PhaseETestSupport {
             ctx.ticketId = ticketId;
             ctx.pickingId = pickingId;
             ctx.lines = finalLines;
+            ctx.label = label;
+            ctx.initialStatus = PickTicketHdr.TicketStatus.Picking;
+            return ctx;
+        }
+    }
+
+    static TestTicketContext createEmptyPickingSession(String label,
+                                                       long[] productIds,
+                                                       BigDecimal[] quantities,
+                                                       String[] uoms) throws SQLException {
+        Objects.requireNonNull(productIds, "productIds");
+        Objects.requireNonNull(quantities, "quantities");
+        if (productIds.length != quantities.length) {
+            throw new IllegalArgumentException("productIds and quantities length mismatch");
+        }
+        if (uoms != null && uoms.length != productIds.length) {
+            throw new IllegalArgumentException("uoms length mismatch");
+        }
+
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+
+            PickTicketHdr hdr = new PickTicketHdr();
+            hdr.setCustomerId(1L);
+            hdr.setBranchId(1L);
+            hdr.setTicketStatus(PickTicketHdr.TicketStatus.Picking);
+            hdr.setRemarks(label);
+            hdr.setUpdatedBy(TEST_USER);
+            long ticketId = TICKET_DAO.insertTicketHeader(hdr, conn);
+
+            List<PickTicketLine> ticketLines = new ArrayList<>();
+            for (int i = 0; i < productIds.length; i++) {
+                PickTicketLine line = new PickTicketLine();
+                line.setPickTicketId(ticketId);
+                line.setProductId(productIds[i]);
+                line.setRequestedQty(quantities[i]);
+                line.setUom(uoms == null ? "pcs" : uoms[i]);
+                line.setLineStatus(PickTicketLine.LineStatus.Valid);
+                line.setUpdatedBy(TEST_USER);
+                ticketLines.add(line);
+            }
+            TICKET_DAO.insertTicketLines(ticketLines, conn);
+
+            List<LineInfo> lineInfos = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT ticket_line_id, product_id, requested_qty, uom "
+                            + "FROM pick_ticket_line WHERE pick_ticket_id = ? ORDER BY ticket_line_id")) {
+                ps.setLong(1, ticketId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        LineInfo info = new LineInfo();
+                        info.ticketLineId = rs.getLong("ticket_line_id");
+                        info.pickingLineId = 0L;
+                        info.productId = rs.getLong("product_id");
+                        info.requestedQty = rs.getBigDecimal("requested_qty");
+                        info.uom = rs.getString("uom");
+                        loadProductSnapshot(conn, info);
+                        lineInfos.add(info);
+                    }
+                }
+            }
+
+            PickingHdr pickingHdr = new PickingHdr();
+            pickingHdr.setPickTicketId(ticketId);
+            pickingHdr.setPickerEmployeeId(findAnyPicker(conn));
+            pickingHdr.setPickingStatus("Picking");
+            pickingHdr.setUpdatedBy(TEST_USER);
+            long pickingId = PICKING_DAO.insertPickingHeader(pickingHdr, conn);
+
+            conn.commit();
+
+            TestTicketContext ctx = new TestTicketContext();
+            ctx.ticketId = ticketId;
+            ctx.pickingId = pickingId;
+            ctx.lines = lineInfos;
             ctx.label = label;
             ctx.initialStatus = PickTicketHdr.TicketStatus.Picking;
             return ctx;
@@ -324,8 +416,10 @@ final class PhaseETestSupport {
                     "UPDATE products SET reserved_qty = ?, on_hand_qty = ?, updated_by = ?, updated_at = ? "
                             + "WHERE product_id = ?")) {
                 for (Map.Entry<Long, BigDecimal[]> entry : snapshots.entrySet()) {
-                    ps.setBigDecimal(1, entry.getValue()[0]);
-                    ps.setBigDecimal(2, entry.getValue()[1]);
+                    BigDecimal reserved = entry.getValue()[0] != null ? entry.getValue()[0] : BigDecimal.ZERO;
+                    BigDecimal onHand = entry.getValue()[1] != null ? entry.getValue()[1] : BigDecimal.ZERO;
+                    ps.setBigDecimal(1, reserved);
+                    ps.setBigDecimal(2, onHand);
                     ps.setString(3, TEST_USER);
                     ps.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
                     ps.setLong(5, entry.getKey());

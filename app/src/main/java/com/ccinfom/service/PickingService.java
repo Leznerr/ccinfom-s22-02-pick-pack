@@ -4,10 +4,13 @@ import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.LookupDao;
 import com.ccinfom.dao.interfaces.PickingDao;
 import com.ccinfom.dao.interfaces.TicketDao;
+import com.ccinfom.infra.InventoryHelper;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickingHdr;
 import com.ccinfom.model.PickingLine;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Level;
@@ -40,14 +43,26 @@ public class PickingService {
     private final PickingDao pickingDao;
     private final TicketDao ticketDao;
     private final LookupDao lookupDao;
+    private final InventoryHelper inventoryHelper;
 
     // TODO in future: inject current user / session user instead of hardcoding
     private static final String SYSTEM_USER = "system";
 
     public PickingService(PickingDao pickingDao, TicketDao ticketDao, LookupDao lookupDao) {
+        this(pickingDao, ticketDao, lookupDao, new InventoryHelper());
+    }
+
+    public PickingService(PickingDao pickingDao,
+                          TicketDao ticketDao,
+                          LookupDao lookupDao,
+                          InventoryHelper inventoryHelper) {
+        if (pickingDao == null || ticketDao == null || lookupDao == null || inventoryHelper == null) {
+            throw new IllegalArgumentException("DAO and helper dependencies must not be null.");
+        }
         this.pickingDao = pickingDao;
         this.ticketDao = ticketDao;
         this.lookupDao = lookupDao;
+        this.inventoryHelper = inventoryHelper;
     }
 
     /**
@@ -161,13 +176,34 @@ public class PickingService {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
 
+            long ticketId = loadTicketId(conn, pickingId);
+
             // ---- 2. EXECUTE INSERT ----
             pickingDao.insertPickingLines(pickingId, pickedItems, conn);
+
+            for (PickingLine line : pickedItems) {
+                if (line.getPickingLineId() == null) {
+                    throw new SQLException("Picking line ID not generated for ticket_line_id=" + line.getTicketLineId());
+                }
+                String sourceRef = determineReserveSourceRef(pickingId, line);
+                inventoryHelper.reserve(
+                        conn,
+                        line.getProductId(),
+                        line.getPickingLineId(),
+                        ticketId,
+                        line.getPickedQty(),
+                        sourceRef,
+                        line.getUpdatedBy()
+                );
+            }
 
             conn.commit();
             logger.info("Saved " + pickedItems.size() +
                         " picked line(s) for picking_id=" + pickingId);
 
+        } catch (ValidationException e) {
+            safeRollback(conn);
+            throw e;
         } catch (SQLException e) {
             safeRollback(conn);
 
@@ -184,7 +220,9 @@ public class PickingService {
                 throw new ValidationException(
                     "Save failed: Picked quantity exceeds requested quantity."
                 );
-            } else if (dbErrorMessage.contains("insufficient available stock")) {
+            } else if (dbErrorMessage.contains("insufficient available stock")
+                    || dbErrorMessage.contains("negative reserved_qty")
+                    || dbErrorMessage.contains("negative on_hand_qty")) {
                 throw new ValidationException(
                     "Save failed: Not enough available stock for at least one item."
                 );
@@ -234,5 +272,28 @@ public class PickingService {
                 logger.log(Level.WARNING, "Failed to close connection: " + e.getMessage(), e);
             }
         }
+    }
+
+    private long loadTicketId(Connection conn, long pickingId) throws SQLException, ValidationException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT pick_ticket_id FROM picking_hdr WHERE picking_id = ?")) {
+            ps.setLong(1, pickingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        throw new ValidationException("Picking session not found.");
+    }
+
+    private String determineReserveSourceRef(long pickingId, PickingLine line) {
+        if (line.getScanRef() != null && !line.getScanRef().isBlank()) {
+            return line.getScanRef();
+        }
+        if (line.getPickingLineId() != null) {
+            return "T2-" + pickingId + "-" + line.getPickingLineId();
+        }
+        return "T2-" + pickingId + "-" + line.getTicketLineId();
     }
 }

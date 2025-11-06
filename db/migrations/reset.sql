@@ -361,40 +361,12 @@ BEGIN
   END IF;
 END$$
 
--- AFTER INSERT: increase reserved by NEW.picked_qty
-CREATE TRIGGER trg_pick_line_ai_reserve
-AFTER INSERT ON picking_line
-FOR EACH ROW
-BEGIN
-  UPDATE products
-     SET reserved_qty = reserved_qty + NEW.picked_qty,
-         updated_at   = CURRENT_TIMESTAMP,
-         updated_by   = NEW.updated_by
-   WHERE product_id = NEW.product_id;
-END$$
-
--- AFTER UPDATE: adjust reserved by (NEW - OLD)
-CREATE TRIGGER trg_pick_line_au_reserve
-AFTER UPDATE ON picking_line
-FOR EACH ROW
-BEGIN
-  UPDATE products
-     SET reserved_qty = reserved_qty + (NEW.picked_qty - OLD.picked_qty),
-         updated_at   = CURRENT_TIMESTAMP,
-         updated_by   = NEW.updated_by
-   WHERE product_id = NEW.product_id;
-END$$
-
--- AFTER DELETE: decrease reserved by OLD.picked_qty
-CREATE TRIGGER trg_pick_line_ad_reserve
-AFTER DELETE ON picking_line
-FOR EACH ROW
-BEGIN
-  UPDATE products
-     SET reserved_qty = reserved_qty - OLD.picked_qty,
-         updated_at   = CURRENT_TIMESTAMP,
-         updated_by   = OLD.updated_by
-   WHERE product_id = OLD.product_id;
-END$$
+-- Phase E: inventory adjustments handled via services
 
 DELIMITER ;
+
+-- Phase E tables and inventory log
+SOURCE db/ddl/phaseE/pack_box.sql;
+SOURCE db/ddl/phaseE/inventory_txn_log.sql;
+SOURCE db/ddl/phaseE/dispatch.sql;
+SOURCE db/ddl/phaseE/close.sql;

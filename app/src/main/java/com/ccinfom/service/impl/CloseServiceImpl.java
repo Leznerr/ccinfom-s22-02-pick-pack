@@ -89,6 +89,10 @@ public class CloseServiceImpl implements CloseService {
                         .add(variance.getShortQty())
                         .negate();
                 BigDecimal deltaOnHand = variance.getDeliveredQty().negate();
+                String varianceRef = variance.getSourceRef();
+                if (varianceRef == null || varianceRef.isBlank()) {
+                    varianceRef = "T5-" + closeId + "-" + variance.getTicketLineId();
+                }
 
                 inventoryHelper.applyCloseAdjustment(
                         conn,
@@ -98,6 +102,7 @@ public class CloseServiceImpl implements CloseService {
                         deltaReserved,
                         deltaOnHand,
                         "T5 Close",
+                        varianceRef,
                         actor
                 );
             }

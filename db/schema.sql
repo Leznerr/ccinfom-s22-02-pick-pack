@@ -361,58 +361,11 @@ BEGIN
   END IF;
 END$$
 
--- AFTER INSERT: increase reserved by NEW.picked_qty
-CREATE TRIGGER trg_pick_line_ai_reserve
-AFTER INSERT ON picking_line
-FOR EACH ROW
-BEGIN
-  UPDATE products
-     SET reserved_qty = reserved_qty + NEW.picked_qty,
-         updated_at   = CURRENT_TIMESTAMP,
-         updated_by   = NEW.updated_by
-   WHERE product_id = NEW.product_id;
-END$$
-
--- AFTER UPDATE: adjust reserved by (NEW - OLD)
-CREATE TRIGGER trg_pick_line_au_reserve
-AFTER UPDATE ON picking_line
-FOR EACH ROW
-BEGIN
-  UPDATE products
-     SET reserved_qty = reserved_qty + (NEW.picked_qty - OLD.picked_qty),
-         updated_at   = CURRENT_TIMESTAMP,
-         updated_by   = NEW.updated_by
-   WHERE product_id = NEW.product_id;
-END$$
-
--- AFTER DELETE: decrease reserved by OLD.picked_qty
-CREATE TRIGGER trg_pick_line_ad_reserve
-AFTER DELETE ON picking_line
-FOR EACH ROW
-BEGIN
-  UPDATE products
-     SET reserved_qty = reserved_qty - OLD.picked_qty,
-         updated_at   = CURRENT_TIMESTAMP,
-         updated_by   = OLD.updated_by
-   WHERE product_id = OLD.product_id;
-END$$
-
 DELIMITER ;
 
--- TODO[E-DDL-T3-001] SOURCE Phase E DDL scripts (pack_box, dispatch, close, inventory_txn_log).
--- Why: T3–T5 tables must be created in separate files to keep base schema clean and reusable across phases.
--- Steps:
---   1) Author db/ddl/phaseE/pack_box.sql with pack_box_hdr / pack_box_line definitions (FK picking_line_id, UNIQUE(picking_line_id), packed_qty >= 0).
---   2) Author db/ddl/phaseE/dispatch.sql with dispatch_hdr / dispatch_line (manifest_no UNIQUE, box_id UNIQUE, pod_ref/pod_ts fields).
---   3) Author db/ddl/phaseE/close.sql with close_hdr / close_variance (FK dispatch_id, reconciliation enforced in service/tests).
---   4) Author db/ddl/phaseE/inventory_txn_log.sql defining inventory_txn_log (source_txn_type ENUM('RESERVE','CLOSE'), delta columns).
---   5) Append SOURCE statements here (e.g., SOURCE db/ddl/phaseE/pack_box.sql;) once files exist.
--- Acceptance:
---   - Fresh DB build succeeds with new SOURCE statements.
---   - tx-T3.sql/tx-T4.sql/tx-T5.sql seeds load without FK/UNIQUE violations.
---   - qa/validate.sql Phase E queries pass (packed_vs_picked, dispatch checks, inventory reconciliation).
--- | Links: docs/decisions.md#phase-e, docs/seed-id-map.md
-/*SOURCE db/ddl/phaseE/pack_box.sql;
+
+-- Phase E tables and inventory log
+SOURCE db/ddl/phaseE/pack_box.sql;
 SOURCE db/ddl/phaseE/inventory_txn_log.sql;
 SOURCE db/ddl/phaseE/dispatch.sql;
-SOURCE db/ddl/phaseE/close.sql;*/
+SOURCE db/ddl/phaseE/close.sql;
