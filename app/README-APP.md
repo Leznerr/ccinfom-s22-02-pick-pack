@@ -148,4 +148,5 @@ Phase E additions:
 - Demo SQL scripts: run `scripts/demo/demo-T1-to-T4.sql` for pick -> pack -> dispatch (includes exception cases) and `scripts/demo/demo-full-flow.sql` to close tickets (delivered + short). Capture console output for QA evidence.
 - Automated service tests: from `app/`, compile with `javac -encoding UTF-8 -cp "lib/*" -d bin @sources.txt` (or equivalent) then run `java -cp "bin;lib/*;src/main/resources" com.ccinfom.test.PhaseEServiceTestRunner`. Expect "Summary: 18 passed, 0 failed" once picking/pack/dispatch/close scenarios pass.
 - Manual verification: after running PhaseEServiceTestRunner, open Pack/Dispatch/Close forms in sequence with seeded tickets. Confirm ticket statuses transition Packed -> Dispatched -> Delivered/Short and inventory logs reflect reserve/delivery deltas via `inventory_txn_log`.
+- Shared UI helpers live in `com.ccinfom.ui.common` (`StatusPanel`, `UiTaskRunner`) so new forms can show consistent status banners and run SwingWorker tasks without boilerplate.
 

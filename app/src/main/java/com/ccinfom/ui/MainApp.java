@@ -1,8 +1,12 @@
-﻿package com.ccinfom.ui;
+package com.ccinfom.ui;
 
 import com.ccinfom.config.DbConnection;
+import com.ccinfom.ui.common.StatusPanel;
 import com.ccinfom.ui.t1.TicketForm;
 import com.ccinfom.ui.t2.PickingForm;
+import com.ccinfom.ui.t3.PackForm;
+import com.ccinfom.ui.t4.DispatchForm;
+import com.ccinfom.ui.t5.CloseForm;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -14,7 +18,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 /**
- * Simple launcher that exposes entry points for T1 and T2 forms.
+ * Launcher entry point for all Swing forms.
  */
 public final class MainApp {
 
@@ -27,12 +31,16 @@ public final class MainApp {
     }
 
     private static void createAndShow() {
-        JFrame frame = new JFrame("CCINFOM Pick & Pack - Phase D");
+        JFrame frame = new JFrame("CCINFOM Ewan ano magandang name Control Center");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout(8, 8));
 
-        boolean canConnect = DbConnection.ping();
-        JLabel statusLabel = new JLabel(canConnect ? "DB Status: Connected" : "DB Status: Connection Failed");
+        StatusPanel statusPanel = new StatusPanel();
+        if (DbConnection.ping()) {
+            statusPanel.setSuccess("DB Status: Connected");
+        } else {
+            statusPanel.setError("DB Status: Connection Failed");
+        }
 
         JButton ticketButton = new JButton("Create Pick Ticket (T1)");
         ticketButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new TicketForm().setVisible(true)));
@@ -40,29 +48,31 @@ public final class MainApp {
         JButton pickingButton = new JButton("Start Picking (T2)");
         pickingButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new PickingForm().setVisible(true)));
 
-        // TODO[E-UI-XCUT-001] Register Pack, Dispatch, and Close forms in launcher.
-        // Why: Phase E adds Pack/Dispatch/Close screens; launcher must expose entry points for manual QA.
-        // Steps:
-        //   1) Instantiate PackForm, DispatchForm, CloseForm using SwingUtilities.invokeLater like existing buttons.
-        //   2) Update button panel layout to accommodate five buttons with consistent spacing.
-        //   3) Update frame title to “Phase E” once forms are wired.
-        // Acceptance:
-        //   - Manual: Launching buttons opens respective forms without exceptions.
-        //   - README: app/README-APP.md includes instructions referencing these buttons.
-        //   - Demo: Phase E walkthrough uses launcher to access Pack/Dispatch/Close forms.
-        // | Links: docs/seed-id-map.md, README-APP.md#phase-e
+        JButton packButton = new JButton("Pack Boxes (T3)");
+        packButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new PackForm().setVisible(true)));
 
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        JButton dispatchButton = new JButton("Dispatch Manifest (T4)");
+        dispatchButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new DispatchForm().setVisible(true)));
+
+        JButton closeButton = new JButton("Close Ticket (T5)");
+        closeButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new CloseForm().setVisible(true)));
+
+        JPanel buttonPanel = new JPanel(new GridLayout(0, 1, 8, 8));
         buttonPanel.add(ticketButton);
         buttonPanel.add(pickingButton);
+        buttonPanel.add(packButton);
+        buttonPanel.add(dispatchButton);
+        buttonPanel.add(closeButton);
 
-        frame.add(statusLabel, BorderLayout.NORTH);
+        JLabel helperText = new JLabel("Select a transaction to launch its Swing form.", JLabel.CENTER);
+
+        frame.add(statusPanel, BorderLayout.NORTH);
         frame.add(buttonPanel, BorderLayout.CENTER);
+        frame.add(helperText, BorderLayout.SOUTH);
 
-        frame.setPreferredSize(new Dimension(420, 160));
+        frame.setPreferredSize(new Dimension(440, 320));
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 }
-
