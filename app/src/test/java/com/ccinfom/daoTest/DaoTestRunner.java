@@ -109,9 +109,9 @@ public class DaoTestRunner {
             System.out.println("4. listTicketLines: PASSED");
 
             // 5. Test updateTicketStatus
-            ticketDao.updateTicketStatus(testTicketId, PickTicketHdr.TicketStatus.Closed, "daotester", conn);
+            ticketDao.updateTicketStatus(testTicketId, PickTicketHdr.TicketStatus.ShortClosed, "daotester", conn);
             PickTicketHdr updatedHdr = ticketDao.findTicketById(testTicketId);
-            assert updatedHdr.getTicketStatus() == PickTicketHdr.TicketStatus.Closed : "Ticket status was not updated";
+            assert updatedHdr.getTicketStatus() == PickTicketHdr.TicketStatus.ShortClosed : "Ticket status was not updated";
             System.out.println("5. updateTicketStatus: PASSED");
 
             // If all assertions pass, we rollback and return true
