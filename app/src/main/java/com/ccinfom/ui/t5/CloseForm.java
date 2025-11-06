@@ -1,4 +1,4 @@
-﻿package com.ccinfom.ui.t5;
+package com.ccinfom.ui.t5;
 
 import javax.swing.JFrame;
 

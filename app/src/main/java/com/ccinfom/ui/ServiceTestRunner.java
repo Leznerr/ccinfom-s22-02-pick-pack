@@ -1,4 +1,4 @@
-﻿package com.ccinfom.ui;
+package com.ccinfom.ui;
 
 import com.ccinfom.dao.impl.LookupDaoImpl;
 import com.ccinfom.dao.impl.PickingDaoImpl;
