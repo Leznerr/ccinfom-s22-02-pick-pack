@@ -229,70 +229,70 @@ public class DispatchServiceImpl implements DispatchService {
 
 
     // NEW METHODS FOR DispatchFrom.java
-@Override
-public void registerArrival(long dispatchId, DispatchHeader updates)
-        throws SQLException, ValidationException {
-    if (dispatchId <= 0) {
-        throw new ValidationException("DISPATCH_INVALID_ID", "Dispatch ID must be positive.");
-    }
-
-    LocalDateTime arriveTs = updates != null ? updates.getArriveTs() : LocalDateTime.now();
-    String actor = (updates != null && updates.getUpdatedBy() != null && !updates.getUpdatedBy().isBlank())
-            ? updates.getUpdatedBy()
-            : SYSTEM_USER;
-
-    Connection conn = null;
-    try {
-        conn = DbConnection.getConnection();
-        conn.setAutoCommit(false);
-
-        if (dispatchDao.findById(dispatchId, conn).isEmpty()) {
-            throw new ValidationException("DISPATCH_NOT_FOUND", "Dispatch not found: " + dispatchId);
+    @Override
+    public void registerArrival(long dispatchId, DispatchHeader updates)
+            throws SQLException, ValidationException {
+        if (dispatchId <= 0) {
+            throw new ValidationException("DISPATCH_INVALID_ID", "Dispatch ID must be positive.");
         }
 
-        // Reuse DAO method for updating arrival timestamp
-        dispatchDao.updateDispatchArrival(dispatchId, arriveTs, actor, conn);
+        LocalDateTime arriveTs = updates != null ? updates.getArriveTs() : LocalDateTime.now();
+        String actor = (updates != null && updates.getUpdatedBy() != null && !updates.getUpdatedBy().isBlank())
+                ? updates.getUpdatedBy()
+                : SYSTEM_USER;
 
-        conn.commit();
-    } catch (SQLException | ValidationException ex) {
-        safeRollback(conn);
-        if (ex instanceof SQLException sqlEx) {
-            LOGGER.log(Level.SEVERE, "Failed to register dispatch arrival", sqlEx);
-            throw sqlEx;
+        Connection conn = null;
+        try {
+            conn = DbConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            if (dispatchDao.findById(dispatchId, conn).isEmpty()) {
+                throw new ValidationException("DISPATCH_NOT_FOUND", "Dispatch not found: " + dispatchId);
+            }
+
+            // Reuse DAO method for updating arrival timestamp
+            dispatchDao.updateDispatchArrival(dispatchId, arriveTs, actor, conn);
+
+            conn.commit();
+        } catch (SQLException | ValidationException ex) {
+            safeRollback(conn);
+            if (ex instanceof SQLException sqlEx) {
+                LOGGER.log(Level.SEVERE, "Failed to register dispatch arrival", sqlEx);
+                throw sqlEx;
+            }
+            throw ex;
+        } finally {
+            restoreAndClose(conn);
         }
-        throw ex;
-    } finally {
-        restoreAndClose(conn);
     }
-}
 
-@Override
-public List<String> findReadyTickets() throws SQLException {
-    try (Connection conn = DbConnection.getConnection()) {
-        return ticketDao.findReadyTicketNames(conn); // implement in DAO
+    @Override
+    public List<String> findReadyTickets() throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return ticketDao.findReadyTicketNames(conn); // implement in DAO
+        }
     }
-}
 
-@Override
-public List<String> findAvailableVehicles() throws SQLException {
-    try (Connection conn = DbConnection.getConnection()) {
-        return dispatchDao.findAvailableVehicleNames(conn); // implement in DAO
+    @Override
+    public List<String> findAvailableVehicles() throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return dispatchDao.findAvailableVehicleNames(conn); // implement in DAO
+        }
     }
-}
 
-@Override
-public List<String> findAvailableDrivers() throws SQLException {
-    try (Connection conn = DbConnection.getConnection()) {
-        return dispatchDao.findAvailableDriverNames(conn); // implement in DAO
+    @Override
+    public List<String> findAvailableDrivers() throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return dispatchDao.findAvailableDriverNames(conn); // implement in DAO
+        }
     }
-}
 
-@Override
-public List<DispatchLine> findBoxesForTicket(long ticketId) throws SQLException {
-    try (Connection conn = DbConnection.getConnection()) {
-        return dispatchDao.findBoxesForTicket(ticketId, conn); // implement in DAO
+    @Override
+    public List<DispatchLine> findBoxesForTicket(long ticketId) throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return dispatchDao.findBoxesForTicket(ticketId, conn); // implement in DAO
+        }
     }
-}
 
 
 

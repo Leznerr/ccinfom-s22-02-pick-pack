@@ -314,20 +314,22 @@ public class DispatchDaoImpl implements DispatchDao {
         return vehicles;
     }
 
-
     // --- Fetch available driver names for dropdown ---
     @Override
     public List<String> findAvailableDriverNames(Connection conn) throws SQLException {
         List<String> drivers = new ArrayList<>();
-        String sql = "SELECT driver_name FROM drivers WHERE driver_status = 'available'";
+        String sql = "SELECT CONCAT(first_name, ' ', last_name) AS full_name " +
+                    "FROM employees " +
+                    "WHERE employee_role = 'driver' AND employee_status = 'active'";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                drivers.add(rs.getString("driver_name"));
+                drivers.add(rs.getString("full_name"));
             }
         }
         return drivers;
     }
+
 
     // --- Fetch all boxes for a given ticket ---
     @Override

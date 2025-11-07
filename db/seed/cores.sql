@@ -54,7 +54,8 @@ VALUES
 ('Cruz','Paolo','dispatcher','09194567890','paolo.cruz@example.com','active','seed'),
 ('Aquino','Julia','picker','09383456721','julia.aquino@example.com','active','seed'),
 ('Bautista','Noel','dispatcher','09178880001','noel.bautista@example.com','active','seed'),
-('Go','Henry','picker','09178880002','henry.go@example.com','active','seed');
+('Go','Henry','picker','09178880002','henry.go@example.com','active','seed'),
+('Ocampo','Mike','driver','09171234599','mike.ocampo@example.com','active','seed');
 
 /* =========================
    VEHICLES (12 normal rows; all available)
