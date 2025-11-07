@@ -2,10 +2,14 @@ package com.ccinfom.dao.impl;
 
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.TicketDao;
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickTicketLine;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -178,17 +182,27 @@ public class TicketDaoImpl implements TicketDao {
     }
 
     @Override
-    public List<String> findReadyTicketNames(Connection conn) throws SQLException {
-        String sql = "SELECT pick_ticket_id FROM pick_ticket_hdr WHERE ticket_status = 'Ready' ORDER BY created_at DESC";
-        List<String> tickets = new ArrayList<>();
-        
+    public List<LookupValue> findReadyTicketOptions(Connection conn) throws SQLException {
+        String sql = """
+            SELECT pick_ticket_id, remarks
+              FROM pick_ticket_hdr
+             WHERE ticket_status = 'Packed'
+             ORDER BY updated_at DESC
+            """;
+        List<LookupValue> tickets = new ArrayList<>();
+
         try (PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()) {
+             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                tickets.add(String.valueOf(rs.getLong("pick_ticket_id")));
+                long id = rs.getLong("pick_ticket_id");
+                String remarks = rs.getString("remarks");
+                String label = "Ticket #" + id + (remarks != null && !remarks.isBlank()
+                        ? " — " + remarks
+                        : "");
+                tickets.add(new LookupValue(id, label.trim()));
             }
         }
-        
+
         return tickets;
     }
 

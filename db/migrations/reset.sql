@@ -73,7 +73,7 @@ CREATE TABLE employees (
   employee_id       BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   last_name         VARCHAR(100) NOT NULL,
   first_name        VARCHAR(100) NOT NULL,
-  employee_role     ENUM('picker','packer','dispatcher') NOT NULL,
+  employee_role     ENUM('picker','packer','dispatcher','driver') NOT NULL,
   phone             VARCHAR(20),
   email             VARCHAR(150) UNIQUE,
   employee_status   ENUM('active','inactive') NOT NULL DEFAULT 'active',

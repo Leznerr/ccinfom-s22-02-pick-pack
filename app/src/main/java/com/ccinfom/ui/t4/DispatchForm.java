@@ -1,267 +1,387 @@
 package com.ccinfom.ui.t4;
 
-import java.awt.*;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-
 import com.ccinfom.dao.impl.DispatchDaoImpl;
 import com.ccinfom.dao.impl.PackDaoImpl;
 import com.ccinfom.dao.impl.TicketDaoImpl;
 import com.ccinfom.dao.interfaces.DispatchDao;
 import com.ccinfom.dao.interfaces.PackDao;
 import com.ccinfom.dao.interfaces.TicketDao;
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
 import com.ccinfom.service.DispatchService;
+import com.ccinfom.service.ValidationException;
 import com.ccinfom.service.impl.DispatchServiceImpl;
+import com.ccinfom.ui.common.ComboItem;
 import com.ccinfom.ui.common.StatusPanel;
 import com.ccinfom.ui.common.UiTaskRunner;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.WindowConstants;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
 
+/**
+ * Phase E UI for T4 Dispatch workflow.
+ */
 public class DispatchForm extends JFrame {
 
-    private static final long serialVersionUID = 1L;
+    private final DispatchService dispatchService;
 
-    // Class fields
-    private DefaultTableModel tableModel;
+    private final JComboBox<ComboItem<Long>> ticketCombo = new JComboBox<>();
+    private final JComboBox<ComboItem<Long>> vehicleCombo = new JComboBox<>();
+    private final JComboBox<ComboItem<Long>> driverCombo = new JComboBox<>();
+    private final JTextField manifestField = new JTextField();
+    private final StatusPanel statusPanel = new StatusPanel();
+    private final DefaultTableModel tableModel;
+    private final JTable boxTable;
+
+    private final List<DispatchLine> currentBoxes = new ArrayList<>();
+
     private Long currentDispatchId;
-    private String currentUser = "ui"; // Replace with actual logged-in user
+    private final String currentUser = System.getProperty("user.name", "ui");
 
-    private JComboBox<String> ticketCombo;
-    private JComboBox<String> vehicleCombo;
-    private JComboBox<String> driverCombo;
-    private StatusPanel statusPanel;
+    private final JButton loadManifestButton = new JButton("Create Manifest");
+    private final JButton recordDepartureButton = new JButton("Record Departure");
+    private final JButton recordArrivalButton = new JButton("Record Arrival");
 
-    private DispatchService dispatchService;
+    private static final Logger LOGGER = Logger.getLogger(DispatchForm.class.getName());
+    private boolean suppressTicketEvents;
 
     public DispatchForm() {
-        // === Window setup ===
         setTitle("Dispatch Management");
-        setSize(900, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setSize(940, 620);
+        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
-        setLocationRelativeTo(null); // center
+        setLocationRelativeTo(null);
 
-        // Initialize DAOs and Service
         DispatchDao dispatchDao = new DispatchDaoImpl();
         PackDao packDao = new PackDaoImpl();
         TicketDao ticketDao = new TicketDaoImpl();
-        dispatchService = new DispatchServiceImpl(dispatchDao, packDao, ticketDao);
+        this.dispatchService = new DispatchServiceImpl(dispatchDao, packDao, ticketDao);
 
-        // === Top Panel (Filters) ===
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
-        add(topPanel, BorderLayout.NORTH);
+        JPanel root = (JPanel) getContentPane();
+        root.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JPanel filterPanel = new JPanel(new GridBagLayout());
-        filterPanel.setBorder(BorderFactory.createTitledBorder("Dispatch Filters"));
+        JPanel filterPanel = buildFilterPanel();
+        add(filterPanel, BorderLayout.NORTH);
+
+        String[] columns = {"Box ID", "Description", "Weight (kg)"};
+        this.tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        this.boxTable = new JTable(tableModel);
+        boxTable.setRowHeight(24);
+
+        JScrollPane scrollPane = new JScrollPane(boxTable);
+        scrollPane.setBorder(new EmptyBorder(10, 0, 10, 0));
+        add(scrollPane, BorderLayout.CENTER);
+
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(loadManifestButton);
+        buttonPanel.add(recordDepartureButton);
+        buttonPanel.add(recordArrivalButton);
+        bottomPanel.add(buttonPanel, BorderLayout.EAST);
+        bottomPanel.add(statusPanel, BorderLayout.SOUTH);
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        attachListeners();
+        toggleManifestActions(false);
+        loadDropdowns();
+
+        setVisible(true);
+    }
+
+    private JPanel buildFilterPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(new EmptyBorder(0, 0, 10, 0));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(4, 4, 4, 4);
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Ticket
-        gbc.gridx = 0; gbc.gridy = 0;
-        filterPanel.add(new JLabel("Pick Ticket:"), gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Pick Ticket:"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        ticketCombo = new JComboBox<>();
-        filterPanel.add(ticketCombo, gbc);
+        gbc.weightx = 1;
+        panel.add(ticketCombo, gbc);
 
-        // Vehicle
-        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.gridy = 1;
         gbc.weightx = 0;
-        filterPanel.add(new JLabel("Vehicle:"), gbc);
+        panel.add(new JLabel("Vehicle:"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        vehicleCombo = new JComboBox<>();
-        filterPanel.add(vehicleCombo, gbc);
+        gbc.weightx = 1;
+        panel.add(vehicleCombo, gbc);
 
-        // Driver
-        gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridx = 0;
+        gbc.gridy = 2;
         gbc.weightx = 0;
-        filterPanel.add(new JLabel("Driver:"), gbc);
+        panel.add(new JLabel("Driver:"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        driverCombo = new JComboBox<>();
-        filterPanel.add(driverCombo, gbc);
+        gbc.weightx = 1;
+        panel.add(driverCombo, gbc);
 
-        topPanel.add(filterPanel, BorderLayout.CENTER);
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.weightx = 0;
+        panel.add(new JLabel("Manifest No.:"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        panel.add(manifestField, gbc);
 
-        // === Center Panel (Table) ===
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
-        add(centerPanel, BorderLayout.CENTER);
+        return panel;
+    }
 
-        String[] columns = {"Box ID", "Description", "Weight (kg)", "Sealed"};
-        tableModel = new DefaultTableModel(new Object[0][columns.length], columns) {
-            @Override
-            public Class<?> getColumnClass(int columnIndex) {
-                return (columnIndex == 3) ? Boolean.class : String.class;
-            }
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return column == 3; // Only Sealed column editable
-            }
-        };
-
-        JTable boxTable = new JTable(tableModel);
-        boxTable.setRowHeight(24);
-        boxTable.setFillsViewportHeight(true);
-        boxTable.setAutoCreateRowSorter(true);
-
-        JScrollPane scrollPane = new JScrollPane(boxTable);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Sealed Boxes"));
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
-
-        // === Bottom Panel (Actions + Status) ===
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
-        add(bottomPanel, BorderLayout.SOUTH);
-
-        statusPanel = new StatusPanel();
-        statusPanel.setInfo("Ready");
-
-        JButton btnLoadManifest = new JButton("Load to Manifest");
-        JButton btnRecordDeparture = new JButton("Record Departure");
-        JButton btnRecordArrival = new JButton("Record Arrival");
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.add(btnLoadManifest);
-        buttonPanel.add(btnRecordDeparture);
-        buttonPanel.add(btnRecordArrival);
-
-        bottomPanel.add(buttonPanel, BorderLayout.EAST);
-        bottomPanel.add(statusPanel, BorderLayout.SOUTH);
-
-        // === Populate Dropdowns ===
-        loadDropdowns();
-
-        // === Populate Table on Ticket Selection ===
+    private void attachListeners() {
         ticketCombo.addActionListener(e -> {
-            String selectedTicket = (String) ticketCombo.getSelectedItem();
-            if (selectedTicket != null) {
-                Long ticketId = Long.parseLong(selectedTicket); // assuming ID string
-                loadBoxesIntoTable(ticketId);
+            if (suppressTicketEvents) {
+                return;
             }
+            ComboItem<Long> selected = getSelected(ticketCombo);
+            if (selected == null) {
+                clearBoxes();
+                return;
+            }
+            loadBoxesIntoTable(selected.getValue());
         });
 
-        // === Button Actions ===
-        btnLoadManifest.addActionListener(e -> UiTaskRunner.runAsync(statusPanel, () -> {
-            try {
-                DispatchHeader hdr = new DispatchHeader();
-                hdr.setPickTicketId(Long.parseLong((String) ticketCombo.getSelectedItem()));
-                hdr.setVehicleId(Long.parseLong((String) vehicleCombo.getSelectedItem()));
-                hdr.setDriverId(Long.parseLong((String) driverCombo.getSelectedItem()));
-                hdr.setManifestNo("M" + System.currentTimeMillis());
-                hdr.setCreatedBy(currentUser);
-
-                List<DispatchLine> lines = collectLinesFromTable();
-                hdr = dispatchService.createDispatch(hdr, lines);
-                currentDispatchId = hdr.getDispatchId();
-
-                statusPanel.setSuccess("Dispatch created: ID " + currentDispatchId);
-            } catch (Exception ex) {
-                statusPanel.setError("Failed: " + ex.getMessage());
-                ex.printStackTrace();
-            }
-        }));
-
-        btnRecordDeparture.addActionListener(e -> UiTaskRunner.runAsync(statusPanel, () -> {
-            try {
-                DispatchHeader hdr = new DispatchHeader();
-                hdr.setDepartTs(LocalDateTime.now());
-                hdr.setUpdatedBy(currentUser);
-                dispatchService.registerDeparture(currentDispatchId, hdr);
-                statusPanel.setSuccess("Departure recorded successfully.");
-            } catch (Exception ex) {
-                statusPanel.setError("Failed: " + ex.getMessage());
-                ex.printStackTrace();
-            }
-        }));
-
-        btnRecordArrival.addActionListener(e -> UiTaskRunner.runAsync(statusPanel, () -> {
-            try {
-                DispatchHeader hdr = new DispatchHeader();
-                hdr.setArriveTs(LocalDateTime.now());
-                hdr.setUpdatedBy(currentUser);
-                dispatchService.registerArrival(currentDispatchId, hdr);
-                statusPanel.setSuccess("Arrival recorded successfully.");
-            } catch (Exception ex) {
-                statusPanel.setError("Failed: " + ex.getMessage());
-                ex.printStackTrace();
-            }
-        }));
-
-        setVisible(true);
+        loadManifestButton.addActionListener(e -> onCreateManifest());
+        recordDepartureButton.addActionListener(e -> onRecordTiming(true));
+        recordArrivalButton.addActionListener(e -> onRecordTiming(false));
     }
 
-    // === Collect lines from table ===
-    private List<DispatchLine> collectLinesFromTable() {
-        List<DispatchLine> lines = new ArrayList<>();
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            Object boxIdObj = tableModel.getValueAt(i, 0);
-            if (boxIdObj != null) {
-                Long boxId = Long.parseLong(boxIdObj.toString());
-                DispatchLine line = new DispatchLine();
-                line.setBoxId(boxId);
-                line.setCreatedAt(LocalDateTime.now());
-                line.setCreatedBy(currentUser);
-                lines.add(line);
-            }
-        }
-        return lines;
-    }
-
-    // === Load dropdowns dynamically ===
     private void loadDropdowns() {
-        UiTaskRunner.runAsync(statusPanel, () -> {
-            try {
-                // convert List<String> to String[]
-                String[] tickets = dispatchService.findReadyTickets().toArray(new String[0]);
-                String[] vehicles = dispatchService.findAvailableVehicles().toArray(new String[0]);
-                String[] drivers = dispatchService.findAvailableDrivers().toArray(new String[0]);
-
-                SwingUtilities.invokeLater(() -> {
-                    ticketCombo.setModel(new DefaultComboBoxModel<>(tickets));
-                    vehicleCombo.setModel(new DefaultComboBoxModel<>(vehicles));
-                    driverCombo.setModel(new DefaultComboBoxModel<>(drivers));
+        UiTaskRunner.run(statusPanel,
+                "Loading dispatch references...",
+                null,
+                () -> {
+                    List<LookupValue> tickets = dispatchService.findReadyTickets();
+                    List<LookupValue> vehicles = dispatchService.findAvailableVehicles();
+                    List<LookupValue> drivers = dispatchService.findAvailableDrivers();
+                    return new DropdownPayload(tickets, vehicles, drivers);
+                },
+                payload -> {
+                    LOGGER.info(() -> String.format("[UI][T4_LOAD_REFERENCES] tickets=%d vehicles=%d drivers=%d",
+                            payload.tickets().size(),
+                            payload.vehicles().size(),
+                            payload.drivers().size()));
+                    suppressTicketEvents = true;
+                    ticketCombo.setModel(toModel(payload.tickets()));
+                    vehicleCombo.setModel(toModel(payload.vehicles()));
+                    driverCombo.setModel(toModel(payload.drivers()));
+                    ticketCombo.setSelectedItem(null);
+                    suppressTicketEvents = false;
+                    clearBoxes();
+                    statusPanel.setSuccess("References loaded.");
+                },
+                err -> {
+                    LOGGER.log(Level.SEVERE, "[UI][T4_LOAD_REFERENCES] FAILED", err);
+                    statusPanel.setError("Failed to load references: " + err.getMessage());
                 });
-
-                statusPanel.setSuccess("Ready");
-            } catch (Exception ex) {
-                statusPanel.setError("Failed to load dropdowns: " + ex.getMessage());
-                ex.printStackTrace();
-            }
-        });
     }
 
-
-    // === Load boxes into table dynamically ===
-    private void loadBoxesIntoTable(Long ticketId) {
-        UiTaskRunner.runAsync(statusPanel, () -> {
-            try {
-                List<DispatchLine> boxes = dispatchService.findBoxesForTicket(ticketId); // returns DispatchLine or Pack data
-
-                SwingUtilities.invokeLater(() -> {
+    private void loadBoxesIntoTable(long ticketId) {
+        LOGGER.info(() -> String.format("[UI][T4_LOAD_BOXES] ticket=%d BEGIN", ticketId));
+        currentDispatchId = null;
+        toggleManifestActions(false);
+        UiTaskRunner.run(statusPanel,
+                "Loading sealed boxes...",
+                null,
+                () -> dispatchService.findBoxesForTicket(ticketId),
+                boxes -> {
+                    LOGGER.info(() -> String.format("[UI][T4_LOAD_BOXES] ticket=%d boxes=%d", ticketId, boxes.size()));
+                    currentBoxes.clear();
+                    currentBoxes.addAll(boxes);
                     tableModel.setRowCount(0);
-                    for (DispatchLine box : boxes) {
-                        Object[] row = new Object[] {
-                                box.getBoxId(),
-                                "Box " + box.getBoxId(), // description placeholder
-                                0.0, // weight placeholder
-                                Boolean.TRUE
-                        };
-                        tableModel.addRow(row);
+                    for (DispatchLine line : boxes) {
+                        tableModel.addRow(new Object[]{
+                                line.getBoxId(),
+                                "Box " + line.getBoxId(),
+                                "-"
+                        });
                     }
+                    statusPanel.setSuccess(boxes.isEmpty()
+                            ? "No sealed boxes for this ticket."
+                            : "Loaded " + boxes.size() + " sealed box(es).");
+                },
+                err -> {
+                    LOGGER.log(Level.SEVERE,
+                            String.format("[UI][T4_LOAD_BOXES] ticket=%d FAILED=%s", ticketId, err.getMessage()),
+                            err);
+                    statusPanel.setError("Failed to load boxes: " + err.getMessage());
                 });
-            } catch (Exception ex) {
-                statusPanel.setError("Failed to load boxes: " + ex.getMessage());
-                ex.printStackTrace();
-            }
-        });
+    }
+
+    private void onCreateManifest() {
+        ComboItem<Long> ticket = getSelected(ticketCombo);
+        ComboItem<Long> vehicle = getSelected(vehicleCombo);
+        ComboItem<Long> driver = getSelected(driverCombo);
+
+        if (ticket == null) {
+            statusPanel.setError("Select a packed ticket first.");
+            return;
+        }
+        if (vehicle == null) {
+            statusPanel.setError("Select an available vehicle.");
+            return;
+        }
+        if (driver == null) {
+            statusPanel.setError("Select an active driver.");
+            return;
+        }
+        if (currentBoxes.isEmpty()) {
+            statusPanel.setError("No sealed boxes to load for this ticket.");
+            return;
+        }
+
+        String manifestNo = manifestField.getText();
+        if (manifestNo == null || manifestNo.isBlank()) {
+            manifestNo = "M" + System.currentTimeMillis();
+        }
+        final String finalManifestNo = manifestNo.trim();
+
+        LOGGER.info(() -> String.format("[UI][T4_CREATE_MANIFEST] ticket=%d vehicle=%d driver=%d boxes=%d manifest=%s",
+                ticket.getValue(), vehicle.getValue(), driver.getValue(), currentBoxes.size(), finalManifestNo));
+        UiTaskRunner.run(statusPanel,
+                "Creating dispatch manifest...",
+                null,
+                () -> {
+                    DispatchHeader hdr = new DispatchHeader();
+                    hdr.setPickTicketId(ticket.getValue());
+                    hdr.setVehicleId(vehicle.getValue());
+                    hdr.setDriverId(driver.getValue());
+                    hdr.setManifestNo(finalManifestNo);
+                    hdr.setCreatedBy(currentUser);
+                    hdr.setUpdatedBy(currentUser);
+
+                    List<DispatchLine> lines = new ArrayList<>();
+                    for (DispatchLine box : currentBoxes) {
+                        DispatchLine line = new DispatchLine();
+                        line.setBoxId(box.getBoxId());
+                        line.setSourceRef(box.getSourceRef());
+                        line.setCreatedBy(currentUser);
+                        line.setUpdatedBy(currentUser);
+                        lines.add(line);
+                    }
+                    return dispatchService.createDispatch(hdr, lines);
+                },
+                hdr -> {
+                    currentDispatchId = hdr.getDispatchId();
+                    statusPanel.setSuccess("Dispatch created (ID " + currentDispatchId + ").");
+                    toggleManifestActions(true);
+                    manifestField.setText("");
+                    LOGGER.info(() -> String.format("[UI][T4_CREATE_MANIFEST] SUCCESS dispatch=%d ticket=%d",
+                            currentDispatchId, ticket.getValue()));
+
+                    if (ticket != null) {
+                        suppressTicketEvents = true;
+                        ticketCombo.removeItem(ticket);
+                        ticketCombo.setSelectedItem(null);
+                        suppressTicketEvents = false;
+                    }
+                    vehicleCombo.setSelectedItem(null);
+                    driverCombo.setSelectedItem(null);
+                },
+                err -> {
+                    LOGGER.log(Level.WARNING,
+                            String.format("[UI][T4_CREATE_MANIFEST] ticket=%d FAILED=%s",
+                                    ticket.getValue(), err.getMessage()),
+                            err);
+                    statusPanel.setError(err.getMessage());
+                });
+    }
+
+    private void onRecordTiming(boolean departure) {
+        if (currentDispatchId == null) {
+            statusPanel.setError("Create a manifest first before recording timings.");
+            return;
+        }
+
+        LOGGER.info(() -> String.format("[UI][T4_RECORD_%s] dispatch=%d",
+                departure ? "DEPARTURE" : "ARRIVAL", currentDispatchId));
+        UiTaskRunner.run(statusPanel,
+                departure ? "Recording departure..." : "Recording arrival...",
+                null,
+                () -> {
+                    DispatchHeader hdr = new DispatchHeader();
+                    if (departure) {
+                        hdr.setDepartTs(LocalDateTime.now());
+                    } else {
+                        hdr.setArriveTs(LocalDateTime.now());
+                    }
+                    hdr.setUpdatedBy(currentUser);
+                    if (departure) {
+                        dispatchService.registerDeparture(currentDispatchId, hdr);
+                    } else {
+                        dispatchService.registerArrival(currentDispatchId, hdr);
+                    }
+                    return null;
+                },
+                ignored -> {
+                    LOGGER.info(() -> String.format("[UI][T4_RECORD_%s] SUCCESS dispatch=%d",
+                            departure ? "DEPARTURE" : "ARRIVAL", currentDispatchId));
+                    statusPanel.setSuccess(departure
+                            ? "Departure recorded."
+                            : "Arrival recorded.");
+                },
+                err -> {
+                    LOGGER.log(Level.WARNING,
+                            String.format("[UI][T4_RECORD_%s] dispatch=%d FAILED=%s",
+                                    departure ? "DEPARTURE" : "ARRIVAL", currentDispatchId, err.getMessage()),
+                            err);
+                    statusPanel.setError(err.getMessage());
+                });
+    }
+
+    private void clearBoxes() {
+        currentBoxes.clear();
+        tableModel.setRowCount(0);
+        currentDispatchId = null;
+        toggleManifestActions(false);
+    }
+
+    private void toggleManifestActions(boolean dispatchCreated) {
+        recordDepartureButton.setEnabled(dispatchCreated);
+        recordArrivalButton.setEnabled(dispatchCreated);
+    }
+
+    private DefaultComboBoxModel<ComboItem<Long>> toModel(List<LookupValue> options) {
+        DefaultComboBoxModel<ComboItem<Long>> model = new DefaultComboBoxModel<>();
+        for (LookupValue option : options) {
+            model.addElement(new ComboItem<>(option.getId(), option.getLabel()));
+        }
+        return model;
+    }
+
+    private ComboItem<Long> getSelected(JComboBox<ComboItem<Long>> comboBox) {
+        return (ComboItem<Long>) comboBox.getSelectedItem();
+    }
+
+    private record DropdownPayload(List<LookupValue> tickets,
+                                   List<LookupValue> vehicles,
+                                   List<LookupValue> drivers) {
     }
 }

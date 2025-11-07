@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -48,6 +50,7 @@ import javax.swing.table.AbstractTableModel;
  * Mirrors the layering of TicketForm: UI -> Service -> DAO.
  */
 public class PickingForm extends JFrame {
+    private static final Logger LOGGER = Logger.getLogger(PickingForm.class.getName());
 
     private static final String DEFAULT_UPDATED_BY =
         System.getProperty("user.name", "ui-operator");
@@ -348,6 +351,8 @@ public class PickingForm extends JFrame {
         long ticketId = ticketItem.getValue().getPickTicketId();
         long pickerId = pickerItem.getValue().getEmployeeId();
 
+        LOGGER.info(() -> String.format("[UI][T2_START_PICKING] ticket=%d picker=%d",
+                ticketId, pickerId));
         startPickingButton.setEnabled(false);
         statusLabel.setText("Status: Starting picking session...");
 
@@ -369,6 +374,10 @@ public class PickingForm extends JFrame {
             @Override
             protected void done() {
                 if (error != null) {
+                    LOGGER.log(Level.WARNING,
+                            String.format("[UI][T2_START_PICKING] ticket=%d picker=%d error=%s",
+                                    ticketId, pickerId, error.getMessage()),
+                            error);
                     showWarning(error.getMessage());
                     startPickingButton.setEnabled(true);
                     statusLabel.setText("Status: Failed to start picking.");
@@ -381,12 +390,16 @@ public class PickingForm extends JFrame {
                 }
 
                 if (currentPickingId != null) {
+                    LOGGER.info(() -> String.format("[UI][T2_START_PICKING] SUCCESS ticket=%d picking=%d",
+                            ticketId, currentPickingId));
                     statusLabel.setText("Status: Picking session #" + currentPickingId + " started.");
                     saveResultsButton.setEnabled(true);
                     ticketComboBox.setEnabled(false);
                     pickerComboBox.setEnabled(false);
                 } else {
                     statusLabel.setText("Status: Unable to retrieve picking session id.");
+                    LOGGER.warning(() -> String.format("[UI][T2_START_PICKING] ticket=%d missing_picking_id",
+                            ticketId));
                 }
             }
         }.execute();
@@ -412,6 +425,8 @@ public class PickingForm extends JFrame {
             return;
         }
 
+        LOGGER.info(() -> String.format("[UI][T2_SAVE_PICKS] picking=%d lines=%d",
+                currentPickingId, linesToSave.size()));
         saveResultsButton.setEnabled(false);
         statusLabel.setText("Status: Saving picked quantities...");
 
@@ -431,11 +446,17 @@ public class PickingForm extends JFrame {
             @Override
             protected void done() {
                 if (error != null) {
+                    LOGGER.log(Level.WARNING,
+                            String.format("[UI][T2_SAVE_PICKS] picking=%d error=%s",
+                                    currentPickingId, error.getMessage()),
+                            error);
                     showWarning(error.getMessage());
                     saveResultsButton.setEnabled(true);
                     statusLabel.setText("Status: Failed to save picked quantities.");
                     return;
                 }
+                LOGGER.info(() -> String.format("[UI][T2_SAVE_PICKS] SUCCESS picking=%d",
+                        currentPickingId));
                 statusLabel.setText("Status: Picked quantities saved.");
                 JOptionPane.showMessageDialog(
                     PickingForm.this,

@@ -1,6 +1,7 @@
 package com.ccinfom.dao.impl;
 
 import com.ccinfom.dao.interfaces.DispatchDao;
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
 import java.sql.Connection;
@@ -302,13 +303,18 @@ public class DispatchDaoImpl implements DispatchDao {
 
     // --- Fetch available vehicle names for dropdown ---
     @Override
-    public List<String> findAvailableVehicleNames(Connection conn) throws SQLException {
-        String sql = "SELECT plate_number FROM vehicles WHERE vehicle_status = 'available'";
-        List<String> vehicles = new ArrayList<>();
+    public List<LookupValue> findAvailableVehicles(Connection conn) throws SQLException {
+        String sql = """
+            SELECT vehicle_id, plate_number
+              FROM vehicles
+             WHERE vehicle_status = 'available'
+             ORDER BY plate_number
+            """;
+        List<LookupValue> vehicles = new ArrayList<>();
         try (PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()) {
+             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                vehicles.add(rs.getString("plate_number"));
+                vehicles.add(new LookupValue(rs.getLong("vehicle_id"), rs.getString("plate_number")));
             }
         }
         return vehicles;
@@ -316,15 +322,19 @@ public class DispatchDaoImpl implements DispatchDao {
 
     // --- Fetch available driver names for dropdown ---
     @Override
-    public List<String> findAvailableDriverNames(Connection conn) throws SQLException {
-        List<String> drivers = new ArrayList<>();
-        String sql = "SELECT CONCAT(first_name, ' ', last_name) AS full_name " +
-                    "FROM employees " +
-                    "WHERE employee_role = 'driver' AND employee_status = 'active'";
+    public List<LookupValue> findAvailableDrivers(Connection conn) throws SQLException {
+        List<LookupValue> drivers = new ArrayList<>();
+        String sql = """
+            SELECT employee_id, CONCAT(first_name, ' ', last_name) AS full_name
+              FROM employees
+             WHERE employee_role = 'driver'
+               AND employee_status = 'active'
+             ORDER BY full_name
+            """;
         try (PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery()) {
+             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                drivers.add(rs.getString("full_name"));
+                drivers.add(new LookupValue(rs.getLong("employee_id"), rs.getString("full_name")));
             }
         }
         return drivers;
@@ -335,7 +345,13 @@ public class DispatchDaoImpl implements DispatchDao {
     @Override
     public List<DispatchLine> findBoxesForTicket(long ticketId, Connection conn) throws SQLException {
         List<DispatchLine> boxes = new ArrayList<>();
-        String sql = "SELECT * FROM pack_box WHERE pick_ticket_id = ? AND sealed_flag = 1";
+        String sql = """
+            SELECT box_id, source_ref, created_at, created_by
+              FROM pack_box_hdr
+             WHERE pick_ticket_id = ?
+               AND sealed_flag = 1
+             ORDER BY box_id
+            """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, ticketId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -343,7 +359,11 @@ public class DispatchDaoImpl implements DispatchDao {
                     DispatchLine line = new DispatchLine();
                     line.setBoxId(rs.getLong("box_id"));
                     line.setSourceRef(rs.getString("source_ref"));
-                    // createdBy/updatedBy left null here, will be set in service
+                    Timestamp createdTs = rs.getTimestamp("created_at");
+                    if (createdTs != null) {
+                        line.setCreatedAt(createdTs.toLocalDateTime());
+                    }
+                    line.setCreatedBy(rs.getString("created_by"));
                     boxes.add(line);
                 }
             }

@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -49,6 +51,7 @@ import javax.swing.table.AbstractTableModel;
  * and pushing validated ticket lines to {@link TicketService}.</p>
  */
 public class TicketForm extends JFrame {
+    private static final Logger LOGGER = Logger.getLogger(TicketForm.class.getName());
 
     private static final String DEFAULT_UPDATED_BY =
         System.getProperty("user.name", "ui-operator");
@@ -352,6 +355,8 @@ public class TicketForm extends JFrame {
             lines.add(line);
         }
 
+        LOGGER.info(() -> String.format("[UI][T1_CREATE_TICKET] customer=%d branch=%d lines=%d",
+                hdr.getCustomerId(), hdr.getBranchId(), lines.size()));
         createTicketButton.setEnabled(false);
         new SwingWorker<Long, Void>() {
             private ValidationException validationError;
@@ -373,16 +378,22 @@ public class TicketForm extends JFrame {
             protected void done() {
                 createTicketButton.setEnabled(true);
                 if (validationError != null) {
+                    LOGGER.warning(() -> String.format("[UI][T1_CREATE_TICKET] validation_error=%s",
+                            validationError.getMessage()));
                     showWarning(validationError.getMessage());
                     return;
                 }
                 if (sqlError != null) {
+                    LOGGER.log(Level.SEVERE,
+                            String.format("[UI][T1_CREATE_TICKET] sql_error=%s", sqlError.getMessage()),
+                            sqlError);
                     showError("Failed to create ticket: " + sqlError.getMessage());
                     return;
                 }
                 try {
                     Long newTicketId = get();
                     if (newTicketId != null) {
+                        LOGGER.info(() -> String.format("[UI][T1_CREATE_TICKET] SUCCESS ticket=%d", newTicketId));
                         JOptionPane.showMessageDialog(
                             TicketForm.this,
                             "Ticket #" + newTicketId + " created successfully.",
@@ -401,12 +412,15 @@ public class TicketForm extends JFrame {
                         //   - README: updated instructions mention new guidance.
                         // 
                     } else {
+                        LOGGER.severe("[UI][T1_CREATE_TICKET] UNKNOWN_FAILURE");
                         showError("Ticket creation failed. Please retry.");
                     }
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
+                    LOGGER.log(Level.SEVERE, "[UI][T1_CREATE_TICKET] INTERRUPTED", ie);
                     showError("Ticket creation interrupted.");
                 } catch (ExecutionException ee) {
+                    LOGGER.log(Level.SEVERE, "[UI][T1_CREATE_TICKET] EXECUTION_ERROR", ee);
                     showError("Unexpected error: " + ee.getCause().getMessage());
                 }
             }

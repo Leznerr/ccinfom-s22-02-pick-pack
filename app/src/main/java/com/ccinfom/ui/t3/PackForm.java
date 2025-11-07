@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
@@ -38,6 +40,8 @@ public class PackForm extends JFrame {
     private static final String STATUS_DONE = "Done";
     private static final String SOURCE_REF = "ui-T3-pack";
     private static final String SEAL_METHOD = "tape";
+
+    private static final Logger LOGGER = Logger.getLogger(PackForm.class.getName());
 
     private final PackServiceImpl packService;
     private final PickingDaoImpl pickingDao;
@@ -168,6 +172,7 @@ public class PackForm extends JFrame {
                 null,
                 () -> pickingDao.listByStatus(STATUS_DONE),
                 sessions -> {
+                    LOGGER.info(() -> String.format("[UI][T3_LOAD_SESSIONS] count=%d", sessions.size()));
                     pickingCombo.removeAllItems();
                     pickingCombo.setSelectedItem(null);
                     pickingCombo.revalidate();
@@ -200,11 +205,13 @@ public class PackForm extends JFrame {
         }
 
         long pickingId = selected.getValue();
+        LOGGER.info(() -> String.format("[UI][T3_LOAD_LINES] picking=%d BEGIN", pickingId));
         UiTaskRunner.run(statusPanel,
                 "Loading picking lines...",
                 "Picking lines loaded.",
                 () -> pickingDao.listLinesByPickingId(pickingId),
                 lines -> {
+                    LOGGER.info(() -> String.format("[UI][T3_LOAD_LINES] picking=%d lines=%d", pickingId, lines.size()));
                     lineTableModel.clear();
 
                     Map<Long, PackBoxLine> existingLines = new HashMap<>();
@@ -219,6 +226,10 @@ public class PackForm extends JFrame {
                             }
                         }
                     } catch (SQLException e) {
+                        LOGGER.log(Level.SEVERE,
+                                String.format("[UI][T3_LOAD_LINES] picking=%d load_open_box_failed=%s",
+                                        pickingId, e.getMessage()),
+                                e);
                         statusPanel.setError("Failed to load existing box: " + e.getMessage());
                         return;
                     }
@@ -263,7 +274,12 @@ public class PackForm extends JFrame {
                         statusPanel.setInfo("No picking lines found for this session.");
                     }
                 },
-                ex -> statusPanel.setError("Failed to load lines: " + ex.getMessage()));
+                ex -> {
+                    LOGGER.log(Level.SEVERE,
+                            String.format("[UI][T3_LOAD_LINES] picking=%d FAILED=%s", pickingId, ex.getMessage()),
+                            ex);
+                    statusPanel.setError("Failed to load lines: " + ex.getMessage());
+                });
     }
 
     private void onAddToBox() {
@@ -299,6 +315,8 @@ public class PackForm extends JFrame {
             lineIdsToMark.add(boxLine.getPickingLineId());
         }
 
+        LOGGER.info(() -> String.format("[UI][T3_ADD_TO_BOX] picking=%d ticket=%d lines=%d",
+                currentPickingId, currentPickTicketId, linesToAdd.size()));
         UiTaskRunner.run(statusPanel,
                 "Packing lines...",
                 null,
@@ -331,10 +349,12 @@ public class PackForm extends JFrame {
                         boxReadyToSeal = false;
                         enterSelectionState();
                         statusPanel.setSuccess("Box #" + currentBoxId + " updated. Pack remaining lines or seal when finished.");
+                        LOGGER.info(() -> String.format("[UI][T3_ADD_TO_BOX] box=%d partial", currentBoxId));
                     } else {
                         boxReadyToSeal = true;
                         enterSealingState();
                         statusPanel.setSuccess("Box #" + currentBoxId + " updated. Seal the box to complete packing.");
+                        LOGGER.info(() -> String.format("[UI][T3_ADD_TO_BOX] box=%d complete", currentBoxId));
                     }
                 },
                 err -> {
@@ -342,6 +362,10 @@ public class PackForm extends JFrame {
                         statusPanel.setError(ve.getCode() + ": " + ve.getMessage());
                     else
                         statusPanel.setError("Failed to pack: " + err.getMessage());
+                    LOGGER.log(Level.WARNING,
+                            String.format("[UI][T3_ADD_TO_BOX] box=%d FAILED=%s",
+                                    currentBoxId, err.getMessage()),
+                            err);
                 });
     }
 
@@ -356,6 +380,7 @@ public class PackForm extends JFrame {
                 "Seal this box?", "Confirm", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
 
+        LOGGER.info(() -> String.format("[UI][T3_SEAL_BOX] box=%d ticket=%d", currentBoxId, currentPickTicketId));
         UiTaskRunner.run(statusPanel,
                 "Sealing box...",
                 null,
@@ -384,7 +409,13 @@ public class PackForm extends JFrame {
                     boxReadyToSeal = false;
                     resetForm(followUpMessage, followUpType);
                 },
-                err -> statusPanel.setError(err.getMessage()));
+                err -> {
+                    LOGGER.log(Level.WARNING,
+                            String.format("[UI][T3_SEAL_BOX] box=%d FAILED=%s",
+                                    currentBoxId, err.getMessage()),
+                            err);
+                    statusPanel.setError(err.getMessage());
+                });
     }
 
     private void onReset() {
@@ -404,6 +435,7 @@ public class PackForm extends JFrame {
     }
 
     private void resetForm(String followUpMessage, StatusType type) {
+        LOGGER.info("[UI][T3_RESET_FORM]");
         lineTableModel.clear();
         pickingCombo.removeAllItems();
         pickingCombo.setSelectedItem(null);

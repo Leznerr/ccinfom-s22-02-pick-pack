@@ -4,6 +4,7 @@ import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.DispatchDao;
 import com.ccinfom.dao.interfaces.PackDao;
 import com.ccinfom.dao.interfaces.TicketDao;
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
@@ -54,6 +55,9 @@ public class DispatchServiceImpl implements DispatchService {
         try {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
+            long ticketId = header.getPickTicketId();
+            LOGGER.info(() -> String.format("[T4_CREATE_MANIFEST][ticket=%d][vehicle=%d][driver=%d][boxes=%d] BEGIN",
+                    ticketId, header.getVehicleId(), header.getDriverId(), lines.size()));
 
             if (dispatchDao.isManifestNoExists(header.getManifestNo(), conn)) {
                 throw new ValidationException("DISPATCH_MANIFEST_DUP",
@@ -109,11 +113,16 @@ public class DispatchServiceImpl implements DispatchService {
             conn.commit();
 
             header.setDispatchId(dispatchId);
+            LOGGER.info(() -> String.format("[T4_CREATE_MANIFEST][ticket=%d][dispatch=%d] SUCCESS",
+                    ticketId, dispatchId));
             return header;
         } catch (SQLException | ValidationException ex) {
             safeRollback(conn);
             if (ex instanceof SQLException sqlEx) {
-                LOGGER.log(Level.SEVERE, "Failed to create dispatch", sqlEx);
+                LOGGER.log(Level.SEVERE,
+                        String.format("[T4_CREATE_MANIFEST][ticket=%d] FAILED: %s",
+                                header.getPickTicketId(), sqlEx.getMessage()),
+                        sqlEx);
                 throw sqlEx;
             }
             throw ex;
@@ -141,6 +150,7 @@ public class DispatchServiceImpl implements DispatchService {
         try {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
+            LOGGER.info(() -> String.format("[T4_RECORD_DEPARTURE][dispatch=%d] BEGIN", dispatchId));
 
             if (dispatchDao.findById(dispatchId, conn).isEmpty()) {
                 throw new ValidationException("DISPATCH_NOT_FOUND", "Dispatch not found: " + dispatchId);
@@ -149,10 +159,14 @@ public class DispatchServiceImpl implements DispatchService {
             dispatchDao.updateDispatchTimings(dispatchId, departTs, arriveTs, podTs, podRef, actor, conn);
 
             conn.commit();
+            LOGGER.info(() -> String.format("[T4_RECORD_DEPARTURE][dispatch=%d] SUCCESS", dispatchId));
         } catch (SQLException | ValidationException ex) {
             safeRollback(conn);
             if (ex instanceof SQLException sqlEx) {
-                LOGGER.log(Level.SEVERE, "Failed to register dispatch departure", sqlEx);
+                LOGGER.log(Level.SEVERE,
+                        String.format("[T4_RECORD_DEPARTURE][dispatch=%d] FAILED: %s",
+                                dispatchId, sqlEx.getMessage()),
+                        sqlEx);
                 throw sqlEx;
             }
             throw ex;
@@ -231,7 +245,7 @@ public class DispatchServiceImpl implements DispatchService {
     // NEW METHODS FOR DispatchFrom.java
     @Override
     public void registerArrival(long dispatchId, DispatchHeader updates)
-            throws SQLException, ValidationException {
+        throws SQLException, ValidationException {
         if (dispatchId <= 0) {
             throw new ValidationException("DISPATCH_INVALID_ID", "Dispatch ID must be positive.");
         }
@@ -242,48 +256,53 @@ public class DispatchServiceImpl implements DispatchService {
                 : SYSTEM_USER;
 
         Connection conn = null;
-        try {
-            conn = DbConnection.getConnection();
-            conn.setAutoCommit(false);
+    try {
+        conn = DbConnection.getConnection();
+        conn.setAutoCommit(false);
+        LOGGER.info(() -> String.format("[T4_RECORD_ARRIVAL][dispatch=%d] BEGIN", dispatchId));
 
-            if (dispatchDao.findById(dispatchId, conn).isEmpty()) {
-                throw new ValidationException("DISPATCH_NOT_FOUND", "Dispatch not found: " + dispatchId);
-            }
+        if (dispatchDao.findById(dispatchId, conn).isEmpty()) {
+            throw new ValidationException("DISPATCH_NOT_FOUND", "Dispatch not found: " + dispatchId);
+        }
 
-            // Reuse DAO method for updating arrival timestamp
-            dispatchDao.updateDispatchArrival(dispatchId, arriveTs, actor, conn);
+        // Reuse DAO method for updating arrival timestamp
+        dispatchDao.updateDispatchArrival(dispatchId, arriveTs, actor, conn);
 
-            conn.commit();
-        } catch (SQLException | ValidationException ex) {
-            safeRollback(conn);
-            if (ex instanceof SQLException sqlEx) {
-                LOGGER.log(Level.SEVERE, "Failed to register dispatch arrival", sqlEx);
-                throw sqlEx;
-            }
-            throw ex;
+        conn.commit();
+        LOGGER.info(() -> String.format("[T4_RECORD_ARRIVAL][dispatch=%d] SUCCESS", dispatchId));
+    } catch (SQLException | ValidationException ex) {
+        safeRollback(conn);
+        if (ex instanceof SQLException sqlEx) {
+            LOGGER.log(Level.SEVERE,
+                    String.format("[T4_RECORD_ARRIVAL][dispatch=%d] FAILED: %s",
+                            dispatchId, sqlEx.getMessage()),
+                    sqlEx);
+            throw sqlEx;
+        }
+        throw ex;
         } finally {
             restoreAndClose(conn);
         }
     }
 
     @Override
-    public List<String> findReadyTickets() throws SQLException {
+    public List<LookupValue> findReadyTickets() throws SQLException {
         try (Connection conn = DbConnection.getConnection()) {
-            return ticketDao.findReadyTicketNames(conn); // implement in DAO
+            return ticketDao.findReadyTicketOptions(conn);
         }
     }
 
     @Override
-    public List<String> findAvailableVehicles() throws SQLException {
+    public List<LookupValue> findAvailableVehicles() throws SQLException {
         try (Connection conn = DbConnection.getConnection()) {
-            return dispatchDao.findAvailableVehicleNames(conn); // implement in DAO
+            return dispatchDao.findAvailableVehicles(conn);
         }
     }
 
     @Override
-    public List<String> findAvailableDrivers() throws SQLException {
+    public List<LookupValue> findAvailableDrivers() throws SQLException {
         try (Connection conn = DbConnection.getConnection()) {
-            return dispatchDao.findAvailableDriverNames(conn); // implement in DAO
+            return dispatchDao.findAvailableDrivers(conn);
         }
     }
 

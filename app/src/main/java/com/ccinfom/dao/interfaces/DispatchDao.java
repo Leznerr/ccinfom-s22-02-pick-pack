@@ -1,5 +1,6 @@
 package com.ccinfom.dao.interfaces;
 
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
 import java.sql.Connection;
@@ -41,9 +42,9 @@ public interface DispatchDao {
 
     void updateDispatchArrival(long dispatchId, LocalDateTime arriveTs, String updatedBy, Connection conn) throws SQLException;
 
-    List<String> findAvailableVehicleNames(Connection conn) throws SQLException;
+    List<LookupValue> findAvailableVehicles(Connection conn) throws SQLException;
 
-    List<String> findAvailableDriverNames(Connection conn) throws SQLException;
+    List<LookupValue> findAvailableDrivers(Connection conn) throws SQLException;
 
     List<DispatchLine> findBoxesForTicket(long ticketId, Connection conn) throws SQLException;
 }

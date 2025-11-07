@@ -62,14 +62,21 @@ public class PackServiceImpl implements PackService {
         try {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
+            LOGGER.info(() -> String.format("[T3_CREATE_BOX][ticket=%d][picking=%d] BEGIN",
+                    box.getPickTicketId(), box.getPickingId()));
 
             long boxId = packDao.insertBox(box, conn);
 
             conn.commit();
+            LOGGER.info(() -> String.format("[T3_CREATE_BOX][box=%d][ticket=%d] SUCCESS",
+                    boxId, box.getPickTicketId()));
             return boxId;
         } catch (SQLException ex) {
             safeRollback(conn);
-            LOGGER.log(Level.SEVERE, "Failed to create pack box", ex);
+            LOGGER.log(Level.SEVERE,
+                    String.format("[T3_CREATE_BOX][ticket=%d][picking=%d] FAILED: %s",
+                            box.getPickTicketId(), box.getPickingId(), ex.getMessage()),
+                    ex);
             throw ex;
         } finally {
             restoreAndClose(conn);
@@ -86,6 +93,7 @@ public class PackServiceImpl implements PackService {
         try {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
+            LOGGER.info(() -> String.format("[T3_ADD_LINES][box=%d][lines=%d] BEGIN", boxId, lines.size()));
 
             PackBox box = packDao.findBoxById(boxId, conn)
                     .orElseThrow(() -> new ValidationException("PACK_BOX_NOT_FOUND", "Box does not exist."));
@@ -119,6 +127,8 @@ public class PackServiceImpl implements PackService {
             }
 
             conn.commit();
+            LOGGER.info(() -> String.format("[T3_ADD_LINES][box=%d] SUCCESS lines=%d",
+                    boxId, lines.size()));
         } catch (SQLException ex) {
             safeRollback(conn);
             String message = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
@@ -126,7 +136,9 @@ public class PackServiceImpl implements PackService {
                 throw new ValidationException("PACK_LINE_ALREADY_BOXED",
                         "One of the picking lines is already boxed.");
             }
-            LOGGER.log(Level.SEVERE, "Failed to add pack lines", ex);
+            LOGGER.log(Level.SEVERE,
+                    String.format("[T3_ADD_LINES][box=%d] FAILED: %s", boxId, ex.getMessage()),
+                    ex);
             throw ex;
         } catch (ValidationException ex) {
             safeRollback(conn);
@@ -148,6 +160,7 @@ public class PackServiceImpl implements PackService {
         try {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
+            LOGGER.info(() -> String.format("[T3_SEAL_BOX][box=%d] BEGIN", boxId));
 
             PackBox box = packDao.findBoxById(boxId, conn)
                     .orElseThrow(() -> new ValidationException("PACK_BOX_NOT_FOUND", "Box does not exist."));
@@ -173,9 +186,13 @@ public class PackServiceImpl implements PackService {
             }
 
             conn.commit();
+            LOGGER.info(() -> String.format("[T3_SEAL_BOX][box=%d][ticket=%d] SUCCESS",
+                    boxId, box.getPickTicketId()));
         } catch (SQLException ex) {
             safeRollback(conn);
-            LOGGER.log(Level.SEVERE, "Failed to seal box", ex);
+            LOGGER.log(Level.SEVERE,
+                    String.format("[T3_SEAL_BOX][box=%d] FAILED: %s", boxId, ex.getMessage()),
+                    ex);
             throw ex;
         } catch (ValidationException ex) {
             safeRollback(conn);

@@ -1,5 +1,6 @@
 package com.ccinfom.service;
 
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.dispatch.DispatchHeader;
 import com.ccinfom.model.dispatch.DispatchLine;
 import java.sql.SQLException;
@@ -22,11 +23,11 @@ public interface DispatchService {
     void registerArrival(long dispatchId, DispatchHeader updates)
             throws SQLException, ValidationException;
 
-    List<String> findReadyTickets() throws SQLException;
+    List<LookupValue> findReadyTickets() throws SQLException;
 
-    List<String> findAvailableVehicles() throws SQLException;
+    List<LookupValue> findAvailableVehicles() throws SQLException;
 
-    List<String> findAvailableDrivers() throws SQLException;
+    List<LookupValue> findAvailableDrivers() throws SQLException;
 
     List<DispatchLine> findBoxesForTicket(long ticketId) throws SQLException;
 }

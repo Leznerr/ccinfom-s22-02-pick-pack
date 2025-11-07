@@ -82,7 +82,8 @@ public class TicketService {
             // 3. Start transaction
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
-            logger.info("Started transaction for creating pick ticket.");
+            logger.info(() -> String.format("[T1_CREATE_TICKET][customer=%d][branch=%d] BEGIN",
+                    hdr.getCustomerId(), hdr.getBranchId()));
 
             // 4. Insert header
             long newTicketId = ticketDao.insertTicketHeader(hdr, conn);
@@ -95,14 +96,17 @@ public class TicketService {
 
             // 6. Commit transaction
             conn.commit();
-            logger.info("Successfully created pick ticket ID: " + newTicketId);
+            logger.info(() -> String.format("[T1_CREATE_TICKET][ticket=%d] SUCCESS", newTicketId));
 
             return newTicketId;
 
         } catch (SQLException e) {
             // 7. Rollback on any problem
             safeRollback(conn);
-            logger.log(Level.SEVERE, "Ticket creation transaction failed: " + e.getMessage(), e);
+            logger.log(Level.SEVERE,
+                    String.format("[T1_CREATE_TICKET][customer=%d][branch=%d] FAILED: %s",
+                            hdr.getCustomerId(), hdr.getBranchId(), e.getMessage()),
+                    e);
             throw e; // Let caller decide how to present this (UI may show generic failure)
 
         } finally {

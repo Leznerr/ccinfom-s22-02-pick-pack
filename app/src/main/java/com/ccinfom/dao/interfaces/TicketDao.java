@@ -19,6 +19,7 @@
 
 package com.ccinfom.dao.interfaces;
 
+import com.ccinfom.model.LookupValue;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickTicketLine;
 
@@ -35,7 +36,7 @@ public interface TicketDao {
 
     List<PickTicketLine> listTicketLines(long pickTicketId) throws SQLException;
 
-    List<String> findReadyTicketNames(Connection conn) throws SQLException;
+    List<LookupValue> findReadyTicketOptions(Connection conn) throws SQLException;
 
     // -------------------- CREATE --------------------
     long insertTicketHeader(PickTicketHdr hdr, Connection conn) throws SQLException;

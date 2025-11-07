@@ -134,14 +134,16 @@ public class PickingService {
             );
 
             conn.commit();
-            logger.info("Picking started for ticket " + pickTicketId +
-                        " with picker employee " + pickerEmployeeId);
+            logger.info(() -> String.format("[T2_START_PICKING][ticket=%d][picker=%d] SUCCESS",
+                    pickTicketId, pickerEmployeeId));
 
         } catch (SQLException e) {
             // Roll back everything if any step failed
             safeRollback(conn);
             logger.log(Level.SEVERE,
-                    "Failed to start picking for ticket " + pickTicketId + ": " + e.getMessage(), e);
+                    String.format("[T2_START_PICKING][ticket=%d][picker=%d] FAILED: %s",
+                            pickTicketId, pickerEmployeeId, e.getMessage()),
+                    e);
             throw e;
         } finally {
             restoreAndClose(conn);
@@ -179,6 +181,8 @@ public class PickingService {
         try {
             conn = DbConnection.getConnection();
             conn.setAutoCommit(false);
+            logger.info(() -> String.format("[T2_SAVE_PICKS][picking=%d][lines=%d] BEGIN",
+                    pickingId, pickedItems.size()));
 
             long ticketId = loadTicketId(conn, pickingId);
 
@@ -204,8 +208,8 @@ public class PickingService {
             pickingDao.updatePickingStatus(pickingId, "Done", actor, conn);
 
             conn.commit();
-            logger.info("Saved " + pickedItems.size() +
-                        " picked line(s) for picking_id=" + pickingId);
+            logger.info(() -> String.format("[T2_SAVE_PICKS][picking=%d] SUCCESS lines=%d",
+                    pickingId, pickedItems.size()));
 
         } catch (ValidationException e) {
             safeRollback(conn);
@@ -214,8 +218,9 @@ public class PickingService {
             safeRollback(conn);
 
             logger.log(Level.WARNING,
-                    "Error while saving picked items for picking_id=" + pickingId
-                            + ": " + e.getMessage(), e);
+                    String.format("[T2_SAVE_PICKS][picking=%d] FAILED: %s",
+                            pickingId, e.getMessage()),
+                    e);
 
             // ---- 3. TRANSLATE TECHNICAL DB ERRORS INTO USER MESSAGES ----
             String dbErrorMessage = e.getMessage() != null
