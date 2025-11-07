@@ -36,6 +36,16 @@ public interface DispatchDao {
                                String podRef,
                                String updatedBy,
                                Connection conn) throws SQLException;
+
+        // === NEW METHODS REQUIRED BY DispatchServiceImpl ===
+
+    void updateDispatchArrival(long dispatchId, LocalDateTime arriveTs, String updatedBy, Connection conn) throws SQLException;
+
+    List<String> findAvailableVehicleNames(Connection conn) throws SQLException;
+
+    List<String> findAvailableDriverNames(Connection conn) throws SQLException;
+
+    List<DispatchLine> findBoxesForTicket(long ticketId, Connection conn) throws SQLException;
 }
 
 

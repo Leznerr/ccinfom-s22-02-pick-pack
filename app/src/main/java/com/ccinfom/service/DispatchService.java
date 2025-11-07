@@ -17,5 +17,17 @@ public interface DispatchService {
             throws SQLException, ValidationException;
 
     boolean canLoadBox(long boxId) throws SQLException;
+
+    // NEW METHODS FOR DispatchFrom.java
+    void registerArrival(long dispatchId, DispatchHeader updates)
+            throws SQLException, ValidationException;
+
+    List<String> findReadyTickets() throws SQLException;
+
+    List<String> findAvailableVehicles() throws SQLException;
+
+    List<String> findAvailableDrivers() throws SQLException;
+
+    List<DispatchLine> findBoxesForTicket(long ticketId) throws SQLException;
 }
 

@@ -35,6 +35,8 @@ public interface TicketDao {
 
     List<PickTicketLine> listTicketLines(long pickTicketId) throws SQLException;
 
+    List<String> findReadyTicketNames(Connection conn) throws SQLException;
+
     // -------------------- CREATE --------------------
     long insertTicketHeader(PickTicketHdr hdr, Connection conn) throws SQLException;
 

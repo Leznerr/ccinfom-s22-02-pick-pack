@@ -73,4 +73,24 @@ public final class UiTaskRunner {
     private static void logUncaught(Throwable throwable) {
         throwable.printStackTrace();
     }
+
+public static <T> void runAsync(
+        String inProgressMessage,
+        StatusPanel statusPanel,
+        Callable<T> backgroundTask,
+        Consumer<T> onSuccess
+) {
+    run(statusPanel, inProgressMessage, null, backgroundTask, onSuccess, null);
+}
+
+/** Simple version for Runnable tasks (no result handling). */
+public static void runAsync(StatusPanel statusPanel, Runnable task) {
+    run(statusPanel, "Processing...", null,
+        () -> { task.run(); return null; },
+        null,
+        null
+    );
+}
+
+
 }

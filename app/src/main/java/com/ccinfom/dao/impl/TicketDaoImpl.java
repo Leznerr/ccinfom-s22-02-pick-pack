@@ -176,5 +176,22 @@ public class TicketDaoImpl implements TicketDao {
         line.setUpdatedBy(rs.getString("updated_by"));
         return line;
     }
-}
+
+    @Override
+    public List<String> findReadyTicketNames(Connection conn) throws SQLException {
+        String sql = "SELECT pick_ticket_id FROM pick_ticket_hdr WHERE ticket_status = 'Ready' ORDER BY created_at DESC";
+        List<String> tickets = new ArrayList<>();
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                tickets.add(String.valueOf(rs.getLong("pick_ticket_id")));
+            }
+        }
+        
+        return tickets;
+    }
+
+
+} // end
 

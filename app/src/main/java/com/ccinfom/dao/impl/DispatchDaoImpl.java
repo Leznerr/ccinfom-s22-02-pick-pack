@@ -274,5 +274,80 @@ public class DispatchDaoImpl implements DispatchDao {
         }
         return lines;
     }
-}
+
+
+    // NEW METHODS REQUIRED BY DispatchServiceImpl ===
+
+    // --- Update arrival timestamp only ---
+    @Override
+    public void updateDispatchArrival(long dispatchId, LocalDateTime arriveTs, String updatedBy, Connection conn) throws SQLException {
+        String sql = """
+            UPDATE dispatch_hdr
+            SET arrive_ts = ?,
+                updated_by = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE dispatch_id = ?
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            if (arriveTs != null) {
+                stmt.setTimestamp(1, Timestamp.valueOf(arriveTs));
+            } else {
+                stmt.setNull(1, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(2, updatedBy);
+            stmt.setLong(3, dispatchId);
+            stmt.executeUpdate();
+        }
+    }
+
+    // --- Fetch available vehicle names for dropdown ---
+    @Override
+    public List<String> findAvailableVehicleNames(Connection conn) throws SQLException {
+        String sql = "SELECT plate_number FROM vehicles WHERE vehicle_status = 'available'";
+        List<String> vehicles = new ArrayList<>();
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                vehicles.add(rs.getString("plate_number"));
+            }
+        }
+        return vehicles;
+    }
+
+
+    // --- Fetch available driver names for dropdown ---
+    @Override
+    public List<String> findAvailableDriverNames(Connection conn) throws SQLException {
+        List<String> drivers = new ArrayList<>();
+        String sql = "SELECT driver_name FROM drivers WHERE driver_status = 'available'";
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                drivers.add(rs.getString("driver_name"));
+            }
+        }
+        return drivers;
+    }
+
+    // --- Fetch all boxes for a given ticket ---
+    @Override
+    public List<DispatchLine> findBoxesForTicket(long ticketId, Connection conn) throws SQLException {
+        List<DispatchLine> boxes = new ArrayList<>();
+        String sql = "SELECT * FROM pack_box WHERE pick_ticket_id = ? AND sealed_flag = 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, ticketId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    DispatchLine line = new DispatchLine();
+                    line.setBoxId(rs.getLong("box_id"));
+                    line.setSourceRef(rs.getString("source_ref"));
+                    // createdBy/updatedBy left null here, will be set in service
+                    boxes.add(line);
+                }
+            }
+        }
+        return boxes;
+    }
+
+} // end
 
