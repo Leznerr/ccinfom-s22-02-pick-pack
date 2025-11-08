@@ -24,7 +24,7 @@ Thumbs.db
 ########################################
 # Local / secret config
 ########################################
-app/src/main/resources/dbconfig.properties
+dbconfig.properties
 *.local.properties
 *.env
 .env
