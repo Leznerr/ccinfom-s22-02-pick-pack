@@ -105,6 +105,7 @@ SELECT
     'demo-T3-overpack-line'
 FROM picking_line pl
 WHERE pl.picking_id = @picking_a
+  AND pl.picking_line_id NOT IN (SELECT picking_line_id FROM pack_box_line)
 LIMIT 1;
 
 -- Expected result:
