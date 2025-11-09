@@ -154,4 +154,3 @@ SELECT 'T3 Pack & Box demo complete — proceed to Dispatch (T4)' AS message;
 --   - Exceptions raise specified codes.
 --   - Referenced in README demo instructions.
 -- | Links: qa/validation_queries.sql, docs/seed-id-map.md
-
