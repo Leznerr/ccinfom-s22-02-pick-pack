@@ -355,44 +355,90 @@ FROM req_vs_got
 WHERE (req = got    AND picking_status <> 'Done')
    OR (req <> got   AND picking_status  = 'Done');
 
--- TODO[E-QA-T3-001] Add packed_vs_picked validation once pack_box tables exist.
--- Why: Service enforces packed_qty ≤ picked_qty; QA must confirm zero violations.
--- Query outline:
---   SELECT pbl.picking_line_id, pbl.packed_qty, pl.picked_qty
---     FROM pack_box_line pbl
---     JOIN picking_line pl ON pl.picking_line_id = pbl.picking_line_id
---    WHERE pbl.packed_qty > pl.picked_qty;
--- Acceptance: query returns zero rows during QA run; referenced by PhaseEServiceTestRunner.testT3_overPack_throwsValidationException().
--- Owner: Mark | Links: docs/decisions.md#phase-e
+-- T3: Packed quantity must never exceed picked quantity (expect ZERO rows)
+SELECT pbl.box_line_id,
+       pbl.picking_line_id,
+       pbl.packed_qty,
+       pl.picked_qty
+  FROM pack_box_line pbl
+  JOIN picking_line pl ON pl.picking_line_id = pbl.picking_line_id
+ WHERE pbl.packed_qty > pl.picked_qty;
 
--- TODO[E-QA-T4-002] Add sealed-only and duplicate-box dispatch validations.
--- Why: DispatchService must load only sealed boxes once per manifest.
--- Query outline:
---   1) Unsealed: JOIN dispatch_line -> pack_box_hdr WHERE sealed_flag = 0.
---   2) Duplicate: SELECT box_id FROM dispatch_line GROUP BY box_id HAVING COUNT(*) > 1.
--- Acceptance: both queries return zero rows; demo-T1-to-T4.sql includes failing scenarios for manual proof.
--- Owner: Carlo
+-- T4: Dispatch must reference sealed boxes only (expect ZERO rows)
+SELECT dl.dispatch_id,
+       dl.box_id
+  FROM dispatch_line dl
+  JOIN pack_box_hdr pb ON pb.box_id = dl.box_id
+ WHERE pb.sealed_flag = FALSE;
 
--- TODO[E-QA-T4-003] Add vehicle capacity/status QA query.
--- Why: Ensure vehicles on manifests are available and loads respect capacity.
--- Query outline:
---   JOIN dispatch_hdr -> vehicles; compare SUM(estimated_weight) vs capacity (seed-supplied weight placeholder) and flag non-available statuses.
--- Acceptance: returns zero rows when seeds obey rules; demo exception shows expected violation.
--- Owner: Carlo
+-- T4: Duplicate box loads are not allowed (expect ZERO rows)
+SELECT box_id,
+       COUNT(*) AS load_count
+  FROM dispatch_line
+ GROUP BY box_id
+HAVING COUNT(*) > 1;
 
--- TODO[E-QA-T5-004] Add inventory reconciliation via inventory_txn_log.
--- Why: Only RESERVE and CLOSE transactions should affect balances; totals must match products table.
--- Query outline:
---   Aggregate inventory_txn_log by product_id; compare vs products.reserved_qty/on_hand_qty.
---   Confirm no rows exist with source_txn_type='PACK'.
--- Acceptance: QA check returns zero discrepancies; referenced in docs/decisions.md and README.
--- Owner: Joshua
+-- T4: Vehicle must be available and box count must respect capacity (expect ZERO rows)
+WITH box_counts AS (
+    SELECT dh.dispatch_id,
+           dh.vehicle_id,
+           COUNT(dl.box_id) AS box_count
+      FROM dispatch_hdr dh
+      LEFT JOIN dispatch_line dl ON dl.dispatch_id = dh.dispatch_id
+     GROUP BY dh.dispatch_id, dh.vehicle_id
+)
+SELECT bc.dispatch_id,
+       v.plate_number,
+       v.vehicle_status,
+       v.capacity,
+       bc.box_count
+  FROM box_counts bc
+  JOIN vehicles v ON v.vehicle_id = bc.vehicle_id
+ WHERE v.vehicle_status <> 'available'
+    OR (v.capacity IS NOT NULL AND bc.box_count > v.capacity);
 
--- TODO[E-QA-T5-005] Add close_variance reconciliation query.
--- Why: CloseService must enforce delivered_qty + short_qty = requested_qty.
--- Query outline:
---   SELECT ticket_line_id FROM close_variance WHERE delivered_qty + short_qty <> requested_qty;
--- Acceptance: zero rows post-close; demo-full-flow.sql short-close scenario used for manual verification.
--- Owner: Renzel
+-- T5: Every PickingService reserve must log a matching delta (expect ZERO rows)
+SELECT pl.picking_line_id,
+       pl.product_id,
+       pl.picked_qty
+  FROM picking_line pl
+ WHERE pl.updated_by <> 'seed'
+   AND NOT EXISTS (
+         SELECT 1
+           FROM inventory_txn_log log
+          WHERE log.source_txn_type = 'RESERVE'
+            AND log.source_txn_id   = pl.picking_line_id
+            AND log.product_id      = pl.product_id
+            AND log.delta_reserved  = pl.picked_qty
+            AND log.delta_on_hand   = 0
+       );
+
+-- T5: Every Close variance must emit a CLOSE log with matching deltas (expect ZERO rows)
+SELECT cv.variance_id,
+       cv.ticket_line_id,
+       tl.product_id,
+       cv.delivered_qty,
+       cv.short_qty
+  FROM close_variance cv
+  JOIN pick_ticket_line tl ON tl.ticket_line_id = cv.ticket_line_id
+ WHERE cv.updated_by <> 'seed'
+   AND NOT EXISTS (
+         SELECT 1
+           FROM inventory_txn_log log
+          WHERE log.source_txn_type = 'CLOSE'
+            AND log.source_txn_id   = cv.close_id
+            AND log.product_id      = tl.product_id
+            AND log.delta_reserved  = -(cv.delivered_qty + cv.short_qty)
+            AND log.delta_on_hand   = -cv.delivered_qty
+       );
+
+-- T5: Close variance reconciliation (expect ZERO rows)
+SELECT cv.variance_id,
+       cv.ticket_line_id,
+       cv.requested_qty,
+       cv.delivered_qty,
+       cv.short_qty
+  FROM close_variance cv
+ WHERE ROUND(cv.delivered_qty + cv.short_qty, 2) <> ROUND(cv.requested_qty, 2);
    
    

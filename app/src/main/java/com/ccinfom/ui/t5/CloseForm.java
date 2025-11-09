@@ -1,4 +1,4 @@
-package main.java.com.ccinfom.ui.t5;
+package com.ccinfom.ui.t5;
 
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.impl.CloseDaoImpl;
@@ -21,6 +21,7 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -86,8 +87,7 @@ public class CloseForm extends JFrame {
 
         podRefField = new JTextField(20);
         podTsField = new JTextField(20);
-        podTsField.setEditable(false);
-        podTsField.setText(LocalDateTime.now().toString());
+        podTsField.setText(LocalDateTime.now().withNano(0).toString());
 
         notesArea = new JTextArea(3, 40);
         notesArea.setLineWrap(true);
@@ -230,16 +230,20 @@ public class CloseForm extends JFrame {
                 null,
                 () -> {
                     String query = """
-                        SELECT dh.dispatch_id, dh.pick_ticket_id, dh.dispatch_ts,
-                               pth.ticket_number, pth.request_id
+                        SELECT dh.dispatch_id,
+                               dh.pick_ticket_id,
+                               dh.manifest_no,
+                               dh.created_at AS dispatch_created_at,
+                               pth.remarks,
+                               pth.ticket_status
                         FROM dispatch_hdr dh
                         JOIN pick_ticket_hdr pth ON dh.pick_ticket_id = pth.pick_ticket_id
-                        WHERE pth.status = 'Dispatched'
+                        WHERE pth.ticket_status = 'Dispatched'
                           AND NOT EXISTS (
-                            SELECT 1 FROM close_hdr ch 
+                            SELECT 1 FROM close_hdr ch
                             WHERE ch.dispatch_id = dh.dispatch_id
                           )
-                        ORDER BY dh.dispatch_ts DESC
+                        ORDER BY dh.created_at DESC
                     """;
 
                     List<DispatchedTicketItem> tickets = new ArrayList<>();
@@ -248,12 +252,18 @@ public class CloseForm extends JFrame {
                          ResultSet rs = stmt.executeQuery(query)) {
 
                         while (rs.next()) {
+                            long ticketId = rs.getLong("pick_ticket_id");
+                            long dispatchId = rs.getLong("dispatch_id");
+                            String manifestNo = rs.getString("manifest_no");
+                            Timestamp createdAt = rs.getTimestamp("dispatch_created_at");
+                            String remarks = rs.getString("remarks");
+                            String displayLabel = buildTicketLabel(ticketId, manifestNo, remarks);
                             tickets.add(new DispatchedTicketItem(
-                                    rs.getLong("dispatch_id"),
-                                    rs.getLong("pick_ticket_id"),
-                                    rs.getString("ticket_number"),
-                                    rs.getLong("request_id"),
-                                    rs.getTimestamp("dispatch_ts")
+                                    dispatchId,
+                                    ticketId,
+                                    manifestNo,
+                                    createdAt,
+                                    displayLabel
                             ));
                         }
                     }
@@ -278,6 +288,17 @@ public class CloseForm extends JFrame {
                 });
     }
 
+    private String buildTicketLabel(long ticketId, String manifestNo, String remarks) {
+        StringBuilder label = new StringBuilder("Ticket #").append(ticketId);
+        if (manifestNo != null && !manifestNo.isBlank()) {
+            label.append(" (Manifest ").append(manifestNo).append(")");
+        }
+        if (remarks != null && !remarks.isBlank()) {
+            label.append(" - ").append(remarks.trim());
+        }
+        return label.toString();
+    }
+
     private void onTicketSelected() {
         DispatchedTicketItem selected = (DispatchedTicketItem) ticketCombo.getSelectedItem();
         if (selected == null) {
@@ -297,10 +318,12 @@ public class CloseForm extends JFrame {
                 null,
                 () -> {
                     String query = """
-                        SELECT ptl.ticket_line_id, ptl.item_id, ptl.requested_qty,
-                               i.item_name, i.item_code
+                        SELECT ptl.ticket_line_id,
+                               p.product_name,
+                               p.sku,
+                               ptl.requested_qty
                         FROM pick_ticket_line ptl
-                        JOIN item i ON ptl.item_id = i.item_id
+                        JOIN products p ON ptl.product_id = p.product_id
                         WHERE ptl.pick_ticket_id = ?
                         ORDER BY ptl.ticket_line_id
                     """;
@@ -314,8 +337,8 @@ public class CloseForm extends JFrame {
                             while (rs.next()) {
                                 lines.add(new TicketLineItem(
                                         rs.getLong("ticket_line_id"),
-                                        rs.getString("item_name"),
-                                        rs.getString("item_code"),
+                                        rs.getString("product_name"),
+                                        rs.getString("sku"),
                                         rs.getBigDecimal("requested_qty")
                                 ));
                             }
@@ -339,7 +362,7 @@ public class CloseForm extends JFrame {
                         });
                     }
 
-                    statusPanel.setSuccess("Loaded " + lines.size() + " item(s) for " + selected.ticketNumber);
+        statusPanel.setSuccess("Loaded " + lines.size() + " item(s) for " + selected.displayLabel);
                 },
                 ex -> {
                     LOGGER.log(Level.SEVERE,
@@ -426,6 +449,16 @@ public class CloseForm extends JFrame {
             throw new Exception("PoD Reference is required.");
         }
 
+        String podTsText = podTsField.getText().trim();
+        if (podTsText.isEmpty()) {
+            throw new Exception("PoD Timestamp is required.");
+        }
+        try {
+            LocalDateTime.parse(podTsText);
+        } catch (DateTimeParseException ex) {
+            throw new Exception("Invalid PoD timestamp. Use format yyyy-MM-ddTHH:mm:ss");
+        }
+
         if (tableModel.getRowCount() == 0) {
             throw new Exception("No items to close.");
         }
@@ -494,10 +527,10 @@ public class CloseForm extends JFrame {
                             ticket.ticketId, finalStatus));
 
                     JOptionPane.showMessageDialog(this,
-                            "Ticket " + ticket.ticketNumber + " closed successfully as " + finalStatus.getDbValue(),
+                            "Ticket " + ticket.displayLabel + " closed successfully as " + finalStatus.getDbValue(),
                             "Success", JOptionPane.INFORMATION_MESSAGE);
 
-                    statusPanel.setSuccess("Ticket closed: " + ticket.ticketNumber + " [" + finalStatus.getDbValue() + "]");
+                    statusPanel.setSuccess("Ticket closed: " + ticket.displayLabel + " [" + finalStatus.getDbValue() + "]");
 
                     // Clear and refresh
                     tableModel.setRowCount(0);
@@ -534,22 +567,25 @@ public class CloseForm extends JFrame {
     private static class DispatchedTicketItem {
         final long dispatchId;
         final long ticketId;
-        final String ticketNumber;
-        final long requestId;
-        final Timestamp dispatchTs;
+        final String manifestNo;
+        final Timestamp createdAt;
+        final String displayLabel;
 
-        DispatchedTicketItem(long dispatchId, long ticketId, String ticketNumber,
-                             long requestId, Timestamp dispatchTs) {
+        DispatchedTicketItem(long dispatchId,
+                             long ticketId,
+                             String manifestNo,
+                             Timestamp createdAt,
+                             String displayLabel) {
             this.dispatchId = dispatchId;
             this.ticketId = ticketId;
-            this.ticketNumber = ticketNumber;
-            this.requestId = requestId;
-            this.dispatchTs = dispatchTs;
+            this.manifestNo = manifestNo;
+            this.createdAt = createdAt;
+            this.displayLabel = displayLabel;
         }
 
         @Override
         public String toString() {
-            return ticketNumber + " (Dispatch ID: " + dispatchId + ")";
+            return displayLabel;
         }
     }
 

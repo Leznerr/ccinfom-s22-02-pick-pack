@@ -6,8 +6,7 @@ import com.ccinfom.ui.t1.TicketForm;
 import com.ccinfom.ui.t2.PickingForm;
 import com.ccinfom.ui.t3.PackForm;
 import com.ccinfom.ui.t4.DispatchForm;
-//import com.ccinfom.ui.t5.CloseForm;
-import main.java.com.ccinfom.ui.t5.CloseForm;//for running sa pc ni gab; use the other one if ever
+import com.ccinfom.ui.t5.CloseForm;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
