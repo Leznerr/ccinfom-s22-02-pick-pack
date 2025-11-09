@@ -154,3 +154,160 @@ SELECT 'T3 Pack & Box demo complete — proceed to Dispatch (T4)' AS message;
 --   - Exceptions raise specified codes.
 --   - Referenced in README demo instructions.
 -- | Links: qa/validation_queries.sql, docs/seed-id-map.md
+
+
+-- =========================================================
+-- PHASE E — T4 Dispatch
+-- Demo: Happy path (sealed boxes) + exceptions (unsealed, duplicate)
+-- =========================================================
+
+-- ----------------------------------------------------------
+-- Step 1: Happy Path — Dispatch Sealed Boxes
+-- ----------------------------------------------------------
+
+-- Get pick_ticket_id from T3 happy path (Ticket A)
+SELECT pick_ticket_id
+  INTO @ticket_a
+  FROM pack_box_hdr
+ WHERE source_ref = 'seed-T3-box1'
+ LIMIT 1;
+
+-- Insert dispatch header
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+VALUES (@ticket_a, 1, 3, CONCAT('MANIFEST-', LPAD(FLOOR(RAND()*1000), 4, '0')), NOW(), 'demo', 'demo');
+
+SET @dispatch_id := LAST_INSERT_ID();
+
+-- Insert dispatch lines for sealed boxes only (dynamic, safe)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
+SELECT @dispatch_id, box_id, 'demo', 'demo'
+FROM pack_box_hdr p
+WHERE pick_ticket_id = @ticket_a
+  AND sealed_flag = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM dispatch_line d WHERE d.box_id = p.box_id
+  );
+
+COMMIT;
+
+-- Verify dispatched boxes
+SELECT 'Happy Path — Dispatched Sealed Boxes' AS section;
+SELECT dl.dispatch_id, dl.box_id, dh.pick_ticket_id
+FROM dispatch_line dl
+JOIN dispatch_hdr dh ON dh.dispatch_id = dl.dispatch_id
+WHERE dh.pick_ticket_id = @ticket_a;
+
+
+-- ----------------------------------------------------------
+-- Step 2: Exception — Attempt to Dispatch Unsealed Box
+-- ----------------------------------------------------------
+
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+VALUES (@ticket_a, 2, 3, CONCAT('MANIFEST-UNSEALED-', LPAD(FLOOR(RAND()*1000), 4, '0')), NOW(), 'demo', 'demo');
+
+SET @dispatch_id := LAST_INSERT_ID();
+
+-- Attempt to load an unsealed box (should trigger exception in service)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
+SELECT @dispatch_id, box_id, 'demo', 'demo'
+FROM pack_box_hdr p
+WHERE pick_ticket_id = @ticket_a
+  AND sealed_flag = 0
+LIMIT 1;
+
+-- Rollback: expected failure
+ROLLBACK;
+
+SELECT 'Exception — Unsealed Box attempt rolled back' AS section;
+SELECT * FROM dispatch_line WHERE dispatch_id = @dispatch_id;
+
+
+-- ----------------------------------------------------------
+-- Step 3: Exception — Duplicate Box Load Attempt
+-- ----------------------------------------------------------
+
+-- First, pick a sealed box that was already dispatched
+SELECT box_id
+  INTO @dup_box_id
+  FROM dispatch_line
+ WHERE dispatch_id = (
+     SELECT dispatch_id FROM dispatch_hdr WHERE pick_ticket_id = @ticket_a ORDER BY dispatch_id LIMIT 1
+ )
+ LIMIT 1;
+
+-- Start transaction for duplicate load attempt
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+VALUES (@ticket_a, 1, 3, CONCAT('MANIFEST-DUP-', LPAD(FLOOR(RAND()*1000), 4, '0')), NOW(), 'demo', 'demo');
+
+SET @dispatch_id := LAST_INSERT_ID();
+
+-- Attempt to insert the same box again (should fail unique constraint)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
+VALUES (@dispatch_id, @dup_box_id, 'demo', 'demo');
+
+-- Rollback expected
+ROLLBACK;
+
+SELECT 'Exception — Duplicate Box attempt rolled back' AS section;
+SELECT * FROM dispatch_line WHERE box_id = @dup_box_id;
+
+
+-- ----------------------------------------------------------
+-- Step 4: Exception — Vehicle Unavailable
+-- ----------------------------------------------------------
+
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+VALUES (@ticket_a, 999, 3, CONCAT('MANIFEST-MAINT-', LPAD(FLOOR(RAND()*1000), 4, '0')), NOW(), 'demo', 'demo');  -- vehicle 999 is unavailable
+
+SET @dispatch_id := LAST_INSERT_ID();
+
+-- Attempt to load sealed box (should fail due to vehicle unavailability)
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
+SELECT @dispatch_id, box_id, 'demo', 'demo'
+FROM pack_box_hdr p
+WHERE pick_ticket_id = @ticket_a
+  AND sealed_flag = 1
+LIMIT 1;
+
+ROLLBACK;
+
+SELECT 'Exception — Vehicle Unavailable rolled back' AS section;
+
+
+-- ----------------------------------------------------------
+-- Step 5: Exception — Vehicle Capacity Exceed
+-- ----------------------------------------------------------
+
+START TRANSACTION;
+
+INSERT INTO dispatch_hdr (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, created_by, updated_by)
+VALUES (@ticket_a, 1, 3, CONCAT('MANIFEST-CAP-', LPAD(FLOOR(RAND()*1000), 4, '0')), NOW(), 'demo', 'demo');
+
+SET @dispatch_id := LAST_INSERT_ID();
+
+-- Attempt to load too many sealed boxes
+INSERT INTO dispatch_line (dispatch_id, box_id, created_by, updated_by)
+SELECT @dispatch_id, box_id, 'demo', 'demo'
+FROM pack_box_hdr p
+WHERE pick_ticket_id = @ticket_a
+  AND sealed_flag = 1;
+
+-- Here, the service should reject if vehicle capacity exceeded
+ROLLBACK;
+
+SELECT 'Exception — Vehicle Capacity Exceed rolled back' AS section;
+
+
+-- =========================================================
+-- End of T4 Dispatch Demo
+-- =========================================================
+
+SELECT 'Demo complete: Happy path + exceptions executed safely' AS message;
