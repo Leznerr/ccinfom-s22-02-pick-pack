@@ -1,5 +1,7 @@
 -- Phase C demo placeholder (T1/T2). Phase E will extend this script.
 
+USE ccinfom_dev;
+
 -- TODO[E-DEMO-T3-001] Append Pack (T3) sequence with happy + over-pack exception.
 -- Why: Demo must illustrate box creation, sealing, and over-pack rollback with clear comments.
 -- Steps (after existing T1/T2 demo):
@@ -11,8 +13,6 @@
 --   - Over-pack step raises PACK_OVER_QTY message in Workbench.
 --   - Demo walkthrough references this section.
 -- | Links: docs/decisions.md#phase-e
-
-USE ccinfom_dev;
 
 -- ==========================================================
 -- PHASE E — T3 Pack & Box
