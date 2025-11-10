@@ -1,0 +1,4 @@
+-- TODO[Phase F - R1]:
+-- Create the v_r1_daily_outcomes view using dim_date + ticket/picking/packing tables.
+-- Follow the spec recorded in /docs/reports-spec.md (time grain, metrics, joins).
+-- This file should be sourced from db/schema.sql once implemented.

@@ -1,0 +1,7 @@
+-- Phase F TODO: Define shared date/ISO-week helpers here.
+-- Expected contents:
+--   * dim_date view/table with calendar_date, year, month, day, iso_week, iso_year
+--   * Optional helper functions for ISO calculations if needed
+--   * Any other reusable view fragments required by R1-R4
+--
+-- Replace this comment block with the actual DDL once the team finalizes the design in /docs/reports-spec.md.

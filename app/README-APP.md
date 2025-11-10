@@ -127,8 +127,13 @@ app/
 |       |-- model/                         <- Table models (POJOs)
 |       |-- dao/                           <- Data access objects
 |       |-- service/                       <- Business logic layer
-|       |-- ui/                            <- Swing forms (T1-T5)
-|       `-- util/                          <- Shared utilities
+|       |-- report/                        <- Phase F report helpers/DAOs (TODO)
+|       |-- ui/
+|       |   |-- common/                    <- Shared Swing widgets (ComboItem, StatusPanel, etc.)
+|       |   |-- t1 ... t5                  <- Transaction forms
+|       |   `-- report/                    <- Report forms (Phase F TODO)
+|       |-- infra/                         <- Cross-cutting helpers (InventoryHelper)
+|       `-- util/                          <- Shared utilities (JdbcUtil)
 |-- src/main/resources/dbconfig.properties.example
 |-- build.sh / build.bat                   <- Compile scripts
 |-- run.sh / run.bat                       <- Launch scripts
@@ -136,3 +141,5 @@ app/
 |-- DECISIONS.md                           <- Design notes
 `-- .gitignore
 ```
+
+> TODO[Phase F]: Add a new section documenting the four report screens, their filters, and how to run/validate them once implementation is complete.

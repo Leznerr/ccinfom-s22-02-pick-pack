@@ -14,3 +14,5 @@
 - Automated regression tests live in `com.ccinfom.test.PhaseEServiceTestRunner`. The suite covers every happy path plus each validation exception (Pack, Dispatch, Close) and InventoryHelper lock handling. Stage 5 is considered green only when this runner prints `Summary: N passed, 0 failed` **and** the QA script reports zero violations.
 
 Keep this file updated whenever a new policy impacts how we prove correctness (e.g., additional log types, capacity heuristics, or QA tooling). Reviewed: 2025‑11‑09.
+
+> TODO[Phase F]: Append reporting policies here (time-grain standards, ISO-week helper definition, on-time delivery formula, PoD compliance rules, picker productivity metrics).

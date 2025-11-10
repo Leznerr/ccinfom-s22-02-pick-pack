@@ -1,0 +1,3 @@
+-- TODO[Phase F - R4]:
+-- Build on-time delivery / PoD compliance view joining dispatch_hdr/line, close_hdr, ticket/customer/vehicle tables, plus dim_date.
+-- Implement the on-time flag logic and PoD metrics specified in /docs/reports-spec.md.

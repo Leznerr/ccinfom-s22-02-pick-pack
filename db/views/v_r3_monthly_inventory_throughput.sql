@@ -1,0 +1,3 @@
+-- TODO[Phase F - R3]:
+-- Create a monthly throughput view that aggregates pack_box, dispatch, and inventory_txn_log data.
+-- Ensure the view exposes the metrics committed in /docs/reports-spec.md (boxes packed, manifests, inventory deltas, SLA stats).

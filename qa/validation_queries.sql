@@ -440,5 +440,14 @@ SELECT cv.variance_id,
        cv.short_qty
   FROM close_variance cv
  WHERE ROUND(cv.delivered_qty + cv.short_qty, 2) <> ROUND(cv.requested_qty, 2);
+
+-- ===========================================================
+-- PHASE F QA TODOs (R1–R4 Report Validations)
+-- ===========================================================
+-- TODO[R1]: Add a validation query against v_r1_daily_outcomes verifying seeded tickets on a known date.
+-- TODO[R2]: Add a validation query against v_r2_weekly_picker_productivity verifying ISO week totals for a known picker.
+-- TODO[R3]: Add a validation query against v_r3_monthly_inventory_throughput confirming inventory delta math.
+-- TODO[R4]: Add a validation query against v_r4_on_time_delivery checking on-time vs late classification + PoD flag.
+-- Remember to capture the outputs in qa/tests/phaseF-validation-YYYYMMDD-HHMMSS.log once implemented.
    
    

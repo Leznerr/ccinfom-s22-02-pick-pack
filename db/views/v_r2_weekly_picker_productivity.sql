@@ -1,0 +1,3 @@
+-- TODO[Phase F - R2]:
+-- Implement ISO week productivity view using picking_hdr/line, employees, products, and dim_date.
+-- Include all metrics (lines picked, units/hour, error counts) defined in /docs/reports-spec.md.
