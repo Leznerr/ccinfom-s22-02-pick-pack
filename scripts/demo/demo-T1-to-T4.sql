@@ -1,18 +1,13 @@
 -- Phase C demo placeholder (T1/T2). Phase E will extend this script.
+-- =================================================================
+-- Phase E — Demo Script (T1 → T4)
+-- =================================================================
+-- This script demonstrates the workflow from Ticket Creation (T1)
+-- through Picking (T2), Packing (T3), and Dispatch (T4).
+-- It includes happy paths and common exception scenarios.
+-- =================================================================
 
 USE ccinfom_dev;
-
--- TODO[E-DEMO-T3-001] Append Pack (T3) sequence with happy + over-pack exception.
--- Why: Demo must illustrate box creation, sealing, and over-pack rollback with clear comments.
--- Steps (after existing T1/T2 demo):
---   1) BEGIN; create pack_box_hdr / pack_box_line for a seeded picking session.
---   2) COMMIT happy path; comment "No inventory log for T3 per policy."
---   3) Attempt over-pack in separate transaction; expect failure with PACK_OVER_QTY.
--- Acceptance:
---   - Script executes end-to-end without manual edits.
---   - Over-pack step raises PACK_OVER_QTY message in Workbench.
---   - Demo walkthrough references this section.
--- | Links: docs/decisions.md#phase-e
 
 -- ==========================================================
 -- PHASE E — T3 Pack & Box
@@ -141,19 +136,6 @@ ORDER BY pl.picking_line_id;
 -- ----------------------------------------------------------
 
 SELECT 'T3 Pack & Box demo complete — proceed to Dispatch (T4)' AS message;
-
-
--- TODO[E-DEMO-T4-002] Append Dispatch (T4) sequence after pack demo.
--- Why: Show manifest creation, sealed-only enforcement, and duplicate load failure.
--- Steps:
---   1) BEGIN; insert dispatch_hdr + dispatch_line for sealed boxes; COMMIT.
---   2) Attempt to load unsealed box → expect DISPATCH_UNSEALED_BOX.
---   3) Attempt duplicate load → expect DISPATCH_BOX_ALREADY_LOADED.
--- Acceptance:
---   - Happy path sets ticket status to 'Dispatched'.
---   - Exceptions raise specified codes.
---   - Referenced in README demo instructions.
--- | Links: qa/validation_queries.sql, docs/seed-id-map.md
 
 
 -- =========================================================

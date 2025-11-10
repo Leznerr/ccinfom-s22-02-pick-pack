@@ -1,59 +1,133 @@
+<#
+    .SYNOPSIS
+        Executes the consolidated QA validation queries against a target MySQL schema.
+
+    .DESCRIPTION
+        This script is the single entry point for Gate A-D checks. It loads
+        qa/validation_queries.sql and pipes the contents into the MySQL CLI,
+        capturing the console output to qa/tests/phaseE-validation-<timestamp>.log.
+
+        Connection settings are resolved in the following order:
+            1. Explicit script parameters
+            2. Environment variables (CCINFOM_DB_*)
+            3. Interactive prompts (user/password only)
+#>
 Param(
-    [string]$User,
-    [string]$Password,
+    [Alias('User')]
+    [string]$DbUser,
+    [Alias('Password')]
+    [string]$DbPassword,
+    [Alias('Host')]
     [string]$DbHost,
+    [Alias('Port')]
     [int]$DbPort,
-    [string]$Schema,
+    [Alias('Database')]
+    [string]$DbName,
     [string]$MysqlPath
 )
 
-if (-not $User)     { $User     = $env:CCINFOM_DB_USER }
-if (-not $Password) { $Password = $env:CCINFOM_DB_PASS }
-if (-not $DbHost)   { $DbHost   = $env:CCINFOM_DB_HOST }
-if (-not $DbPort)   { $DbPort   = if ($env:CCINFOM_DB_PORT) { [int]$env:CCINFOM_DB_PORT } else { 3306 } }
-if (-not $Schema)   { $Schema   = if ($env:CCINFOM_DB_SCHEMA) { $env:CCINFOM_DB_SCHEMA } else { "ccinfom_dev" } }
-if (-not $MysqlPath){ $MysqlPath= if ($env:CCINFOM_MYSQL) { $env:CCINFOM_MYSQL } else { "mysql" } }
+$ErrorActionPreference = 'Stop'
 
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot   = Split-Path -Parent (Split-Path -Parent $scriptRoot)
-$queryFile  = Join-Path $repoRoot "qa\validation_queries.sql"
-$reportDir  = Join-Path $repoRoot "qa\tests"
+# ---------------------------------------------------------------------
+# Resolve repository paths
+# ---------------------------------------------------------------------
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot  = Split-Path -Parent (Split-Path -Parent $scriptDir)
+$qaDir     = Join-Path $repoRoot 'qa'
+$sqlFile   = Join-Path $qaDir 'validation_queries.sql'
+$logDir    = Join-Path $qaDir 'tests'
 
-if (-not (Test-Path $queryFile)) {
-    throw "Unable to locate validation_queries.sql at $queryFile"
+if (-not (Test-Path $sqlFile)) {
+    throw "Unable to locate validation SQL at '$sqlFile'."
 }
 
-if (-not $User) {
-    throw "Database user is required. Provide -User or set CCINFOM_DB_USER."
+if (-not (Test-Path $logDir)) {
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 }
 
-if (-not $Password) {
-    $secure = Read-Host -Prompt "Enter password for user '$User'" -AsSecureString
-    $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+# ---------------------------------------------------------------------
+# Resolve connection settings (param > env > default/prompt)
+# ---------------------------------------------------------------------
+function Resolve-OrDefault {
+    param(
+        [string]$ParamValue,
+        [string]$EnvValue,
+        [string]$DefaultValue
+    )
+    if ($ParamValue) { return $ParamValue }
+    if ($EnvValue)   { return $EnvValue }
+    return $DefaultValue
+}
+
+$dbHost   = Resolve-OrDefault $DbHost     $env:CCINFOM_DB_HOST   'localhost'
+$dbPort   = [int](Resolve-OrDefault $DbPort $env:CCINFOM_DB_PORT '3306')
+$dbName   = Resolve-OrDefault $DbName     $env:CCINFOM_DB_SCHEMA 'ccinfom_dev'
+$dbUser   = Resolve-OrDefault $DbUser     $env:CCINFOM_DB_USER   $null
+$dbPass   = Resolve-OrDefault $DbPassword $env:CCINFOM_DB_PASS   $null
+$mysqlExe = Resolve-OrDefault $MysqlPath  $env:CCINFOM_MYSQL    'mysql'
+
+if (-not $dbUser) {
+    $dbUser = Read-Host 'Enter MySQL user'
+}
+
+if (-not $dbPass) {
+    $secure = Read-Host -Prompt "Enter password for '$dbUser'" -AsSecureString
+    $pwdPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try {
-        $Password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-    } finally {
-        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        $dbPass = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pwdPtr)
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pwdPtr)
     }
 }
 
-if (-not (Test-Path $reportDir)) {
-    New-Item -ItemType Directory -Force -Path $reportDir | Out-Null
+# ---------------------------------------------------------------------
+# Verify mysql client
+# ---------------------------------------------------------------------
+try {
+    $mysqlCmd = Get-Command $mysqlExe -ErrorAction Stop
+}
+catch {
+    throw "MySQL client '$mysqlExe' is not available on PATH. Set CCINFOM_MYSQL or pass -MysqlPath."
 }
 
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$reportFile = Join-Path $reportDir "phaseE-validation-$timestamp.log"
+# ---------------------------------------------------------------------
+# Execute validation queries
+# ---------------------------------------------------------------------
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$logFile   = Join-Path $logDir "phaseE-validation-$timestamp.log"
 
-$args = @()
-if ($DbHost) { $args += @("-h", $DbHost) }
-$args += @("-P", $DbPort)
-$args += @("-u", $User)
-$args += "-p$Password"
-$args += $Schema
+Write-Host "Running QA validation:"
+Write-Host "  Host     : $dbHost`:$dbPort"
+Write-Host "  Schema   : $dbName"
+Write-Host "  User     : $dbUser"
+Write-Host "  Log file : $logFile"
 
-Write-Host "Running QA validation queries against schema '$Schema'..."
+$args = @(
+    '-h', $dbHost,
+    '-P', $dbPort,
+    '-u', $dbUser,
+    $dbName,
+    '--table'
+)
 
-$sqlText = Get-Content $queryFile -Raw
-$sqlText | & $MysqlPath @args 2>&1 | Tee-Object -FilePath $reportFile
+$previousMysqlPwd = $env:MYSQL_PWD
+$env:MYSQL_PWD = $dbPass
 
-Write-Host "QA validation report written to $reportFile"
+try {
+    Get-Content -Raw $sqlFile |
+        & $mysqlCmd.Source @args 2>&1 |
+        Tee-Object -FilePath $logFile | Out-Host
+    Write-Host "Validation complete. Results captured in $logFile"
+}
+catch {
+    throw "QA validation failed: $($_.Exception.Message)"
+}
+finally {
+    if ($previousMysqlPwd -ne $null) {
+        $env:MYSQL_PWD = $previousMysqlPwd
+    }
+    else {
+        Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+    }
+}

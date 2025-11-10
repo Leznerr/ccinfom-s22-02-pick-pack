@@ -191,7 +191,30 @@ IMPACTS: PickingService.savePickedItems(), CloseServiceImpl.closeTicket(), Inven
 DATE: 2025-11-06
 AREA: Proof of Delivery & ID coordination
 DECISION: Align dispatch_hdr/close_hdr pod_ref + pod_ts fields and source all canonical IDs from `/docs/seed-id-map.md`; seeds reuse dispatch PoD data during close.
-RATIONALE: Ensures UI/QA flows reference the same PoD metadata and prevents divergent seed identifiers across T3–T5.
+RATIONALE: Ensures UI/QA flows reference the same PoD metadata and prevents divergent seed identifiers across T3T5.
 IMPACTS: db/ddl/phaseE/dispatch.sql, db/ddl/phaseE/close.sql, db/seed/tx-T5.sql, docs/seed-id-map.md.
 
 
+DATE: 2025-11-10
+AREA: Phase E dispatch guards
+DECISION: Enforce dispatch business rules in the `DispatchService` layer. Key rules include: only sealed boxes can be dispatched, a box cannot be loaded onto multiple manifests, and vehicle status/capacity must be respected.
+RATIONALE: Centralizing these rules in the service layer ensures consistent application across the UI and any future API. This is safer than relying on UI-only validation and more flexible than complex database triggers.
+IMPACTS: `DispatchServiceImpl.java`, `qa/validation_queries.sql`.
+
+DATE: 2025-11-10
+AREA: Phase E close reconciliation
+DECISION: The `CloseService` must enforce the reconciliation rule `requested_qty = delivered_qty + short_qty` for every line in a ticket before it can be closed. A ticket closure will be rejected if the numbers do not add up.
+RATIONALE: This is the core integrity rule for the entire pick-and-pack lifecycle. Enforcing it in the service layer makes it a non-negotiable invariant, preventing data corruption and ensuring accurate inventory accounting.
+IMPACTS: `CloseServiceImpl.java`, `PhaseEServiceTestRunner.java`.
+
+DATE: 2025-11-10
+AREA: Phase E QA automation
+DECISION: Consolidate all validation SQL queries into a single, executable PowerShell script at `scripts/qa/run-validation.ps1`.
+RATIONALE: This provides a "one-click" method for any team member to run a full database integrity check after making changes, seeding data, or running demos. It standardizes the QA process and makes it easily repeatable.
+IMPACTS: `scripts/qa/run-validation.ps1`, `app/README-APP.md`.
+
+DATE: 2025-11-10
+AREA: Phase E demo scripting
+DECISION: All demo scripts (e.g., `demo-full-flow.sql`) must be runnable from top to bottom without manual intervention. They will use transactions and intentional rollbacks to demonstrate exception cases safely.
+RATIONALE: A fully automated script ensures that the demo is reliable, repeatable, and does not leave the database in an inconsistent state. This is critical for defense and for onboarding new team members.
+IMPACTS: `scripts/demo/demo-full-flow.sql`, `scripts/demo/demo-T1-to-T4.sql`.
