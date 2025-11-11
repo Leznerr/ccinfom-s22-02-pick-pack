@@ -369,3 +369,6 @@ SOURCE db/ddl/phaseE/pack_box.sql;
 SOURCE db/ddl/phaseE/inventory_txn_log.sql;
 SOURCE db/ddl/phaseE/dispatch.sql;
 SOURCE db/ddl/phaseE/close.sql;
+
+-- Shared helper views (calendar / ISO week)
+SOURCE db/views/helpers.sql;
