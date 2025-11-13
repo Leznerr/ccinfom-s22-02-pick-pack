@@ -13,6 +13,8 @@
 -- Acceptance: ServiceTestRunner close tests green; QA reconciliation query returns zero.
 
 USE ccinfom_dev;
+DROP TABLE IF EXISTS close_variance;
+DROP TABLE IF EXISTS close_hdr;
 
 CREATE TABLE close_hdr (
   close_id        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

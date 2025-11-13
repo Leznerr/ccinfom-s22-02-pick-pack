@@ -364,9 +364,3 @@ END$$
 -- Phase E: inventory adjustments handled via services
 
 DELIMITER ;
-
--- Phase E tables and inventory log
-SOURCE db/ddl/phaseE/pack_box.sql;
-SOURCE db/ddl/phaseE/inventory_txn_log.sql;
-SOURCE db/ddl/phaseE/dispatch.sql;
-SOURCE db/ddl/phaseE/close.sql;

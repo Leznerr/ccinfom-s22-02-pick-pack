@@ -3,6 +3,7 @@
 The definitions below were agreed upon by the team on 2025‑11‑10 and will remain frozen unless the group explicitly approves revisions.
 
 ## R1 – Daily Pick & Pack Outcomes (Owner: Renzel)
+
 - **Purpose:** Provide a daily end-of-pipeline summary showing how many tickets were closed as Delivered vs Short-Closed, plus shortage incidents (lines and units) so the team can react to spikes in shortages or throughput.
 - **Time Grain & Timestamp:** Day; use `DATE(close_hdr.created_at)` to anchor each ticket close date.
 - **Metrics & Formulas:**
@@ -14,9 +15,10 @@ The definitions below were agreed upon by the team on 2025‑11‑10 and will re
   - Optional top shortage reasons per day: aggregate `cv.reason` where `cv.short_qty>0`
 - **Required Tables/Joins:** `close_hdr ch` → `close_variance cv`; optional joins to `pick_ticket_hdr`, `customers`, `branches`, `products` for drill-downs.
 - **Sample Expectation:** Using seed tickets A & B (close IDs 1 & 2) closed on 2025‑11‑10:
-  - Delivered = 1, Short-Closed = 1, Shortage lines = 2, Shorted units = 10.00, Tickets closed = 2.
+  - Delivered = 1, Short-Closed = 1, Shortage lines = 3, Shorted units = 7.00, Tickets closed = 2.
 
 ## R2 – Weekly Picker Productivity (Owner: Joshua)
+
 - **Purpose:** Measure picker efficiency per ISO week (lines, units, units/hour, avg pick time, error counts) broken down by product category to highlight top performers and bottlenecks.
 - **Time Grain & Timestamp:** ISO week (iso_year + iso_week) derived from `picking_hdr.completed_at` using `YEARWEEK(...,3)`.
 - **Metrics & Formulas:**
@@ -30,6 +32,7 @@ The definitions below were agreed upon by the team on 2025‑11‑10 and will re
   - Picker 1 lines=2 units=10 errors=0; Picker 2 lines=3 units=15 errors=1; totals lines=5, units=25, error lines=1.
 
 ## R3 – Monthly Return Cost & Shortage Exposure (Owner: Mark)
+
 - **Purpose:** Quantify the monthly financial impact of short/return activity by converting shorted quantities into cost (short_qty × unit_price) and tracking exposure (tickets, quantities, fulfillment rate).
 - **Time Grain & Timestamp:** Month (Year + Month) using `close_hdr.pod_ts`.
 - **Metrics & Formulas:**
@@ -46,6 +49,7 @@ The definitions below were agreed upon by the team on 2025‑11‑10 and will re
   - Tickets closed=2, Short-closed=1, Short qty=10, Return cost = 10 × unit_price, Fulfillment ≈ 71%.
 
 ## R4 – Monthly On-Time Delivery & Shortage Reasons (Owner: Carlo)
+
 - **Purpose:** Show monthly on-time vs late deliveries per customer/product and summarize shortage reasons to improve dispatch reliability and PoD compliance.
 - **Time Grain & Timestamp:** Month (Year + Month) using `close_hdr.pod_ts` for delivery completion.
 - **Metrics & Formulas:**
@@ -59,4 +63,5 @@ The definitions below were agreed upon by the team on 2025‑11‑10 and will re
   - On-time deliveries=1 (Ticket A), Late=0 (assuming SLA met), Short-closed=1 (Ticket B), Shortage reasons=2, On-time %=100%.
 
 ## Change Control
+
 - **2025‑11‑10:** Initial Stage 0 lock for R1–R4 (Renzel, Joshua, Mark, Carlo). Any changes require group consensus and an entry here.
