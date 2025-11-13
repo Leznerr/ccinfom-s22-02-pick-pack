@@ -1,6 +1,12 @@
-
 USE ccinfom_dev;
+SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS close_variance;
+DROP TABLE IF EXISTS close_hdr;
+DROP TABLE IF EXISTS dispatch_line;
+DROP TABLE IF EXISTS dispatch_hdr;
+
+SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE dispatch_hdr (
   dispatch_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   pick_ticket_id  BIGINT UNSIGNED NOT NULL,

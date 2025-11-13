@@ -4,7 +4,7 @@
    Properties: Idempotent (safe to re-run), no failing inserts.
 ========================================== */
 USE ccinfom_dev;
-
+SET SQL_SAFE_UPDATES = 0;
 START TRANSACTION;
 
 -- ----------------------------------------------------------
