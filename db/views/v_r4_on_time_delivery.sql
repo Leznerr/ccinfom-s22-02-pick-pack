@@ -1,16 +1,20 @@
 -- TODO[Phase F - R4]:
 -- Build on-time delivery / PoD compliance view joining dispatch_hdr/line, close_hdr, ticket/customer/vehicle tables, plus dim_date.
 -- Implement the on-time flag logic and PoD metrics specified in /docs/reports-spec.md.
+-- R4 – Monthly On-Time Delivery & PoD Compliance
+-- Owner: Carlo
+-- Time Grain: Monthly using close_hdr.pod_ts
+-- File: /db/views/v_r4_on_time_delivery.sql
 
 USE ccinfom_dev;
 
 CREATE OR REPLACE VIEW v_r4_on_time_delivery AS
 SELECT
-    -- Time Dimensions (Monthly)
-    YEAR(ch.pod_ts) AS delivery_year,
-    MONTH(ch.pod_ts) AS delivery_month,
-    CONCAT(YEAR(ch.pod_ts), '-', LPAD(MONTH(ch.pod_ts), 2, '0')) AS year_month_label,
-    DATE_FORMAT(ch.pod_ts, '%Y-%m') AS delivery_year_month,
+    -- Time Dimensions using shared dim_date (consistent with Phase F)
+    dd.calendar_year AS delivery_year,
+    dd.calendar_month AS delivery_month,
+    dd.year_month_label,
+    dd.month_name_label,
     
     -- Delivery Performance Metrics
     COUNT(DISTINCT ch.pick_ticket_id) AS total_shipments,
@@ -103,6 +107,8 @@ SELECT
     b.city AS branch_city
 
 FROM close_hdr ch
+-- Join to dim_date for consistent time handling (Phase F standard)
+INNER JOIN dim_date dd ON DATE(ch.pod_ts) = dd.calendar_date
 -- Join through dispatch to get departure time for SLA calculation
 INNER JOIN dispatch_hdr dh ON ch.dispatch_id = dh.dispatch_id
 INNER JOIN pick_ticket_hdr pth ON ch.pick_ticket_id = pth.pick_ticket_id
@@ -116,10 +122,10 @@ LEFT JOIN close_variance cv ON ch.close_id = cv.close_id
 WHERE ch.pod_ts IS NOT NULL  -- Only include completed deliveries with timestamps
 
 GROUP BY 
-    YEAR(ch.pod_ts),
-    MONTH(ch.pod_ts),
-    CONCAT(YEAR(ch.pod_ts), '-', LPAD(MONTH(ch.pod_ts), 2, '0')),
-    DATE_FORMAT(ch.pod_ts, '%Y-%m'),
+    dd.calendar_year,
+    dd.calendar_month,
+    dd.year_month_label,
+    dd.month_name_label,
     c.customer_id,
     c.customer_name,
     v.vehicle_id,
@@ -135,4 +141,3 @@ ORDER BY
     delivery_year DESC,
     delivery_month DESC,
     customer_name;
-    
