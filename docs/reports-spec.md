@@ -56,7 +56,7 @@ The definitions below were agreed upon by the team on 2025‑11‑10 and will re
   - On-time deliveries: `COUNT(DISTINCT CASE WHEN ch.final_status='Delivered' AND ch.pod_ts <= dh.depart_ts + INTERVAL IFNULL(v.sla_hours,24) HOUR THEN ch.pick_ticket_id END)`
   - Late deliveries: same count but `>` SLA threshold.
   - Short-closed shipments: `COUNT(DISTINCT CASE WHEN ch.final_status='Short-Closed' THEN ch.pick_ticket_id END)`
-  - Shortage reasons count: `COUNT(CASE WHEN cv.short_qty>0 THEN cv.reason END)`
+  - Shortage reasons count: `COUNTsl(CASE WHEN cv.short_qty>0 THEN cv.reason END)`
   - On-time %: `100 * on_time / NULLIF(delivered,0)`
 - **Required Tables/Joins:** `pick_ticket_hdr` → `dispatch_hdr` → `dispatch_line` → `close_hdr` → `close_variance` → `pick_ticket_line` → `products`; joins to `customers`, `vehicles` (SLA), `employees` (driver).
 - **Sample Expectation:** Seeds `seed-T4-hdr-001/002` in Nov 2025:

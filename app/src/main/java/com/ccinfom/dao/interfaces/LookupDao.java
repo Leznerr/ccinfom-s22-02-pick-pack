@@ -21,7 +21,9 @@ import java.util.List;
 
 public interface LookupDao {
     List<Customer> listCustomers();
+    List<Customer> listActiveCustomers();
     List<Branch> listBranches();
+    List<Branch> listActiveBranches();
     List<Employee> listActivePickers();
     List<Product> listActiveProducts();
     List<Vehicle> listActiveVehicles();

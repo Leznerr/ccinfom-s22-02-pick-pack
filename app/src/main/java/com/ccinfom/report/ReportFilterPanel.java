@@ -1,16 +1,6 @@
 package com.ccinfom.report;
 
-import javax.swing.BorderFactory;
-import javax.swing.ButtonGroup;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JRadioButton;
-import javax.swing.ListCellRenderer;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListCellRenderer;
+import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -21,6 +11,17 @@ import java.time.format.TextStyle;
 import java.time.temporal.WeekFields;
 import java.util.EnumSet;
 import java.util.Locale;
+import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.ListCellRenderer;
 
 /**
  * Shared panel for report filters (Stage 1 helper).
@@ -44,6 +45,10 @@ public class ReportFilterPanel extends JPanel {
     private final JComboBox<WeekOption> isoWeekCombo;
     private final JRadioButton monthlyRadio;
     private final JRadioButton isoWeekRadio;
+    private final JPanel monthSelectorPanel;
+    private final JPanel isoSelectorPanel;
+    private final JLabel monthStaticLabel;
+    private final JLabel isoStaticLabel;
     private final JPanel extraFiltersPanel;
     private int extraFilterRow = 0;
     private EnumSet<PeriodMode> supportedModes = EnumSet.of(PeriodMode.MONTH, PeriodMode.ISO_WEEK);
@@ -64,6 +69,15 @@ public class ReportFilterPanel extends JPanel {
         ButtonGroup group = new ButtonGroup();
         group.add(monthlyRadio);
         group.add(isoWeekRadio);
+
+        monthStaticLabel = new JLabel("Month");
+        isoStaticLabel = new JLabel("ISO Week");
+        monthSelectorPanel = new JPanel(new java.awt.CardLayout());
+        monthSelectorPanel.add(monthlyRadio, "radio");
+        monthSelectorPanel.add(monthStaticLabel, "label");
+        isoSelectorPanel = new JPanel(new java.awt.CardLayout());
+        isoSelectorPanel.add(isoWeekRadio, "radio");
+        isoSelectorPanel.add(isoStaticLabel, "label");
 
         monthlyRadio.addActionListener(e -> setPeriodMode(PeriodMode.MONTH));
         isoWeekRadio.addActionListener(e -> setPeriodMode(PeriodMode.ISO_WEEK));
@@ -89,13 +103,13 @@ public class ReportFilterPanel extends JPanel {
 
         gbc.gridx = 0;
         gbc.gridy = 1;
-        add(monthlyRadio, gbc);
+        add(monthSelectorPanel, gbc);
         gbc.gridx = 1;
         add(monthCombo, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
-        add(isoWeekRadio, gbc);
+        add(isoSelectorPanel, gbc);
         gbc.gridx = 1;
         add(isoWeekCombo, gbc);
 
@@ -121,10 +135,11 @@ public class ReportFilterPanel extends JPanel {
             throw new IllegalArgumentException("At least one period mode must be enabled.");
         }
         supportedModes = EnumSet.copyOf(modes);
-        monthlyRadio.setVisible(supportedModes.contains(PeriodMode.MONTH));
         monthCombo.setVisible(supportedModes.contains(PeriodMode.MONTH));
-        isoWeekRadio.setVisible(supportedModes.contains(PeriodMode.ISO_WEEK));
+        monthSelectorPanel.setVisible(supportedModes.contains(PeriodMode.MONTH));
         isoWeekCombo.setVisible(supportedModes.contains(PeriodMode.ISO_WEEK));
+        isoSelectorPanel.setVisible(supportedModes.contains(PeriodMode.ISO_WEEK));
+        updateSelectorCards();
 
         if (!supportedModes.contains(getPeriodMode())) {
             setPeriodMode(supportedModes.iterator().next());
@@ -167,6 +182,17 @@ public class ReportFilterPanel extends JPanel {
             int isoYear = today.get(iso.weekBasedYear());
             ensureYearOption(isoYear);
         }
+    }
+
+    private void updateSelectorCards() {
+        boolean allowToggle = supportedModes.contains(PeriodMode.MONTH) && supportedModes.contains(PeriodMode.ISO_WEEK);
+        showSelectorCard(monthSelectorPanel, allowToggle);
+        showSelectorCard(isoSelectorPanel, allowToggle);
+    }
+
+    private void showSelectorCard(JPanel panel, boolean showRadio) {
+        CardLayout layout = (CardLayout) panel.getLayout();
+        layout.show(panel, showRadio ? "radio" : "label");
     }
 
     public int getSelectedYear() {
@@ -264,7 +290,7 @@ public class ReportFilterPanel extends JPanel {
         return model;
     }
 
-    private ListCellRenderer<MonthOption> monthRenderer() {
+    private ListCellRenderer<? super MonthOption> monthRenderer() {
         return new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -277,7 +303,7 @@ public class ReportFilterPanel extends JPanel {
         };
     }
 
-    private ListCellRenderer<WeekOption> weekRenderer() {
+    private ListCellRenderer<? super WeekOption> weekRenderer() {
         return new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
