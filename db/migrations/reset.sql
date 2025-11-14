@@ -87,6 +87,7 @@ CREATE TABLE vehicles (
   plate_number      VARCHAR(10) NOT NULL UNIQUE,
   vehicle_type      ENUM('van','truck','motorcycle') NOT NULL,
   capacity          DECIMAL(12,2) NOT NULL CHECK (capacity >= 0),
+  sla_hours         TINYINT UNSIGNED NOT NULL DEFAULT 24,
   vehicle_status    ENUM('available','maintenance','inactive') NOT NULL DEFAULT 'available',
   created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -364,3 +365,6 @@ END$$
 -- Phase E: inventory adjustments handled via services
 
 DELIMITER ;
+-- Phase F report views
+SOURCE db/views/v_r1_daily_outcomes.sql;
+SOURCE db/views/v_r4_on_time_delivery.sql;

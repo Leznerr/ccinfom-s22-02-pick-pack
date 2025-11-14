@@ -61,20 +61,20 @@ VALUES
    VEHICLES (12 normal rows; all available)
    ========================= */
 INSERT INTO vehicles
-(plate_number, vehicle_type, capacity, vehicle_status, updated_by)
+(plate_number, vehicle_type, capacity, vehicle_status, sla_hours, updated_by)
 VALUES
-('ABC-1234','van',12.00,'available','seed'),
-('DEF-5678','truck', 5.00,'available','seed'),
-('GHI-9012','motorcycle',2.00,'available','seed'),
-('JKL-3456','van',15.00,'available','seed'),
-('MNO-7890','truck', 5.50,'available','seed'),
-('PQR-2345','motorcycle',2.00,'available','seed'),
-('STU-6789','van', 7.00,'available','seed'),
-('VWX-0123','truck', 4.50,'available','seed'),
-('YZA-4567','motorcycle',2.00,'available','seed'),
-('BCD-8901','van',10.00,'available','seed'),
-('EFG-1235','truck', 4.00,'available','seed'),
-('HIJ-4568','motorcycle',2.00,'available','seed');
+('ABC-1234','van',12.00,'available',24,'seed'),
+('DEF-5678','truck', 5.00,'available',36,'seed'),
+('GHI-9012','motorcycle',2.00,'available',12,'seed'),
+('JKL-3456','van',15.00,'available',24,'seed'),
+('MNO-7890','truck', 5.50,'available',36,'seed'),
+('PQR-2345','motorcycle',2.00,'available',12,'seed'),
+('STU-6789','van', 7.00,'available',24,'seed'),
+('VWX-0123','truck', 4.50,'available',36,'seed'),
+('YZA-4567','motorcycle',2.00,'available',12,'seed'),
+('BCD-8901','van',10.00,'available',24,'seed'),
+('EFG-1235','truck', 4.00,'available',36,'seed'),
+('HIJ-4568','motorcycle',2.00,'available',12,'seed');
 
 /* =========================
    BRANCHES (12 normal rows)

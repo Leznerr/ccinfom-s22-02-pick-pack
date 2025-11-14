@@ -25,11 +25,11 @@ VALUES
 ('O''Connor','Jean-Paul','dispatcher','09170000003',NULL,'active','seed');               -- NULL email allowed by UNIQUE
 
 INSERT INTO vehicles
-(plate_number, vehicle_type, capacity, vehicle_status, updated_by)
+(plate_number, vehicle_type, capacity, vehicle_status, sla_hours, updated_by)
 VALUES
-('DCP-1234','motorcycle',3.00,'maintenance','seed'),   -- maintenance
-('DCP-1235','van',0.00,'maintenance','seed'),          -- zero capacity
-('DCP-1236','truck',6.70,'inactive','seed');           -- inactive
+('DCP-1234','motorcycle',3.00,'maintenance',12,'seed'),   -- maintenance
+('DCP-1235','van',0.00,'maintenance',24,'seed'),          -- zero capacity
+('DCP-1236','truck',6.70,'inactive',36,'seed');           -- inactive
     
 INSERT INTO branches
 (branch_name,      address,     city,       contact_person, phone,        updated_by)
