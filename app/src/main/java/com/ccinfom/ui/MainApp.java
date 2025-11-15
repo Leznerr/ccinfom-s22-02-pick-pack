@@ -3,6 +3,7 @@ package com.ccinfom.ui;
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.ui.common.StatusPanel;
 import com.ccinfom.ui.report.ReportR1Form;
+import com.ccinfom.ui.report.ReportR4Form;
 import com.ccinfom.ui.t1.TicketForm;
 import com.ccinfom.ui.t2.PickingForm;
 import com.ccinfom.ui.t3.PackForm;
@@ -61,6 +62,9 @@ public final class MainApp {
         JButton r1ReportButton = new JButton("R1 – Daily Outcomes");
         r1ReportButton.addActionListener(e -> ReportR1Form.showWindow());
 
+        JButton r4ReportButton = new JButton("R4 – On-Time Delivery & PoD");
+        r4ReportButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new ReportR4Form().setVisible(true)));
+
         JPanel buttonPanel = new JPanel(new GridLayout(0, 1, 8, 8));
         buttonPanel.add(ticketButton);
         buttonPanel.add(pickingButton);
@@ -68,6 +72,7 @@ public final class MainApp {
         buttonPanel.add(dispatchButton);
         buttonPanel.add(closeButton);
         buttonPanel.add(r1ReportButton);
+        buttonPanel.add(r4ReportButton);
 
         JLabel helperText = new JLabel("Select a transaction or report to launch its Swing form.", JLabel.CENTER);
 
