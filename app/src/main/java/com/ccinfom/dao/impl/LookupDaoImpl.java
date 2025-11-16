@@ -61,6 +61,48 @@ public class LookupDaoImpl implements LookupDao {
     }
 
     @Override
+    public List<Employee> listActiveEmployees() throws SQLException {
+        String sql = "SELECT employee_id, last_name, first_name, employee_role, phone, email, " +
+                     "employee_status, created_at, updated_at, updated_by " +
+                     "FROM employees WHERE employee_status = 'active' " +
+                     "ORDER BY last_name, first_name";
+        List<Employee> employees = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                Employee e = new Employee();
+                e.setEmployeeId(rs.getLong("employee_id"));
+                e.setLastName(rs.getString("last_name"));
+                e.setFirstName(rs.getString("first_name"));
+                
+                // Safe enum conversion for role
+                String roleStr = rs.getString("employee_role");
+                e.setEmployeeRole(safeRoleConversion(roleStr));
+                
+                e.setPhone(rs.getString("phone"));
+                e.setEmail(rs.getString("email"));
+                
+                // Safe enum conversion for status
+                String statusStr = rs.getString("employee_status");
+                e.setEmployeeStatus(safeStatusConversion(statusStr));
+
+                Timestamp createdTs = rs.getTimestamp("created_at");
+                e.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
+
+                Timestamp updatedTs = rs.getTimestamp("updated_at");
+                e.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
+
+                e.setUpdatedBy(rs.getString("updated_by"));
+                employees.add(e);
+            }
+        }
+        return employees;
+    }
+
+    @Override
     public List<Branch> listBranches() {
         String sql = "SELECT branch_id, branch_name, address, city, contact_person, phone, " +
                      "created_at, updated_at, updated_by " +
@@ -137,6 +179,21 @@ public class LookupDaoImpl implements LookupDao {
         return employees;
     }
 
+    @Override
+    public List<String> listProductCategories() throws SQLException {
+        String sql = "SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category";
+        List<String> categories = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                categories.add(rs.getString("category"));
+            }
+        }
+        return categories;
+    }
 
     @Override
     public List<Product> listActiveProducts() {
@@ -250,5 +307,27 @@ public class LookupDaoImpl implements LookupDao {
             throw e;
         }
         return p;
+    }
+
+    // Safe conversion helper methods
+    private Employee.Role safeRoleConversion(String roleStr) {
+        if (roleStr == null) return null;
+        try {
+            return Employee.Role.valueOf(roleStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Unknown employee role in database: " + roleStr);
+            // Return a default or handle as needed
+            return Employee.Role.PICKER; // Default to PICKER for safety
+        }
+    }
+
+    private Employee.Status safeStatusConversion(String statusStr) {
+        if (statusStr == null) return null;
+        try {
+            return Employee.Status.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Unknown employee status in database: " + statusStr);
+            return Employee.Status.INACTIVE; // Default to INACTIVE for safety
+        }
     }
 }

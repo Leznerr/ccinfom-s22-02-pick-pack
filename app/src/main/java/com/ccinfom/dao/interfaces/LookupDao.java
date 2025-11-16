@@ -22,9 +22,11 @@ import java.util.List;
 public interface LookupDao {
     List<Customer> listCustomers();
     List<Customer> listActiveCustomers();
+    List<Employee> listActiveEmployees() throws SQLException;
     List<Branch> listBranches();
     List<Branch> listActiveBranches();
     List<Employee> listActivePickers();
+    List<String> listProductCategories() throws SQLException;
     List<Product> listActiveProducts();
     List<Vehicle> listActiveVehicles();
     Product findProductById(Long productId) throws SQLException;
