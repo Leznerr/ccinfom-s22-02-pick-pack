@@ -22,7 +22,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
-public class ReportR4Form extends JInternalFrame {
+public class ReportR4Form extends JFrame {
 
     private final ReportFilterPanel filterPanel;
     private final JComboBox<String> vehicleCombo;
@@ -36,7 +36,8 @@ public class ReportR4Form extends JInternalFrame {
     private final JLabel statusLabel;
 
     public ReportR4Form() {
-        super("R4 – On-Time Delivery & PoD Compliance", true, true, true, true);
+        super("R4 – On-Time Delivery & PoD Compliance");
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(900, 600);
         setLayout(new BorderLayout(8, 8));
 
@@ -99,7 +100,7 @@ public class ReportR4Form extends JInternalFrame {
     private void loadVehicleList() {
         try (Connection conn = com.ccinfom.config.DbConnection.getConnection()) {
 
-            var stmt = conn.prepareStatement("SELECT plate_no FROM vehicle ORDER BY plate_no");
+            var stmt = conn.prepareStatement("SELECT plate_number FROM vehicles ORDER BY plate_number");
             var rs = stmt.executeQuery();
 
             vehicleCombo.addItem("(All)");
@@ -117,7 +118,7 @@ public class ReportR4Form extends JInternalFrame {
 
             var stmt = conn.prepareStatement(
                     "SELECT CONCAT(first_name, ' ', last_name) " +
-                    "FROM employee WHERE employee_role='driver' ORDER BY first_name"
+                    "FROM employees WHERE employee_role='driver' ORDER BY first_name"
             );
             var rs = stmt.executeQuery();
 

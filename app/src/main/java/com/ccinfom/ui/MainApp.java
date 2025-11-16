@@ -63,7 +63,7 @@ public final class MainApp {
         r1ReportButton.addActionListener(e -> ReportR1Form.showWindow());
 
         JButton r4ReportButton = new JButton("R4 – On-Time Delivery & PoD");
-        r4ReportButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new ReportR4Form().setVisible(true)));
+        r4ReportButton.addActionListener(e -> ReportR4Form.showWindow());
 
         JPanel buttonPanel = new JPanel(new GridLayout(0, 1, 8, 8));
         buttonPanel.add(ticketButton);
