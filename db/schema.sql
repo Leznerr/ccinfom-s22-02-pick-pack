@@ -367,4 +367,5 @@ DELIMITER ;
 
 -- Phase F report views
 SOURCE db/views/v_r1_daily_outcomes.sql;
+SOURCE db/views/v_r2_weekly_picker_productivity.sql;
 SOURCE db/views/v_r4_on_time_delivery.sql;
