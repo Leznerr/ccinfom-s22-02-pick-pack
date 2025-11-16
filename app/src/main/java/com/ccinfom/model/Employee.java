@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 
 public class Employee {
     public enum Role {
-        PICKER, PACKER, DISPATCHER, DRIVER
+        PICKER, PACKER, DISPATCHER
     }
 
     public enum Status {
