@@ -56,37 +56,8 @@ public class LookupDaoImpl implements LookupDao {
 
     @Override
     public List<Customer> listActiveCustomers() {
-        String sql = "SELECT customer_id, customer_name, contact_person, phone, email, default_delivery_address, " +
-                     "created_at, updated_at, updated_by " +
-                     "FROM customers WHERE customer_status = 'active' ORDER BY customer_name";
-        List<Customer> customers = new ArrayList<>();
-
-        try (Connection conn = DbConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Customer c = new Customer();
-                c.setCustomerId(rs.getLong("customer_id"));
-                c.setCustomerName(rs.getString("customer_name"));
-                c.setContactPerson(rs.getString("contact_person"));
-                c.setPhone(rs.getString("phone"));
-                c.setEmail(rs.getString("email"));
-                c.setDefaultDeliveryAddress(rs.getString("default_delivery_address"));
-
-                Timestamp createdTs = rs.getTimestamp("created_at");
-                c.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
-
-                Timestamp updatedTs = rs.getTimestamp("updated_at");
-                c.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
-
-                c.setUpdatedBy(rs.getString("updated_by"));
-                customers.add(c);
-            }
-        } catch (SQLException e) {
-            System.err.println("LookupDaoImpl.listActiveCustomers() failed: " + e.getMessage());
-        }
-        return customers;
+        // Customers currently have no status flag in schema; return all until status column exists.
+        return listCustomers();
     }
 
     @Override
@@ -126,37 +97,8 @@ public class LookupDaoImpl implements LookupDao {
 
     @Override
     public List<Branch> listActiveBranches() {
-        String sql = "SELECT branch_id, branch_name, address, city, contact_person, phone, " +
-                     "created_at, updated_at, updated_by " +
-                     "FROM branches WHERE branch_status = 'active' ORDER BY branch_name";
-        List<Branch> branches = new ArrayList<>();
-
-        try (Connection conn = DbConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Branch b = new Branch();
-                b.setBranchId(rs.getLong("branch_id"));
-                b.setBranchName(rs.getString("branch_name"));
-                b.setAddress(rs.getString("address"));
-                b.setCity(rs.getString("city"));
-                b.setContactPerson(rs.getString("contact_person"));
-                b.setPhone(rs.getString("phone"));
-
-                Timestamp createdTs = rs.getTimestamp("created_at");
-                b.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
-
-                Timestamp updatedTs = rs.getTimestamp("updated_at");
-                b.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
-
-                b.setUpdatedBy(rs.getString("updated_by"));
-                branches.add(b);
-            }
-        } catch (SQLException e) {
-            System.err.println("LookupDaoImpl.listActiveBranches() failed: " + e.getMessage());
-        }
-        return branches;
+        // Branches also do not track status yet; return full list.
+        return listBranches();
     }
 
     @Override

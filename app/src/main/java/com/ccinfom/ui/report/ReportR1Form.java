@@ -169,12 +169,12 @@ public class ReportR1Form extends JFrame {
         try {
             customerCombo.removeAllItems();
             customerCombo.addItem(new ComboItem<>(null, "All Customers"));
-            lookupDao.listCustomers().forEach(customer ->
+            lookupDao.listActiveCustomers().forEach(customer ->
                     customerCombo.addItem(new ComboItem<>(customer, customer.getCustomerName())));
 
             branchCombo.removeAllItems();
             branchCombo.addItem(new ComboItem<>(null, "All Branches"));
-            lookupDao.listBranches().forEach(branch ->
+            lookupDao.listActiveBranches().forEach(branch ->
                     branchCombo.addItem(new ComboItem<>(branch, branch.getBranchName())));
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this,
