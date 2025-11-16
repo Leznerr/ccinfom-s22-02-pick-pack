@@ -60,6 +60,41 @@ public class LookupDaoImpl implements LookupDao {
         return listCustomers();
     }
 
+        @Override
+    public List<Employee> listActiveEmployees() throws SQLException {
+        String sql = "SELECT employee_id, last_name, first_name, employee_role, phone, email, " +
+                     "employee_status, created_at, updated_at, updated_by " +
+                     "FROM employees WHERE employee_status = 'active' " +
+                     "ORDER BY last_name, first_name";
+        List<Employee> employees = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                Employee e = new Employee();
+                e.setEmployeeId(rs.getLong("employee_id"));
+                e.setLastName(rs.getString("last_name"));
+                e.setFirstName(rs.getString("first_name"));
+                e.setEmployeeRole(Employee.Role.valueOf(rs.getString("employee_role").toUpperCase()));
+                e.setPhone(rs.getString("phone"));
+                e.setEmail(rs.getString("email"));
+                e.setEmployeeStatus(rs.getString("employee_status"));
+
+                Timestamp createdTs = rs.getTimestamp("created_at");
+                e.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
+
+                Timestamp updatedTs = rs.getTimestamp("updated_at");
+                e.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
+
+                e.setUpdatedBy(rs.getString("updated_by"));
+                employees.add(e);
+            }
+        }
+        return employees;
+    }
+
     @Override
     public List<Branch> listBranches() {
         String sql = "SELECT branch_id, branch_name, address, city, contact_person, phone, " +
@@ -137,6 +172,21 @@ public class LookupDaoImpl implements LookupDao {
         return employees;
     }
 
+    @Override
+    public List<String> listProductCategories() throws SQLException {
+        String sql = "SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category";
+        List<String> categories = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                categories.add(rs.getString("category"));
+            }
+        }
+        return categories;
+    }
 
     @Override
     public List<Product> listActiveProducts() {

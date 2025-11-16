@@ -22,6 +22,8 @@ import java.util.List;
 public interface LookupDao {
     List<Customer> listCustomers();
     List<Customer> listActiveCustomers();
+    List<Employee> listActiveEmployees() throws SQLException;
+    List<String> listProductCategories() throws SQLException;
     List<Branch> listBranches();
     List<Branch> listActiveBranches();
     List<Employee> listActivePickers();
