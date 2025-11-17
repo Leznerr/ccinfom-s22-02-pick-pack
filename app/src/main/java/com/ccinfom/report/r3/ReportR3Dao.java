@@ -40,7 +40,7 @@ public class ReportR3Dao extends ReportDaoBase {
                         "  boxes_packed, manifests_created, " +
                         "  inventory_delta_reserved, inventory_delta_on_hand, " +
                         "  product_categories " +
-                        "FROM v_r3_monthly_inventory_throughput " +
+                        "FROM v_monthly_return_cost_shortage " +
                         "WHERE 1=1 "
         );
 
@@ -114,7 +114,7 @@ public class ReportR3Dao extends ReportDaoBase {
                         "  SUM(inventory_delta_reserved) AS inventory_delta_reserved, " +
                         "  SUM(inventory_delta_on_hand) AS inventory_delta_on_hand, " +
                         "  NULL AS product_categories " +
-                        "FROM v_r3_monthly_inventory_throughput " +
+                        "FROM v_monthly_summary " +
                         "WHERE 1=1 "
         );
 
