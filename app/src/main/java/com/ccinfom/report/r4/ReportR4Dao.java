@@ -108,8 +108,8 @@ public class ReportR4Dao extends ReportDaoBase {
         if (filters.getCustomerId() != null) {
             sql.append(" AND customer_id = ?");
         }
-        if (filters.getProductCategory() != null && !filters.getProductCategory().isBlank()) {
-            sql.append(" AND product_category LIKE ?");
+        if (filters.getProductId() != null) {
+            sql.append(" AND product_id = ?");
         }
 
         sql.append(" ORDER BY delivery_year DESC, delivery_month DESC, customer_name, product_name");
@@ -143,8 +143,8 @@ public class ReportR4Dao extends ReportDaoBase {
         if (filters.getCustomerId() != null) {
             ps.setLong(idx++, filters.getCustomerId());
         }
-        if (filters.getProductCategory() != null && !filters.getProductCategory().isBlank()) {
-            ps.setString(idx++, "%" + filters.getProductCategory().trim() + "%");
+        if (filters.getProductId() != null) {
+            ps.setLong(idx++, filters.getProductId());
         }
     }
 
