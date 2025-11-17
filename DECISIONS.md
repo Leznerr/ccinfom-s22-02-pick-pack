@@ -23,6 +23,11 @@
 - LookupDao(active*) methods now filter by status columns (customers, branches, employees, vehicles) so dropdowns honor deactivation without service-layer overrides.
 - Vehicle lookups also include `sla_hours` alongside capacity/type/status to keep UI/model mappings complete.
 
+## Reporting Charts
+- R1/R2/R4 now render lightweight in-app bar charts (no external deps) on a Chart tab beside the table, derived from the same dataset.
+- Charts can be saved as PNG; table remains the source of truth for CSV/PDF.
+- Empty datasets show a friendly “No data” message; colors are series-based for quick legibility.
+
 Keep this file updated whenever a new policy impacts how we prove correctness (e.g., additional log types, capacity heuristics, or QA tooling). Reviewed: 2025‑11‑09.
 
 > TODO[Phase F]: Append reporting policies here (time-grain standards, ISO-week helper definition, on-time delivery formula, PoD compliance rules, picker productivity metrics).

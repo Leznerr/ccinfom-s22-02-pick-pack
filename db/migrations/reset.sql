@@ -7,11 +7,16 @@
 CREATE DATABASE IF NOT EXISTS ccinfom_dev;
 USE ccinfom_dev;
 
--- ==========================================================
--- Rebuild-safe drops (child -> parent). FK checks OFF only here.
--- ==========================================================
 SET @old_fk = @@FOREIGN_KEY_CHECKS;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- Phase E (T3-T5)
+DROP TABLE IF EXISTS close_variance;
+DROP TABLE IF EXISTS close_hdr;
+DROP TABLE IF EXISTS dispatch_line;
+DROP TABLE IF EXISTS dispatch_hdr;
+DROP TABLE IF EXISTS pack_box_line;
+DROP TABLE IF EXISTS pack_box_hdr;
 
 -- T2 (Picking): drop triggers then tables
 DROP TRIGGER IF EXISTS trg_pick_hdr_ai_set_status;
@@ -366,7 +371,206 @@ END$$
 
 -- Phase E: inventory adjustments handled via services
 
+-- Reset delimiter back to default before Phase E DDL
 DELIMITER ;
+
+-- ==========================================================
+-- Phase E — Pack/Dispatch/Close (T3/T4/T5)
+-- Inlined to avoid SOURCE path issues (Windows + spaces/apostrophes).
+-- ==========================================================
+-- Pack (T3)
+USE ccinfom_dev;
+
+CREATE TABLE IF NOT EXISTS pack_box_hdr (
+  box_id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  pick_ticket_id  BIGINT UNSIGNED NOT NULL,
+  picking_id      BIGINT UNSIGNED NOT NULL,
+  sealed_flag     BOOLEAN NOT NULL DEFAULT FALSE,
+  seal_method     VARCHAR(50) NULL,
+  sealed_at       TIMESTAMP NULL,
+  source_ref      VARCHAR(100) NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_pack_box_ticket
+    FOREIGN KEY (pick_ticket_id)
+    REFERENCES pick_ticket_hdr(pick_ticket_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_pack_box_picking
+    FOREIGN KEY (picking_id)
+    REFERENCES picking_hdr(picking_id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX idx_pack_box_ticket_id ON pack_box_hdr(pick_ticket_id);
+CREATE INDEX idx_pack_box_picking_id ON pack_box_hdr(picking_id);
+CREATE INDEX idx_pack_box_sealed_flag ON pack_box_hdr(sealed_flag);
+
+CREATE TABLE IF NOT EXISTS pack_box_line (
+  box_line_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  box_id          BIGINT UNSIGNED NOT NULL,
+  picking_line_id BIGINT UNSIGNED NOT NULL,
+  packed_qty      DECIMAL(12,2) NOT NULL CHECK (packed_qty >= 0),
+  uom             VARCHAR(50) NOT NULL,
+  source_ref      VARCHAR(100) NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_pack_line_hdr
+    FOREIGN KEY (box_id)
+    REFERENCES pack_box_hdr(box_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_pack_line_picking
+    FOREIGN KEY (picking_line_id)
+    REFERENCES picking_line(picking_line_id),
+
+  CONSTRAINT uq_pack_line_picking UNIQUE (picking_line_id)
+);
+
+CREATE INDEX idx_pack_line_box_id ON pack_box_line(box_id);
+CREATE INDEX idx_pack_line_picking_id ON pack_box_line(picking_line_id);
+
+-- Dispatch (T4)
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS close_variance;
+DROP TABLE IF EXISTS close_hdr;
+DROP TABLE IF EXISTS dispatch_line;
+DROP TABLE IF EXISTS dispatch_hdr;
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE dispatch_hdr (
+  dispatch_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  pick_ticket_id  BIGINT UNSIGNED NOT NULL,
+  vehicle_id      BIGINT UNSIGNED NOT NULL,
+  driver_id       BIGINT UNSIGNED NOT NULL,
+  manifest_no     VARCHAR(100) NOT NULL UNIQUE,
+  depart_ts       TIMESTAMP NULL,
+  arrive_ts       TIMESTAMP NULL,
+  pod_ref         VARCHAR(100) NULL,
+  pod_ts          TIMESTAMP NULL,
+  source_ref      VARCHAR(100) NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_dispatch_ticket
+    FOREIGN KEY (pick_ticket_id)
+    REFERENCES pick_ticket_hdr(pick_ticket_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_dispatch_vehicle
+    FOREIGN KEY (vehicle_id)
+    REFERENCES vehicles(vehicle_id),
+
+  CONSTRAINT fk_dispatch_driver
+    FOREIGN KEY (driver_id)
+    REFERENCES employees(employee_id)
+);
+
+CREATE INDEX idx_dispatch_vehicle_id ON dispatch_hdr(vehicle_id);
+CREATE INDEX idx_dispatch_ticket_id ON dispatch_hdr(pick_ticket_id);
+CREATE INDEX idx_dispatch_driver_id ON dispatch_hdr(driver_id);
+
+CREATE TABLE dispatch_line (
+  dispatch_line_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  dispatch_id      BIGINT UNSIGNED NOT NULL,
+  box_id           BIGINT UNSIGNED NOT NULL,
+  source_ref       VARCHAR(100) NULL,
+  created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by       VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by       VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_dispatch_line_hdr
+    FOREIGN KEY (dispatch_id)
+    REFERENCES dispatch_hdr(dispatch_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_dispatch_line_box
+    FOREIGN KEY (box_id)
+    REFERENCES pack_box_hdr(box_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT uq_dispatch_line_box UNIQUE (box_id)
+);
+
+CREATE INDEX idx_dispatch_line_hdr ON dispatch_line(dispatch_id);
+CREATE INDEX idx_dispatch_line_box ON dispatch_line(box_id);
+
+-- Close (T5)
+DROP TABLE IF EXISTS close_variance;
+DROP TABLE IF EXISTS close_hdr;
+
+CREATE TABLE close_hdr (
+  close_id        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  pick_ticket_id  BIGINT UNSIGNED NOT NULL,
+  dispatch_id     BIGINT UNSIGNED NOT NULL,
+  final_status    ENUM('Delivered','Short-Closed') NOT NULL,
+  pod_ref         VARCHAR(100) NULL,
+  pod_ts          TIMESTAMP NULL,
+  notes           VARCHAR(300) NULL,
+  source_ref      VARCHAR(100) NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_close_ticket
+    FOREIGN KEY (pick_ticket_id)
+    REFERENCES pick_ticket_hdr(pick_ticket_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_close_dispatch
+    FOREIGN KEY (dispatch_id)
+    REFERENCES dispatch_hdr(dispatch_id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX idx_close_hdr_ticket_id ON close_hdr(pick_ticket_id);
+CREATE INDEX idx_close_hdr_dispatch_id ON close_hdr(dispatch_id);
+CREATE INDEX idx_close_hdr_status ON close_hdr(final_status);
+
+CREATE TABLE close_variance (
+  variance_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  close_id        BIGINT UNSIGNED NOT NULL,
+  ticket_line_id  BIGINT UNSIGNED NOT NULL,
+  requested_qty   DECIMAL(12,2) NOT NULL,
+  delivered_qty   DECIMAL(12,2) NOT NULL,
+  short_qty       DECIMAL(12,2) NOT NULL,
+  reason          VARCHAR(200) NULL,
+  source_ref      VARCHAR(100) NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
+
+  CONSTRAINT fk_close_variance_hdr
+    FOREIGN KEY (close_id)
+    REFERENCES close_hdr(close_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_close_variance_ticket_line
+    FOREIGN KEY (ticket_line_id)
+    REFERENCES pick_ticket_line(ticket_line_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT ck_close_variance_requested_nonneg CHECK (requested_qty >= 0),
+  CONSTRAINT ck_close_variance_delivered_nonneg CHECK (delivered_qty >= 0),
+  CONSTRAINT ck_close_variance_short_nonneg CHECK (short_qty >= 0)
+);
+
+CREATE INDEX idx_close_variance_hdr ON close_variance(close_id);
+CREATE INDEX idx_close_variance_ticket_line ON close_variance(ticket_line_id);
+
+DELIMITER ;
+USE ccinfom_dev;
 -- Phase F report views
 SOURCE db/views/v_r1_daily_outcomes.sql;
 SOURCE db/views/v_r2_weekly_picker_productivity.sql;

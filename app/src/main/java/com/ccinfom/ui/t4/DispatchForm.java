@@ -188,6 +188,8 @@ public class DispatchForm extends JFrame {
                             payload.tickets().size(),
                             payload.vehicles().size(),
                             payload.drivers().size()));
+                    // Reset dispatch state when reloading references
+                    currentDispatchId = null;
                     suppressTicketEvents = true;
                     ticketCombo.setModel(toModel(payload.tickets()));
                     vehicleCombo.setModel(toModel(payload.vehicles()));
@@ -226,6 +228,7 @@ public class DispatchForm extends JFrame {
                     statusPanel.setSuccess(boxes.isEmpty()
                             ? "No sealed boxes for this ticket."
                             : "Loaded " + boxes.size() + " sealed box(es).");
+                    toggleManifestActions(!boxes.isEmpty());
                 },
                 err -> {
                     LOGGER.log(Level.SEVERE,

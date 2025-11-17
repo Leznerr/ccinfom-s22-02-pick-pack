@@ -184,10 +184,12 @@ public class TicketDaoImpl implements TicketDao {
     @Override
     public List<LookupValue> findReadyTicketOptions(Connection conn) throws SQLException {
         String sql = """
-            SELECT pick_ticket_id, remarks
-              FROM pick_ticket_hdr
-             WHERE ticket_status = 'Packed'
-             ORDER BY updated_at DESC
+            SELECT DISTINCT hdr.pick_ticket_id, hdr.remarks, hdr.updated_at
+              FROM pick_ticket_hdr hdr
+              JOIN pack_box_hdr pb ON pb.pick_ticket_id = hdr.pick_ticket_id
+             WHERE pb.sealed_flag = 1
+               AND hdr.ticket_status IN ('Packed','Picking','Dispatched')
+             ORDER BY hdr.updated_at DESC
             """;
         List<LookupValue> tickets = new ArrayList<>();
 

@@ -79,13 +79,16 @@ public class PickingDaoImpl implements PickingDao {
         return null;
     }
 
+    @Override
     public PickingHdr findByPickingId(long pickingId) throws SQLException {
         String sql = "SELECT * FROM picking_hdr WHERE picking_id = ?";
         try (Connection conn = DbConnection.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, pickingId);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) return mapHeader(rs);
+                if (rs.next()) {
+                    return mapHeader(rs);
+                }
             }
         }
         return null;

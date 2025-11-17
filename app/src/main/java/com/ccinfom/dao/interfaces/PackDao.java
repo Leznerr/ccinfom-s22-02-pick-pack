@@ -24,7 +24,11 @@ public interface PackDao {
 
     List<PackBoxLine> listLinesByBoxId(long boxId, Connection conn) throws SQLException;
 
+    List<Long> listPackedLineIdsByPicking(long pickingId, Connection conn) throws SQLException;
+
     boolean existsPackedLineForPickingLine(long pickingLineId, Connection conn) throws SQLException;
+
+    Long findBoxIdByPickingLine(long pickingLineId, Connection conn) throws SQLException;
 
     boolean isTicketFullyPacked(long pickTicketId, Connection conn) throws SQLException;
 }

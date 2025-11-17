@@ -7,6 +7,7 @@ import com.ccinfom.dao.interfaces.PickingDao;
 import com.ccinfom.dao.interfaces.TicketDao;
 import com.ccinfom.model.PickTicketHdr;
 import com.ccinfom.model.PickingLine;
+import com.ccinfom.model.PickingHdr;
 import com.ccinfom.model.Product;
 import com.ccinfom.model.pack.PackBox;
 import com.ccinfom.model.pack.PackBoxLine;
@@ -102,6 +103,16 @@ public class PackServiceImpl implements PackService {
                 throw new ValidationException("PACK_ALREADY_SEALED", "Cannot add items to an already sealed box.");
             }
 
+            // Ensure box ticket matches picking's ticket to avoid cross-ticket boxing
+            PickingHdr pickingHdr = pickingDao.findByPickingId(box.getPickingId());
+            if (pickingHdr == null) {
+                throw new ValidationException("PACK_PICKING_NOT_FOUND", "Picking header not found for box.");
+            }
+            if (!box.getPickTicketId().equals(pickingHdr.getPickTicketId())) {
+                throw new ValidationException("PACK_BOX_TICKET_MISMATCH",
+                        "Box ticket does not match picking session ticket.");
+            }
+
             Map<Long, PickingLine> pickingLineMap = loadPickingLines(box.getPickingId());
 
             for (PackBoxLine line : lines) {
@@ -174,16 +185,24 @@ public class PackServiceImpl implements PackService {
                 throw new ValidationException("PACK_SEAL_EMPTY_BOX", "Cannot seal an empty box.");
             }
 
+            // Verify box ticket matches picking ticket
+            PickingHdr pickingHdr = pickingDao.findByPickingId(box.getPickingId());
+            if (pickingHdr == null) {
+                throw new ValidationException("PACK_PICKING_NOT_FOUND", "Picking header not found for box.");
+            }
+            if (!box.getPickTicketId().equals(pickingHdr.getPickTicketId())) {
+                throw new ValidationException("PACK_BOX_TICKET_MISMATCH",
+                        "Box ticket does not match picking session ticket.");
+            }
+
             packDao.sealBox(boxId, sealMethod, actor, conn);
 
-            if (packDao.isTicketFullyPacked(box.getPickTicketId(), conn)) {
-                ticketDao.updateTicketStatus(
-                        box.getPickTicketId(),
-                        PickTicketHdr.TicketStatus.Packed,
-                        actor,
-                        conn
-                );
-            }
+            ticketDao.updateTicketStatus(
+                    pickingHdr.getPickTicketId(),
+                    PickTicketHdr.TicketStatus.Packed,
+                    actor,
+                    conn
+            );
 
             conn.commit();
             LOGGER.info(() -> String.format("[T3_SEAL_BOX][box=%d][ticket=%d] SUCCESS",
@@ -223,6 +242,20 @@ public class PackServiceImpl implements PackService {
         }
     }
 
+    @Override
+    public List<Long> listPackedLineIdsByPicking(long pickingId) throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return packDao.listPackedLineIdsByPicking(pickingId, conn);
+        }
+    }
+
+    @Override
+    public Long findBoxIdByPickingLine(long pickingLineId) throws SQLException {
+        try (Connection conn = DbConnection.getConnection()) {
+            return packDao.findBoxIdByPickingLine(pickingLineId, conn);
+        }
+    }
+
     private Map<Long, PickingLine> loadPickingLines(long pickingId) throws SQLException {
         List<PickingLine> pickingLines = pickingDao.listLinesByPickingId(pickingId);
         Map<Long, PickingLine> map = new HashMap<>();
@@ -259,15 +292,10 @@ public class PackServiceImpl implements PackService {
                     "Picking line " + pickingLine.getPickingLineId() + " is already boxed.");
         }
 
-        try {
-            Product product = lookupDao.findProductById(pickingLine.getProductId());
-            if (product == null || !product.isActiveFlag()) {
-                throw new ValidationException("PACK_PRODUCT_INACTIVE",
-                        "Product for picking line " + pickingLine.getPickingLineId() + " is inactive.");
-            }
-        } catch (SQLException lookupError) {
-            LOGGER.log(Level.WARNING, "Failed to lookup product while validating pack line", lookupError);
-            throw lookupError;
+        Product product = lookupDao.findProductById(pickingLine.getProductId());
+        if (product == null || !product.isActiveFlag()) {
+            throw new ValidationException("PACK_PRODUCT_INACTIVE",
+                    "Product for picking line " + pickingLine.getPickingLineId() + " is inactive.");
         }
 
         if (line.getUom() == null || line.getUom().isBlank()) {

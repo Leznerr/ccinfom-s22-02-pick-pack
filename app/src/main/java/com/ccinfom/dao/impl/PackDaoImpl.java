@@ -140,6 +140,26 @@ public class PackDaoImpl implements PackDao {
     }
 
     @Override
+    public List<Long> listPackedLineIdsByPicking(long pickingId, Connection conn) throws SQLException {
+        String sql = """
+            SELECT pbl.picking_line_id
+              FROM pack_box_line pbl
+              JOIN pack_box_hdr pb ON pb.box_id = pbl.box_id
+             WHERE pb.picking_id = ?
+            """;
+        List<Long> ids = new ArrayList<>();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, pickingId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getLong(1));
+                }
+            }
+        }
+        return ids;
+    }
+
+    @Override
     public boolean existsPackedLineForPickingLine(long pickingLineId, Connection conn) throws SQLException {
         String sql = "SELECT 1 FROM pack_box_line WHERE picking_line_id = ? LIMIT 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -148,6 +168,20 @@ public class PackDaoImpl implements PackDao {
                 return rs.next();
             }
         }
+    }
+
+    @Override
+    public Long findBoxIdByPickingLine(long pickingLineId, Connection conn) throws SQLException {
+        String sql = "SELECT box_id FROM pack_box_line WHERE picking_line_id = ? LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, pickingLineId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return null;
     }
 
     @Override

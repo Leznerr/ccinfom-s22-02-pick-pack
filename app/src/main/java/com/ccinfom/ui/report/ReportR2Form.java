@@ -9,6 +9,7 @@ import com.ccinfom.report.r2.R2WeeklyProductivityRow;
 import com.ccinfom.report.r2.ReportR2Dao;
 import com.ccinfom.ui.common.ComboItem;
 import com.ccinfom.ui.common.PdfExporter;
+import com.ccinfom.ui.common.SimpleBarChartPanel;
 import com.ccinfom.ui.common.StatusPanel;
 import com.ccinfom.ui.common.UiTaskRunner;
 
@@ -20,15 +21,18 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Color;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Swing UI for R2 – Weekly Picker Productivity.
@@ -38,6 +42,7 @@ public class ReportR2Form extends JFrame {
     private final ReportFilterPanel filterPanel;
     private final ReportTableModel tableModel;
     private final JTable table;
+    private final SimpleBarChartPanel chartPanel;
     private final StatusPanel statusPanel;
     private final JComboBox<ComboItem<Employee>> pickerCombo;
     private final JComboBox<String> categoryCombo;
@@ -67,6 +72,7 @@ public class ReportR2Form extends JFrame {
         this.table = new JTable(tableModel);
         table.setFillsViewportHeight(true);
         table.setAutoCreateRowSorter(true);
+        this.chartPanel = new SimpleBarChartPanel();
 
         this.statusPanel = new StatusPanel("Status: Ready");
         this.pickerCombo = new JComboBox<>();
@@ -88,7 +94,10 @@ public class ReportR2Form extends JFrame {
         filterWrapper.add(filterPanel, BorderLayout.CENTER);
         add(filterWrapper, BorderLayout.NORTH);
 
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Table", new JScrollPane(table));
+        tabs.addTab("Chart", chartPanel);
+        add(tabs, BorderLayout.CENTER);
 
         JButton runButton = new JButton("Run");
         runButton.addActionListener(e -> onRunReport());
@@ -96,12 +105,16 @@ public class ReportR2Form extends JFrame {
         JButton exportButton = new JButton("Export PDF");
         exportButton.addActionListener(e -> onExportPdf());
 
+        JButton exportChartButton = new JButton("Save Chart PNG");
+        exportChartButton.addActionListener(e -> onExportChart());
+
         JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 6));
         buttonPanel.add(runButton);
         buttonPanel.add(exportButton);
+        buttonPanel.add(exportChartButton);
         buttonPanel.add(closeButton);
 
         JPanel southPanel = new JPanel(new BorderLayout());
@@ -146,6 +159,8 @@ public class ReportR2Form extends JFrame {
                     row.getShortErrorLines()
                 })
                 .toList());
+
+            updateChart(rows);
 
             String summary = buildFilterSummary(
                 filterPanel.getSelectedYear(), 
@@ -225,6 +240,52 @@ public class ReportR2Form extends JFrame {
                     JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private void onExportChart() {
+        if (!chartPanel.hasData()) {
+            JOptionPane.showMessageDialog(this,
+                    "Run the report before exporting the chart.",
+                    "Export Chart",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save Chart as PNG");
+        chooser.setFileFilter(new FileNameExtensionFilter("PNG Files", "png"));
+        chooser.setSelectedFile(new File("r2-weekly-productivity-chart.png"));
+        int result = chooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().toLowerCase().endsWith(".png")) {
+                file = new File(file.getParentFile(), file.getName() + ".png");
+            }
+            try {
+                chartPanel.saveAsPng(file, 900, 500);
+                statusPanel.setSuccess("Chart saved to: " + file.getAbsolutePath());
+            } catch (Exception ex) {
+                statusPanel.setError("Failed to save chart: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void updateChart(List<R2WeeklyProductivityRow> rows) {
+        if (rows == null || rows.isEmpty()) {
+            chartPanel.setData(List.of(), List.of(), "Picker Productivity", "Lines Picked");
+            return;
+        }
+        List<String> labels = rows.stream()
+                .map(r -> String.format("%d-W%02d", r.getIsoYear(), r.getIsoWeek()))
+                .collect(Collectors.toList());
+        List<Double> lines = rows.stream()
+                .map(r -> (double) r.getLinesPicked())
+                .collect(Collectors.toList());
+        chartPanel.setData(
+                labels,
+                List.of(SimpleBarChartPanel.series("Lines Picked", lines, new Color(79, 129, 189))),
+                "Weekly Picker Productivity",
+                "Lines"
+        );
     }
 
     private File ensurePdfExtension(File file) {

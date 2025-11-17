@@ -10,6 +10,7 @@ import com.ccinfom.report.r1.R1DailyOutcomeRow;
 import com.ccinfom.report.r1.ReportR1Dao;
 import com.ccinfom.ui.common.ComboItem;
 import com.ccinfom.ui.common.PdfExporter;
+import com.ccinfom.ui.common.SimpleBarChartPanel;
 import com.ccinfom.ui.common.StatusPanel;
 
 import javax.swing.BorderFactory;
@@ -20,15 +21,18 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Color;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Swing UI for R1 – Daily Pick & Pack Outcomes.
@@ -38,6 +42,7 @@ public class ReportR1Form extends JFrame {
     private final ReportFilterPanel filterPanel;
     private final ReportTableModel tableModel;
     private final JTable table;
+    private final SimpleBarChartPanel chartPanel;
     private final StatusPanel statusPanel;
     private final JComboBox<ComboItem<Customer>> customerCombo;
     private final JComboBox<ComboItem<Branch>> branchCombo;
@@ -54,6 +59,7 @@ public class ReportR1Form extends JFrame {
         this.table = new JTable(tableModel);
         table.setFillsViewportHeight(true);
         table.setAutoCreateRowSorter(true);
+        this.chartPanel = new SimpleBarChartPanel();
 
         this.statusPanel = new StatusPanel("Status: Ready");
         this.customerCombo = new JComboBox<>();
@@ -74,7 +80,10 @@ public class ReportR1Form extends JFrame {
         filterWrapper.add(filterPanel, BorderLayout.CENTER);
         add(filterWrapper, BorderLayout.NORTH);
 
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Table", new JScrollPane(table));
+        tabs.addTab("Chart", chartPanel);
+        add(tabs, BorderLayout.CENTER);
 
         JButton runButton = new JButton("Run");
         runButton.addActionListener(e -> onRunReport());
@@ -82,12 +91,16 @@ public class ReportR1Form extends JFrame {
         JButton exportButton = new JButton("Export PDF");
         exportButton.addActionListener(e -> onExportPdf());
 
+        JButton exportChartButton = new JButton("Save Chart PNG");
+        exportChartButton.addActionListener(e -> onExportChart());
+
         JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 6));
         buttonPanel.add(runButton);
         buttonPanel.add(exportButton);
+        buttonPanel.add(exportChartButton);
         buttonPanel.add(closeButton);
 
         JPanel southPanel = new JPanel(new BorderLayout());
@@ -118,6 +131,8 @@ public class ReportR1Form extends JFrame {
                             r.getShortageUnits()
                     })
                     .toList());
+
+            updateChart(rows);
 
             String summary = buildFilterSummary(year, month, customerId, branchId);
             if (rows.isEmpty()) {
@@ -155,6 +170,57 @@ public class ReportR1Form extends JFrame {
                 statusPanel.setError("Export failed: " + ex.getMessage());
             }
         }
+    }
+
+    private void onExportChart() {
+        if (!chartPanel.hasData()) {
+            JOptionPane.showMessageDialog(this, "Run the report before exporting the chart.", "Export Chart",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save Chart as PNG");
+        chooser.setFileFilter(new FileNameExtensionFilter("PNG Files", "png"));
+        chooser.setSelectedFile(new File("r1-daily-outcomes-chart.png"));
+        int result = chooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().toLowerCase().endsWith(".png")) {
+                file = new File(file.getParentFile(), file.getName() + ".png");
+            }
+            try {
+                chartPanel.saveAsPng(file, 900, 500);
+                statusPanel.setSuccess("Chart saved to: " + file.getAbsolutePath());
+            } catch (Exception ex) {
+                statusPanel.setError("Failed to save chart: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void updateChart(List<R1DailyOutcomeRow> rows) {
+        if (rows == null || rows.isEmpty()) {
+            chartPanel.setData(List.of(), List.of(), "Daily Outcomes", "Tickets");
+            return;
+        }
+        List<String> labels = rows.stream()
+                .map(r -> r.getCalendarDate().toString())
+                .collect(Collectors.toList());
+        List<Double> delivered = rows.stream()
+                .map(r -> (double) r.getDeliveredTicketCount())
+                .collect(Collectors.toList());
+        List<Double> shortClosed = rows.stream()
+                .map(r -> (double) r.getShortClosedTicketCount())
+                .collect(Collectors.toList());
+
+        chartPanel.setData(
+                labels,
+                List.of(
+                        SimpleBarChartPanel.series("Delivered", delivered, new Color(79, 129, 189)),
+                        SimpleBarChartPanel.series("Short-Closed", shortClosed, new Color(192, 80, 77))
+                ),
+                "Daily Outcomes",
+                "Tickets"
+        );
     }
 
     private File ensurePdfExtension(File file) {

@@ -350,6 +350,9 @@ public class DispatchDaoImpl implements DispatchDao {
               FROM pack_box_hdr
              WHERE pick_ticket_id = ?
                AND sealed_flag = 1
+               AND NOT EXISTS (
+                    SELECT 1 FROM dispatch_line dl WHERE dl.box_id = pack_box_hdr.box_id
+               )
              ORDER BY box_id
             """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {

@@ -215,7 +215,18 @@ public class PackForm extends JFrame {
                     lineTableModel.clear();
 
                     Map<Long, PackBoxLine> existingLines = new HashMap<>();
+                    List<Long> alreadyPackedIds = new ArrayList<>();
                     currentBoxId = -1;
+                    try {
+                        // Lines already boxed (any box)
+                        alreadyPackedIds = packService.listPackedLineIdsByPicking(pickingId);
+                    } catch (SQLException e) {
+                        LOGGER.log(Level.WARNING,
+                                String.format("[UI][T3_LOAD_LINES] picking=%d load_packed_lines_failed=%s",
+                                        pickingId, e.getMessage()),
+                                e);
+                    }
+
                     try {
                         Optional<PackBox> openBox = packService.findOpenBox(pickingId);
                         if (openBox.isPresent()) {
@@ -233,6 +244,17 @@ public class PackForm extends JFrame {
                         statusPanel.setError("Failed to load existing box: " + e.getMessage());
                         return;
                     }
+                    // If no open box but lines are already boxed, try to locate a box via any packed line
+                    if (currentBoxId < 0 && !alreadyPackedIds.isEmpty()) {
+                        try {
+                            Long anyBoxId = packService.findBoxIdByPickingLine(alreadyPackedIds.get(0));
+                            if (anyBoxId != null) {
+                                currentBoxId = anyBoxId;
+                            }
+                        } catch (SQLException ignore) {
+                            // non-fatal; leave currentBoxId as -1
+                        }
+                    }
 
                     for (PickingLine line : lines) {
                         PackLineEntry entry = new PackLineEntry(
@@ -244,6 +266,8 @@ public class PackForm extends JFrame {
                         PackBoxLine packed = existingLines.get(line.getPickingLineId());
                         if (packed != null) {
                             entry.setPackedQty(packed.getPackedQty());
+                            entry.setBoxed(true);
+                        } else if (alreadyPackedIds.contains(line.getPickingLineId())) {
                             entry.setBoxed(true);
                         }
                         lineTableModel.addLine(entry);
@@ -268,7 +292,23 @@ public class PackForm extends JFrame {
                                 statusPanel.setInfo("Box #" + currentBoxId + " already packed. Seal to complete.");
                             }
                         } else {
-                            enterSelectionState();
+                            if (lineTableModel.hasPendingLines()) {
+                                enterSelectionState();
+                            } else {
+                                // All lines boxed in a sealed box; nothing to pack or seal here.
+                                boxReadyToSeal = false;
+                                enterSelectionState();
+                                lineTable.setEnabled(false);
+                                addButton.setEnabled(false);
+                                // if we have a box id from boxed lines, allow sealing
+                                if (currentBoxId > 0) {
+                                    sealButton.setEnabled(true);
+                                    statusPanel.setInfo("All lines already boxed. Seal the box to finish.");
+                                } else {
+                                    sealButton.setEnabled(false);
+                                    statusPanel.setInfo("All lines already boxed (sealed). Nothing to do.");
+                                }
+                            }
                         }
                     } else {
                         statusPanel.setInfo("No picking lines found for this session.");
@@ -302,11 +342,20 @@ public class PackForm extends JFrame {
         }
 
         final String user = currentUser();
+        refreshBoxedState();
         List<PackBoxLine> linesToAdd = lineTableModel.toPackBoxLines(user, SOURCE_REF);
         if (linesToAdd.isEmpty()) {
-            boxReadyToSeal = true;
-            enterSealingState();
-            statusPanel.setInfo("All picking lines are already boxed. Seal the box to complete packing.");
+            if (currentBoxId > 0) {
+                boxReadyToSeal = true;
+                enterSealingState();
+                statusPanel.setInfo("All picking lines are already boxed. Seal the box to complete packing.");
+            } else {
+                boxReadyToSeal = false;
+                enterSelectionState();
+                addButton.setEnabled(false);
+                sealButton.setEnabled(false);
+                statusPanel.setInfo("All picking lines are already boxed (sealed). Nothing to add or seal.");
+            }
             return;
         }
 
@@ -358,10 +407,16 @@ public class PackForm extends JFrame {
                     }
                 },
                 err -> {
-                    if (err instanceof ValidationException ve)
+                    if (err instanceof ValidationException ve) {
                         statusPanel.setError(ve.getCode() + ": " + ve.getMessage());
-                    else
+                        if ("PACK_LINE_ALREADY_BOXED".equalsIgnoreCase(ve.getCode())) {
+                            // Try to locate existing box for this picking session and mark lines
+                            refreshBoxedState();
+                            statusPanel.setInfo("Line already boxed. Reloading state; seal if ready.");
+                        }
+                    } else {
                         statusPanel.setError("Failed to pack: " + err.getMessage());
+                    }
                     LOGGER.log(Level.WARNING,
                             String.format("[UI][T3_ADD_TO_BOX] box=%d FAILED=%s",
                                     currentBoxId, err.getMessage()),
@@ -416,6 +471,20 @@ public class PackForm extends JFrame {
                             err);
                     statusPanel.setError(err.getMessage());
                 });
+    }
+
+    private void refreshBoxedState() {
+        if (currentPickingId <= 0) {
+            return;
+        }
+        try {
+            List<Long> packedIds = packService.listPackedLineIdsByPicking(currentPickingId);
+            lineTableModel.markAsBoxed(packedIds);
+        } catch (SQLException ex) {
+            LOGGER.log(Level.WARNING,
+                    String.format("[UI][T3_REFRESH_BOXED] picking=%d failed=%s", currentPickingId, ex.getMessage()),
+                    ex);
+        }
     }
 
     private void onReset() {

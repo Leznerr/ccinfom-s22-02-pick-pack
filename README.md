@@ -41,3 +41,9 @@ Use `dim_date` to join on `calendar_date` (or `iso_year/iso_week`) inside report
 - Validation via `VehicleService` + `CoreValidationUtil` enforces plate uniqueness; allowed types (van, truck, motorcycle); non-negative capacity; non-negative SLA hours.
 - Smoke test: `java -cp "app/out;app/lib/*;app/src/main/resources" com.ccinfom.daoTest.VehicleCrudRunner`.
 - Screenshot target: `docs/evidence/stageF/vehicle-form.png`.
+
+## Reports (R1/R2/R4) – Chart Views
+
+- Each report now includes a Chart tab alongside the table and lets you save the chart as PNG.
+- R1: daily outcomes grouped bars (Delivered, Short-Closed); R2: weekly picker productivity bars; R4: on-time vs late percentages.
+- Tables remain the source of truth; chart data is derived directly from current rows. Use CSV/PDF export for tabular data; use “Save Chart PNG” for visuals.

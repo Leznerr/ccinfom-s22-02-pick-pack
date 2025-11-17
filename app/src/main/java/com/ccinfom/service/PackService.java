@@ -22,5 +22,9 @@ public interface PackService {
     Optional<PackBox> findOpenBox(long pickingId) throws SQLException;
 
     List<PackBoxLine> listLinesByBoxId(long boxId) throws SQLException;
+
+    List<Long> listPackedLineIdsByPicking(long pickingId) throws SQLException;
+
+    Long findBoxIdByPickingLine(long pickingLineId) throws SQLException;
 }
 
