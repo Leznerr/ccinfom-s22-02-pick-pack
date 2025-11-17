@@ -1,4 +1,4 @@
-    package com.ccinfom.service.impl;
+package com.ccinfom.service.impl;
 
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.dao.interfaces.LookupDao;
@@ -292,15 +292,10 @@ public class PackServiceImpl implements PackService {
                     "Picking line " + pickingLine.getPickingLineId() + " is already boxed.");
         }
 
-        try {
-            Product product = lookupDao.findProductById(pickingLine.getProductId());
-            if (product == null || !product.isActiveFlag()) {
-                throw new ValidationException("PACK_PRODUCT_INACTIVE",
-                        "Product for picking line " + pickingLine.getPickingLineId() + " is inactive.");
-            }
-        } catch (SQLException lookupError) {
-            LOGGER.log(Level.WARNING, "Failed to lookup product while validating pack line", lookupError);
-            throw lookupError;
+        Product product = lookupDao.findProductById(pickingLine.getProductId());
+        if (product == null || !product.isActiveFlag()) {
+            throw new ValidationException("PACK_PRODUCT_INACTIVE",
+                    "Product for picking line " + pickingLine.getPickingLineId() + " is inactive.");
         }
 
         if (line.getUom() == null || line.getUom().isBlank()) {
