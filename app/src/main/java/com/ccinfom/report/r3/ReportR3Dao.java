@@ -2,13 +2,13 @@ package com.ccinfom.report.r3;
 
 import com.ccinfom.report.ReportDaoBase;
 import com.ccinfom.report.r4.ReportFilters;
-import com.ccinfom.report.r3.R3MonthlyThroughputRow;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * TODO[Phase F - R3]:
@@ -17,6 +17,8 @@ import java.util.List;
  *  - Provide summary aggregations if the UI needs totals.
  */
 public class ReportR3Dao extends ReportDaoBase {
+
+    private static final Logger LOGGER = Logger.getLogger(ReportR3Dao.class.getName());
 
     // TODO: Implement methods such as List<ReportR3Row> findMonthlyThroughput(ReportFilters filters)
     /**
@@ -73,6 +75,8 @@ public class ReportR3Dao extends ReportDaoBase {
         }
 
         sql.append("ORDER BY `year` DESC, `month` DESC, customer_name, branch_name");
+
+        logSql(sql, params);
 
         /* Execute using ReportDaoBase helper */
         return executeQuery(
@@ -147,6 +151,8 @@ public class ReportR3Dao extends ReportDaoBase {
 
         sql.append("GROUP BY `year`, `month`");
 
+        logSql(sql, params);
+
         List<R3MonthlyThroughputRow> results = executeQuery(
                 sql.toString(),
                 ps -> {
@@ -158,6 +164,10 @@ public class ReportR3Dao extends ReportDaoBase {
         );
 
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    private void logSql(StringBuilder sql, List<Object> params) {
+        LOGGER.info(() -> "[R3] SQL: " + sql + " | params=" + params);
     }
 
     /**
