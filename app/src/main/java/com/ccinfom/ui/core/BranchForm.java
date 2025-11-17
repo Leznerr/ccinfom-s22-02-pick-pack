@@ -59,12 +59,15 @@ public class BranchForm extends JFrame {
         addBtn.addActionListener(e -> onAdd());
         JButton editBtn = new JButton("Edit");
         editBtn.addActionListener(e -> onEdit());
-        JButton toggleBtn = new JButton("Toggle Active");
+        JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> onToggle());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadBranches());
         JButton closeBtn = new JButton("Close");
         closeBtn.addActionListener(e -> dispose());
+        tint(addBtn, new Color(46, 160, 67));    // create = green
+        tint(editBtn, new Color(10, 132, 255));  // update = blue
+        tint(toggleBtn, new Color(219, 68, 55)); // delete = red
         actions.add(addBtn);
         actions.add(editBtn);
         actions.add(toggleBtn);
@@ -251,6 +254,7 @@ public class BranchForm extends JFrame {
             save.addActionListener(e -> onSave());
             JButton cancel = new JButton("Cancel");
             cancel.addActionListener(e -> dispose());
+            tint(save, new Color(10, 132, 255)); // save/update = blue
             buttons.add(save);
             buttons.add(cancel);
             add(buttons, BorderLayout.SOUTH);
@@ -272,5 +276,11 @@ public class BranchForm extends JFrame {
             return result;
         }
     }
-}
 
+    private static void tint(JButton btn, Color bg) {
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+    }
+}

@@ -65,12 +65,15 @@ public class VehicleForm extends JFrame {
         addBtn.addActionListener(e -> showAddDialog());
         JButton editBtn = new JButton("Edit");
         editBtn.addActionListener(e -> showEditDialog());
-        JButton toggleBtn = new JButton("Toggle Active");
+        JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> toggleStatus());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadVehicles());
         JButton closeBtn = new JButton("Close");
         closeBtn.addActionListener(e -> dispose());
+        tint(addBtn, new Color(46, 160, 67));    // create = green
+        tint(editBtn, new Color(10, 132, 255));  // update = blue
+        tint(toggleBtn, new Color(219, 68, 55)); // delete = red
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         actions.add(addBtn);
@@ -239,6 +242,7 @@ public class VehicleForm extends JFrame {
             saveBtn.addActionListener(e -> onSave());
             JButton cancelBtn = new JButton("Cancel");
             cancelBtn.addActionListener(e -> dispose());
+            tint(saveBtn, new Color(10, 132, 255)); // save/update = blue
             JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
             buttons.add(saveBtn);
             buttons.add(cancelBtn);
@@ -282,5 +286,12 @@ public class VehicleForm extends JFrame {
         Optional<Vehicle> getResult() {
             return Optional.ofNullable(result);
         }
+    }
+
+    private static void tint(JButton btn, Color bg) {
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
     }
 }
