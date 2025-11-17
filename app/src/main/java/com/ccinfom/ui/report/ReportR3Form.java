@@ -40,10 +40,6 @@ public class ReportR3Form extends JFrame {
     private SimpleBarChartPanel chartPanel;
 
     // KPI Labels
-    private JTextField kpiTotalPacked;
-    private JTextField kpiTotalManifests;
-    private JTextField kpiShortRate;
-    private JTextField kpiShortTickets;
     private final StatusPanel statusPanel = new StatusPanel("Status: Ready");
 
     // DAO
@@ -56,7 +52,6 @@ public class ReportR3Form extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         JPanel filters = createFilterPanel();
-        JPanel kpiPanel = createKpiPanel();
         JPanel tablePanel = createTablePanel();
         JPanel buttonPanel = createButtonPanel();
 
@@ -65,7 +60,6 @@ public class ReportR3Form extends JFrame {
         filterWrapper.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
         filterWrapper.add(filters, BorderLayout.CENTER);
         topPanel.add(filterWrapper, BorderLayout.NORTH);
-        topPanel.add(kpiPanel, BorderLayout.CENTER);
 
         add(topPanel, BorderLayout.NORTH);
         add(tablePanel, BorderLayout.CENTER);
@@ -98,51 +92,6 @@ public class ReportR3Form extends JFrame {
         filterPanel.addFilterField("Branch ID", branchIdFilter);
         filterPanel.addFilterField("Product ID", productIdFilter);
         return filterPanel;
-    }
-
-    /**
-     * Creates the panel for displaying high-level KPIs.
-     * Refactored to match the metrics in R3MonthlyThroughputRow.
-     */
-    private JPanel createKpiPanel() {
-        JPanel panel = new JPanel(new GridLayout(1, 4, 10, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("KPI Summary (Matching Filters)"));
-
-        // Helper to create a KPI box
-        kpiTotalPacked = createKpiField("Total Boxes Packed");
-        kpiTotalManifests = createKpiField("Total Manifests");
-        kpiShortRate = createKpiField("Short-Close Rate %");
-        kpiShortTickets = createKpiField("Short-Closed Tickets");
-
-        panel.add(createKpiBox("Total Boxes Packed", kpiTotalPacked));
-        panel.add(createKpiBox("Total Manifests", kpiTotalManifests));
-        panel.add(createKpiBox("Short-Close Rate %", kpiShortRate));
-        panel.add(createKpiBox("Short-Closed Tickets", kpiShortTickets));
-
-        // Highlight problematic KPIs
-        kpiShortRate.setFont(kpiShortRate.getFont().deriveFont(Font.BOLD));
-        kpiShortRate.setForeground(Color.RED);
-        kpiShortTickets.setFont(kpiShortTickets.getFont().deriveFont(Font.BOLD));
-        kpiShortTickets.setForeground(Color.RED);
-
-        return panel;
-    }
-
-    // Helper for createKpiPanel
-    private JTextField createKpiField(String label) {
-        JTextField field = new JTextField("N/A", 10);
-        field.setEditable(false);
-        field.setHorizontalAlignment(JTextField.CENTER);
-        field.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        return field;
-    }
-
-    // Helper for createKpiPanel
-    private JPanel createKpiBox(String title, JComponent component) {
-        JPanel box = new JPanel(new BorderLayout());
-        box.add(new JLabel(title, JLabel.CENTER), BorderLayout.NORTH);
-        box.add(component, BorderLayout.CENTER);
-        return box;
     }
 
     /**
@@ -262,17 +211,10 @@ public class ReportR3Form extends JFrame {
 
         // 2. Clear previous data
         tableModel.setRowCount(0);
-        resetKpis();
         statusPanel.setInfo("Running report...");
 
         try {
-            // 3. Call DAO for KPIs
-            R3MonthlyThroughputRow summary = reportDao.findMonthlySummary(filters);
-            if (summary != null) {
-                populateKpis(summary);
-            }
-
-            // 4. Call DAO for Detail Rows
+            // 3. Call DAO for Detail Rows
             List<R3MonthlyThroughputRow> detailRows = reportDao.findMonthlyThroughput(filters);
             if (detailRows.isEmpty()) {
                 statusPanel.setInfo("No data for the selected filters.");
@@ -306,20 +248,6 @@ public class ReportR3Form extends JFrame {
         } catch (SQLException e) {
             statusPanel.setError("Error fetching report data: " + e.getMessage());
         }
-    }
-
-    private void resetKpis() {
-        kpiTotalPacked.setText("N/A");
-        kpiTotalManifests.setText("N/A");
-        kpiShortRate.setText("N/A");
-        kpiShortTickets.setText("N/A");
-    }
-
-    private void populateKpis(R3MonthlyThroughputRow summary) {
-        kpiTotalPacked.setText(String.valueOf(summary.getBoxesPacked()));
-        kpiTotalManifests.setText(String.valueOf(summary.getManifestsCreated()));
-        kpiShortRate.setText(formatPercent(summary.getShortCloseRatePct()));
-        kpiShortTickets.setText(String.valueOf(summary.getShortClosedTickets()));
     }
 
     private void populateChart(List<R3MonthlyThroughputRow> rows) {
