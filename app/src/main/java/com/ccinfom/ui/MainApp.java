@@ -73,6 +73,37 @@ public final class MainApp {
         frame.setVisible(true);
     }
 
+    private static void showCoreDialog() {
+        JDialog dialog = buildDialog("Core Records", new ActionItem[]{
+                new ActionItem("Products", () -> new ProductForm().setVisible(true)),
+                new ActionItem("Customers", () -> new CustomerForm().setVisible(true)),
+                new ActionItem("Branches", () -> new BranchForm().setVisible(true)),
+                new ActionItem("Employees", () -> new EmployeeForm().setVisible(true)),
+                new ActionItem("Vehicles", () -> new VehicleForm().setVisible(true))
+        });
+        dialog.setVisible(true);
+    }
+
+    private static void showTransactionsDialog() {
+        JDialog dialog = buildDialog("Transactions", new ActionItem[]{
+                new ActionItem("T1 - Create Pick Ticket", () -> new TicketForm().setVisible(true)),
+                new ActionItem("T2 - Allocate & Pick", () -> new PickingForm().setVisible(true)),
+                new ActionItem("T3 - Pack & Box", () -> new PackForm().setVisible(true)),
+                new ActionItem("T4 - Dispatch", () -> new DispatchForm().setVisible(true)),
+                new ActionItem("T5 - Close Ticket", () -> new CloseForm().setVisible(true))
+        });
+        dialog.setVisible(true);
+    }
+
+    private static void showReportsDialog() {
+        JDialog dialog = buildDialog("Reports", new ActionItem[]{
+                new ActionItem("R1 - Daily Outcomes", ReportR1Form::showWindow),
+                new ActionItem("R2 - Weekly Picker Productivity", ReportR2Form::showWindow),
+                new ActionItem("R4 - On-Time Delivery & PoD", ReportR4Form::showWindow)
+        });
+        dialog.setVisible(true);
+    }
+
     private static JButton createMainButton(String label, Runnable action) {
         JButton btn = new JButton(label);
         btn.setMargin(new java.awt.Insets(12, 18, 12, 18));
@@ -80,43 +111,18 @@ public final class MainApp {
         return btn;
     }
 
-    private static void showCoreDialog() {
-        JDialog dialog = buildDialog("Core Records", new JButton[]{
-                createActionButton("Products", () -> new ProductForm().setVisible(true)),
-                createActionButton("Customers", () -> new CustomerForm().setVisible(true)),
-                createActionButton("Branches", () -> new BranchForm().setVisible(true)),
-                createActionButton("Employees", () -> new EmployeeForm().setVisible(true)),
-                createActionButton("Vehicles", () -> new VehicleForm().setVisible(true))
-        });
-        dialog.setVisible(true);
-    }
-
-    private static void showTransactionsDialog() {
-        JDialog dialog = buildDialog("Transactions", new JButton[]{
-                createActionButton("T1 - Create Pick Ticket", () -> new TicketForm().setVisible(true)),
-                createActionButton("T2 - Allocate & Pick", () -> new PickingForm().setVisible(true)),
-                createActionButton("T3 - Pack & Box", () -> new PackForm().setVisible(true)),
-                createActionButton("T4 - Dispatch", () -> new DispatchForm().setVisible(true)),
-                createActionButton("T5 - Close Ticket", () -> new CloseForm().setVisible(true))
-        });
-        dialog.setVisible(true);
-    }
-
-    private static void showReportsDialog() {
-        JDialog dialog = buildDialog("Reports", new JButton[]{
-                createActionButton("R1 - Daily Outcomes", ReportR1Form::showWindow),
-                createActionButton("R2 - Weekly Picker Productivity", ReportR2Form::showWindow),
-                createActionButton("R4 - On-Time Delivery & PoD", ReportR4Form::showWindow)
-        });
-        dialog.setVisible(true);
-    }
-
-    private static JDialog buildDialog(String title, JButton[] buttons) {
+    private static JDialog buildDialog(String title, ActionItem[] items) {
         JDialog dialog = new JDialog((JFrame) null, title, true);
         dialog.setLayout(new BorderLayout(8, 8));
         JPanel grid = new JPanel(new GridLayout(0, 1, 8, 8));
-        for (JButton b : buttons) {
-            grid.add(b);
+        for (ActionItem item : items) {
+            JButton button = new JButton(item.label);
+            button.setMargin(new java.awt.Insets(10, 14, 10, 14));
+            button.addActionListener(e -> {
+                dialog.dispose(); // close the launcher before opening the next window
+                SwingUtilities.invokeLater(item.action);
+            });
+            grid.add(button);
         }
         dialog.add(grid, BorderLayout.CENTER);
         JButton close = new JButton("Close");
@@ -129,11 +135,13 @@ public final class MainApp {
         return dialog;
     }
 
-    private static JButton createActionButton(String label, Runnable action) {
-        JButton btn = new JButton(label);
-        btn.setMargin(new java.awt.Insets(10, 14, 10, 14));
-        btn.addActionListener(e -> action.run());
-        return btn;
+    private static final class ActionItem {
+        private final String label;
+        private final Runnable action;
+
+        private ActionItem(String label, Runnable action) {
+            this.label = label;
+            this.action = action;
+        }
     }
 }
-
