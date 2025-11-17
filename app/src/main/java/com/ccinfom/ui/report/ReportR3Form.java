@@ -203,7 +203,7 @@ public class ReportR3Form extends JFrame {
                 filters.setCustomerId(Long.parseLong(customerIdFilter.getText().trim()));
             }
         } catch (NumberFormatException e) {
-            statusPanel.setError("Invalid Customer ID. Please enter a number.");
+            JOptionPane.showMessageDialog(this, "Invalid Customer ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -212,7 +212,7 @@ public class ReportR3Form extends JFrame {
                 filters.setBranchId(Long.parseLong(branchIdFilter.getText().trim()));
             }
         } catch (NumberFormatException e) {
-            statusPanel.setError("Invalid Branch ID. Please enter a number.");
+            JOptionPane.showMessageDialog(this, "Invalid Branch ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
