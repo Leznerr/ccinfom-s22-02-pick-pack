@@ -6,13 +6,21 @@ import com.ccinfom.report.ReportTableModel;
 import com.ccinfom.report.r3.ReportR3Dao;
 import com.ccinfom.report.r3.R3MonthlyThroughputRow;
 import com.ccinfom.report.r4.ReportFilters;
+import com.ccinfom.ui.common.PdfExporter;
 import com.ccinfom.ui.common.SimpleBarChartPanel;
 import com.ccinfom.ui.common.StatusPanel;
-
+import com.lowagie.text.Document;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.Image;
+import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -33,7 +41,9 @@ public class ReportR3Form extends JFrame {
     private JTextField customerIdFilter;
     private JTextField branchIdFilter;
     private JTextField productIdFilter;
-    private JButton exportButton;
+    private JButton exportCsvButton;
+    private JButton exportTablePdfButton;
+    private JButton exportChartPdfButton;
     private JButton runButton;
     private JTable reportTable;
     private ReportTableModel tableModel;
@@ -152,11 +162,15 @@ public class ReportR3Form extends JFrame {
         panel.add(statusPanel, BorderLayout.CENTER);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 6));
         runButton = new JButton("Run");
-        exportButton = new JButton("Export to CSV");
+        exportCsvButton = new JButton("Export CSV");
+        exportTablePdfButton = new JButton("Export Table PDF");
+        exportChartPdfButton = new JButton("Export Chart PDF");
         JButton closeBtn = new JButton("Close");
         closeBtn.addActionListener(e -> dispose());
         buttons.add(runButton);
-        buttons.add(exportButton);
+        buttons.add(exportCsvButton);
+        buttons.add(exportTablePdfButton);
+        buttons.add(exportChartPdfButton);
         buttons.add(closeBtn);
         panel.add(buttons, BorderLayout.EAST);
         return panel;
@@ -167,7 +181,9 @@ public class ReportR3Form extends JFrame {
      */
     private void addListeners() {
         runButton.addActionListener(e -> loadReportData());
-        exportButton.addActionListener(e -> exportReport());
+        exportCsvButton.addActionListener(e -> exportReportCsv());
+        exportTablePdfButton.addActionListener(e -> exportReportPdf());
+        exportChartPdfButton.addActionListener(e -> exportChartPdf());
     }
 
     /**
@@ -275,7 +291,7 @@ public class ReportR3Form extends JFrame {
      * Action for the "Export" button.
      * Shows a file chooser and would (in a real app) write the table to a CSV.
      */
-    private void exportReport() {
+    private void exportReportCsv() {
         if (tableModel.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this, "There is no data to export.", "Export Error", JOptionPane.ERROR_MESSAGE);
             return;
@@ -319,5 +335,73 @@ public class ReportR3Form extends JFrame {
                         JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private void exportReportPdf() {
+        if (tableModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "There is no data to export.", "Export Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Table to PDF");
+        chooser.setFileFilter(new FileNameExtensionFilter("PDF Files", "pdf"));
+        chooser.setSelectedFile(new File("R3_Monthly_Throughput_Table.pdf"));
+
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = ensurePdfExtension(chooser.getSelectedFile());
+            try {
+                PdfExporter.exportTable(reportTable, file, "R3 – Monthly Inventory / Pack-Dispatch Throughput");
+                statusPanel.setSuccess("Exported table PDF to " + file.getAbsolutePath());
+            } catch (Exception ex) {
+                statusPanel.setError("Failed to export PDF: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void exportChartPdf() {
+        if (chartPanel == null || !chartPanel.hasData()) {
+            JOptionPane.showMessageDialog(this, "Run the report before exporting the chart.", "Export Chart", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Chart to PDF");
+        chooser.setFileFilter(new FileNameExtensionFilter("PDF Files", "pdf"));
+        chooser.setSelectedFile(new File("R3_Monthly_Throughput_Chart.pdf"));
+
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = ensurePdfExtension(chooser.getSelectedFile());
+            try {
+                int w = Math.max(chartPanel.getWidth(), 800);
+                int h = Math.max(chartPanel.getHeight(), 400);
+                BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2 = img.createGraphics();
+                chartPanel.paintAll(g2);
+                g2.dispose();
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(img, "png", baos);
+                Image chartImage = Image.getInstance(baos.toByteArray());
+                chartImage.scaleToFit(PageSize.A4.getWidth() - 40, PageSize.A4.getHeight() - 40);
+
+                Document doc = new Document(PageSize.A4.rotate());
+                PdfWriter.getInstance(doc, new java.io.FileOutputStream(file));
+                doc.open();
+                doc.add(chartImage);
+                doc.close();
+
+                statusPanel.setSuccess("Exported chart PDF to " + file.getAbsolutePath());
+            } catch (Exception ex) {
+                statusPanel.setError("Failed to export chart: " + ex.getMessage());
+            }
+        }
+    }
+
+    private File ensurePdfExtension(File file) {
+        if (!file.getName().toLowerCase().endsWith(".pdf")) {
+            return new File(file.getParentFile(), file.getName() + ".pdf");
+        }
+        return file;
     }
 }
