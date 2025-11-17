@@ -9,6 +9,7 @@ import com.ccinfom.ui.core.ProductForm;
 import com.ccinfom.ui.core.VehicleForm;
 import com.ccinfom.ui.report.ReportR1Form;
 import com.ccinfom.ui.report.ReportR2Form;
+import com.ccinfom.ui.report.ReportR3Form;
 import com.ccinfom.ui.report.ReportR4Form;
 import com.ccinfom.ui.t1.TicketForm;
 import com.ccinfom.ui.t2.PickingForm;
@@ -99,6 +100,7 @@ public final class MainApp {
         JDialog dialog = buildDialog("Reports", new ActionItem[]{
                 new ActionItem("R1 - Daily Outcomes", ReportR1Form::showWindow),
                 new ActionItem("R2 - Weekly Picker Productivity", ReportR2Form::showWindow),
+                new ActionItem("R3 - Monthly Inventory Throughput", ReportR3Form::showWindow),
                 new ActionItem("R4 - On-Time Delivery & PoD", ReportR4Form::showWindow)
         });
         dialog.setVisible(true);

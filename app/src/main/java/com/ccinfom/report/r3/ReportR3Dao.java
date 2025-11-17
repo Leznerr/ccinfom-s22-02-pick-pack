@@ -2,7 +2,7 @@ package com.ccinfom.report.r3;
 
 import com.ccinfom.report.ReportDaoBase;
 import com.ccinfom.report.r4.ReportFilters;
-import main.java.com.ccinfom.report.r3.R3MonthlyThroughputRow;
+import com.ccinfom.report.r3.R3MonthlyThroughputRow;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -60,6 +60,11 @@ public class ReportR3Dao extends ReportDaoBase {
         if (filters.getCustomerId() != null) {
             sql.append("AND customer_id = ? ");
             params.add(filters.getCustomerId());
+        }
+
+        if (filters.getBranchId() != null) {
+            sql.append("AND branch_id = ? ");
+            params.add(filters.getBranchId());
         }
 
         if (filters.getProductId() != null) {
@@ -128,6 +133,11 @@ public class ReportR3Dao extends ReportDaoBase {
         if (filters.getCustomerId() != null) {
             sql.append("AND customer_id = ? ");
             params.add(filters.getCustomerId());
+        }
+
+        if (filters.getBranchId() != null) {
+            sql.append("AND branch_id = ? ");
+            params.add(filters.getBranchId());
         }
 
         if (filters.getProductId() != null) {

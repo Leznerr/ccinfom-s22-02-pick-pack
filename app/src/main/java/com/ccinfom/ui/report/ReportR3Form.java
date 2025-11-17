@@ -2,8 +2,9 @@ package com.ccinfom.ui.report;
 
 
 import com.ccinfom.report.r3.ReportR3Dao;
+import com.ccinfom.report.r3.R3MonthlyThroughputRow;
 import com.ccinfom.report.r4.ReportFilters;
-import main.java.com.ccinfom.report.r3.R3MonthlyThroughputRow;
+import com.ccinfom.ui.common.StatusPanel;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -11,11 +12,12 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.List;
-import javax.swing.JInternalFrame;
 
 /**
  * TODO[Phase F - R3]:
@@ -23,12 +25,13 @@ import javax.swing.JInternalFrame;
  *  - Display both detail rows and high-level KPIs sourced from ReportR3Dao.
  *  - Include export and SLA-highlighting logic if required.
  */
-public class ReportR3Form extends JInternalFrame {
-    //ui components
+public class ReportR3Form extends JFrame {
+    // ui components
     private JComboBox<String> monthCombo;
     private JComboBox<Integer> yearCombo;
     private JTextField customerIdFilter;
-    private JTextField productCatFilter;
+    private JTextField branchIdFilter;
+    private JTextField productIdFilter;
     private JButton runButton;
     private JButton exportButton;
 
@@ -40,40 +43,39 @@ public class ReportR3Form extends JInternalFrame {
     private JTextField kpiTotalManifests;
     private JTextField kpiShortRate;
     private JTextField kpiShortTickets;
+    private final StatusPanel statusPanel = new StatusPanel("Status: Ready");
 
     // DAO
-    private ReportR3Dao reportDao;
+    private final ReportR3Dao reportDao = new ReportR3Dao();
 
     public ReportR3Form() {
-        super("R3 – Monthly Inventory / Pack-Dispatch Throughput", true, true, true, true);
-        // TODO: Layout UI components (filters, KPI summary, table, export button).
-        reportDao = new ReportR3Dao();
+        super("R3 – Monthly Inventory / Pack-Dispatch Throughput");
 
-        // --- Layout ---
         setLayout(new BorderLayout(10, 10));
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        // Create panels
         JPanel filterPanel = createFilterPanel();
         JPanel kpiPanel = createKpiPanel();
         JPanel tablePanel = createTablePanel();
         JPanel buttonPanel = createButtonPanel();
 
-        // Combine filter and KPI panels at the top
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.add(filterPanel, BorderLayout.NORTH);
         topPanel.add(kpiPanel, BorderLayout.CENTER);
 
-        // Add panels to the frame
         add(topPanel, BorderLayout.NORTH);
         add(tablePanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // Add action listeners
         addListeners();
 
-        // Set frame properties
-        setSize(1000, 700); // Widened frame for new columns
-        setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setSize(1100, 720);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    public static void showWindow() {
+        SwingUtilities.invokeLater(ReportR3Form::new);
     }
 
     /**
@@ -107,10 +109,14 @@ public class ReportR3Form extends JInternalFrame {
         customerIdFilter = new JTextField(8);
         panel.add(customerIdFilter);
 
-        // Product Category Filter (Optional)
-        panel.add(new JLabel("Product Category:"));
-        productCatFilter = new JTextField(12);
-        panel.add(productCatFilter);
+        panel.add(new JLabel("Branch ID:"));
+        branchIdFilter = new JTextField(8);
+        panel.add(branchIdFilter);
+
+        // Product ID Filter (Optional)
+        panel.add(new JLabel("Product ID:"));
+        productIdFilter = new JTextField(10);
+        panel.add(productIdFilter);
 
         // Run Button
         runButton = new JButton("Run Report");
@@ -210,9 +216,12 @@ public class ReportR3Form extends JInternalFrame {
      * Creates the bottom panel with action buttons (e.g., Export).
      */
     private JPanel createButtonPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(statusPanel, BorderLayout.CENTER);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         exportButton = new JButton("Export to CSV");
-        panel.add(exportButton);
+        buttons.add(exportButton);
+        panel.add(buttons, BorderLayout.EAST);
         return panel;
     }
 
@@ -245,14 +254,28 @@ public class ReportR3Form extends JInternalFrame {
             return;
         }
 
-        // Get optional Product Category
-        if (productCatFilter.getText() != null && !productCatFilter.getText().trim().isEmpty()) {
-            filters.setProductId(productCatFilter.getText().trim());
+        try {
+            if (branchIdFilter.getText() != null && !branchIdFilter.getText().trim().isEmpty()) {
+                filters.setBranchId(Long.parseLong(branchIdFilter.getText().trim()));
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Invalid Branch ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            if (productIdFilter.getText() != null && !productIdFilter.getText().trim().isEmpty()) {
+                filters.setProductId(Long.parseLong(productIdFilter.getText().trim()));
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Invalid Product ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
         // 2. Clear previous data
         tableModel.setRowCount(0);
         resetKpis();
+        statusPanel.setInfo("Running report...");
 
         try {
             // 3. Call DAO for KPIs
@@ -264,7 +287,7 @@ public class ReportR3Form extends JInternalFrame {
             // 4. Call DAO for Detail Rows
             List<R3MonthlyThroughputRow> detailRows = reportDao.findMonthlyThroughput(filters);
             if (detailRows.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "No data found for the selected filters.", "No Results", JOptionPane.INFORMATION_MESSAGE);
+                statusPanel.setInfo("No data for the selected filters.");
                 return;
             }
 
@@ -289,10 +312,10 @@ public class ReportR3Form extends JInternalFrame {
 
             // Resize columns after data is loaded
             resizeColumns();
+            statusPanel.setSuccess(String.format("Loaded %d row(s).", detailRows.size()));
 
         } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Error fetching report data: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+            statusPanel.setError("Error fetching report data: " + e.getMessage());
         }
     }
 
@@ -336,13 +359,34 @@ public class ReportR3Form extends JInternalFrame {
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
 
-            // TODO: Add actual CSV export logic here
-            // (e.g., iterate tableModel, write to fileToSave.getAbsolutePath())
-
-            JOptionPane.showMessageDialog(this,
-                    "Report exported successfully to:\n" + fileToSave.getAbsolutePath(),
-                    "Export Successful",
-                    JOptionPane.INFORMATION_MESSAGE);
+            try (FileWriter writer = new FileWriter(fileToSave)) {
+                // header
+                for (int col = 0; col < tableModel.getColumnCount(); col++) {
+                    writer.write(tableModel.getColumnName(col));
+                    if (col < tableModel.getColumnCount() - 1) writer.write(",");
+                }
+                writer.write("\n");
+                // rows
+                for (int row = 0; row < tableModel.getRowCount(); row++) {
+                    for (int col = 0; col < tableModel.getColumnCount(); col++) {
+                        Object val = tableModel.getValueAt(row, col);
+                        writer.write(val == null ? "" : val.toString());
+                        if (col < tableModel.getColumnCount() - 1) writer.write(",");
+                    }
+                    writer.write("\n");
+                }
+                statusPanel.setSuccess("Exported to " + fileToSave.getAbsolutePath());
+                JOptionPane.showMessageDialog(this,
+                        "Report exported successfully to:\n" + fileToSave.getAbsolutePath(),
+                        "Export Successful",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException ex) {
+                statusPanel.setError("Failed to export: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this,
+                        "Failed to export: " + ex.getMessage(),
+                        "Export Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 }
