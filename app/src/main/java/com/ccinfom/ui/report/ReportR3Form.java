@@ -33,9 +33,8 @@ public class ReportR3Form extends JFrame {
     private JTextField customerIdFilter;
     private JTextField branchIdFilter;
     private JTextField productIdFilter;
-    private JButton runButton;
     private JButton exportButton;
-
+    private JButton runButton;
     private JTable reportTable;
     private ReportTableModel tableModel;
 
@@ -56,13 +55,15 @@ public class ReportR3Form extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         JPanel filters = createFilterPanel();
-        filterPanel.setSupportedModes(EnumSet.of(ReportFilterPanel.PeriodMode.MONTH));
         JPanel kpiPanel = createKpiPanel();
         JPanel tablePanel = createTablePanel();
         JPanel buttonPanel = createButtonPanel();
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.add(filters, BorderLayout.NORTH);
+        JPanel filterWrapper = new JPanel(new BorderLayout());
+        filterWrapper.setBorder(BorderFactory.createEmptyBorder(8, 8, 0, 8));
+        filterWrapper.add(filters, BorderLayout.CENTER);
+        topPanel.add(filterWrapper, BorderLayout.NORTH);
         topPanel.add(kpiPanel, BorderLayout.CENTER);
 
         add(topPanel, BorderLayout.NORTH);
@@ -85,8 +86,6 @@ public class ReportR3Form extends JFrame {
      * Refactored to use text fields matching the new ReportFilters object.
      */
     private JPanel createFilterPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-
         // Configure filterPanel to only show Month mode
         filterPanel.setSupportedModes(EnumSet.of(ReportFilterPanel.PeriodMode.MONTH));
 
@@ -97,15 +96,7 @@ public class ReportR3Form extends JFrame {
         filterPanel.addFilterField("Customer ID", customerIdFilter);
         filterPanel.addFilterField("Branch ID", branchIdFilter);
         filterPanel.addFilterField("Product ID", productIdFilter);
-
-        // Run Button
-        runButton = new JButton("Run");
-        JPanel runPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        runPanel.add(runButton);
-
-        panel.add(filterPanel, BorderLayout.CENTER);
-        panel.add(runPanel, BorderLayout.SOUTH);
-        return panel;
+        return filterPanel;
     }
 
     /**
@@ -200,10 +191,16 @@ public class ReportR3Form extends JFrame {
      */
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
         panel.add(statusPanel, BorderLayout.CENTER);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 6));
+        runButton = new JButton("Run");
         exportButton = new JButton("Export to CSV");
+        JButton closeBtn = new JButton("Close");
+        closeBtn.addActionListener(e -> dispose());
+        buttons.add(runButton);
         buttons.add(exportButton);
+        buttons.add(closeBtn);
         panel.add(buttons, BorderLayout.EAST);
         return panel;
     }
