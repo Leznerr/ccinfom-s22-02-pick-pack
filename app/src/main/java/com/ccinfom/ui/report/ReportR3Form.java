@@ -6,10 +6,10 @@ import com.ccinfom.report.ReportTableModel;
 import com.ccinfom.report.r3.ReportR3Dao;
 import com.ccinfom.report.r3.R3MonthlyThroughputRow;
 import com.ccinfom.report.r4.ReportFilters;
+import com.ccinfom.ui.common.SimpleBarChartPanel;
 import com.ccinfom.ui.common.StatusPanel;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import java.awt.*;
@@ -37,6 +37,7 @@ public class ReportR3Form extends JFrame {
     private JButton runButton;
     private JTable reportTable;
     private ReportTableModel tableModel;
+    private SimpleBarChartPanel chartPanel;
 
     // KPI Labels
     private JTextField kpiTotalPacked;
@@ -164,12 +165,19 @@ public class ReportR3Form extends JFrame {
         reportTable.setRowHeight(24);
         reportTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         reportTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF); // Allow horizontal scroll
+        reportTable.setAutoCreateRowSorter(true);
+
+        chartPanel = new SimpleBarChartPanel();
 
         JScrollPane scrollPane = new JScrollPane(reportTable,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-        panel.add(scrollPane, BorderLayout.CENTER);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Table", scrollPane);
+        tabs.addTab("Chart", chartPanel);
+
+        panel.add(tabs, BorderLayout.CENTER);
         return panel;
     }
 
@@ -292,6 +300,7 @@ public class ReportR3Form extends JFrame {
 
             // Resize columns after data is loaded
             resizeColumns();
+            populateChart(detailRows);
             statusPanel.setSuccess(String.format("Loaded %d row(s).", detailRows.size()));
 
         } catch (SQLException e) {
@@ -311,6 +320,20 @@ public class ReportR3Form extends JFrame {
         kpiTotalManifests.setText(String.valueOf(summary.getManifestsCreated()));
         kpiShortRate.setText(formatPercent(summary.getShortCloseRatePct()));
         kpiShortTickets.setText(String.valueOf(summary.getShortClosedTickets()));
+    }
+
+    private void populateChart(List<R3MonthlyThroughputRow> rows) {
+        if (chartPanel == null || rows == null) {
+            return;
+        }
+        List<String> categories = new java.util.ArrayList<>();
+        List<Double> values = new java.util.ArrayList<>();
+        for (R3MonthlyThroughputRow row : rows) {
+            categories.add(row.getYearMonth() != null ? row.getYearMonth() : "");
+            values.add((double) row.getBoxesPacked());
+        }
+        SimpleBarChartPanel.Series series = new SimpleBarChartPanel.Series("Boxes Packed", values, Color.decode("#2d9cdb"));
+        chartPanel.setData(categories, java.util.Collections.singletonList(series), "Boxes Packed per Month", "Boxes");
     }
 
     private String formatPercent(BigDecimal value) {
