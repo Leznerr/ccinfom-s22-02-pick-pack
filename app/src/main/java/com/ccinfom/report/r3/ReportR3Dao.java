@@ -69,9 +69,9 @@ public class ReportR3Dao extends ReportDaoBase {
             params.add(filters.getBranchId());
         }
 
-        if (filters.getProductId() != null) {
+        if (filters.getProductCategory() != null && !filters.getProductCategory().isBlank()) {
             sql.append("AND product_categories LIKE ? ");
-            params.add("%" + filters.getProductId() + "%");
+            params.add("%" + filters.getProductCategory().trim() + "%");
         }
 
         sql.append("ORDER BY `year` DESC, `month` DESC, customer_name, branch_name");

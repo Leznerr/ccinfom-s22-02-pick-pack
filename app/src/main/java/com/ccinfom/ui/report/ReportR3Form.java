@@ -40,7 +40,7 @@ public class ReportR3Form extends JFrame {
     private final ReportFilterPanel filterPanel = new ReportFilterPanel();
     private JTextField customerIdFilter;
     private JTextField branchIdFilter;
-    private JTextField productIdFilter;
+    private JTextField productCategoryFilter;
     private JButton exportCsvButton;
     private JButton exportTablePdfButton;
     private JButton exportChartPdfButton;
@@ -97,10 +97,10 @@ public class ReportR3Form extends JFrame {
         // Extra filters
         customerIdFilter = new JTextField(10);
         branchIdFilter = new JTextField(10);
-        productIdFilter = new JTextField(10);
+        productCategoryFilter = new JTextField(10);
         filterPanel.addFilterField("Customer ID", customerIdFilter);
         filterPanel.addFilterField("Branch ID", branchIdFilter);
-        filterPanel.addFilterField("Product ID", productIdFilter);
+        filterPanel.addFilterField("Product Category", productCategoryFilter);
         return filterPanel;
     }
 
@@ -216,13 +216,8 @@ public class ReportR3Form extends JFrame {
             return;
         }
 
-        try {
-            if (productIdFilter.getText() != null && !productIdFilter.getText().trim().isEmpty()) {
-                filters.setProductId(Long.parseLong(productIdFilter.getText().trim()));
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Invalid Product ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
-            return;
+        if (productCategoryFilter.getText() != null && !productCategoryFilter.getText().trim().isEmpty()) {
+            filters.setProductCategory(productCategoryFilter.getText().trim());
         }
 
         // 2. Clear previous data

@@ -9,6 +9,7 @@ public class ReportFilters {
     private Long customerId;
     private Long productId;
     private Long branchId;
+    private String productCategory; // optional category filter for R3
 
     public ReportFilters() {}
 
@@ -37,4 +38,7 @@ public class ReportFilters {
 
     public Long getBranchId() { return branchId; }
     public void setBranchId(Long branchId) { this.branchId = branchId; }
+
+    public String getProductCategory() { return productCategory; }
+    public void setProductCategory(String productCategory) { this.productCategory = productCategory; }
 }
