@@ -24,19 +24,19 @@ VALUES
 /* =========================
    CUSTOMERS (12 normal rows)
    ========================= */
-INSERT INTO customers (customer_name, contact_person, phone, email, default_delivery_address, updated_by) VALUES
-('Apex Retail Corp','Maria Tan','09171230001','ops@apexretail.ph','6754 Ayala Ave, Makati','seed'),
-('Bayview Trading Inc','Rafael Cruz','09181230002','sales@bayview.ph','35 Roxas Blvd, Pasay','seed'),
-('Crown Merchants Co','Lara Go','09191230003','help@crownmerchants.ph','22 Pioneer St, Mandaluyong','seed'),
-('Delta Hardware Supply','Nico Reyes','09201230004','orders@deltahw.ph','101 Boni Ave, Mandaluyong','seed'),
-('Everest Distribution','Ivy Lim','09211230005','support@everestdist.ph','194 Ortigas Ave, Pasig','seed'),
-('Frontline Foods MNL','Pia Ramos','09221230006','contact@frontlinefoods.ph','9 EDSA, Quezon City','seed'),
-('Greenfields Pharma','Jose Co','09231230007','service@greenfields.ph','88 Timog Ave, Quezon City','seed'),
-('Island Apparel','Rina Chua','09241230008','ops@islandapparel.ph','18 Jupiter St, Makati','seed'),
-('Jade Homeware','Alex Yu','09251230009','orders@jadehome.ph','15 Katipunan Ave, Quezon City','seed'),
-('Keystone Electronics','Ben Ong','09261230010','sales@keystone.ph','31 Shaw Blvd, Mandaluyong','seed'),
-('Lighthouse Books','Seth Dy','09271230011','hello@lighthouse.ph','12 Recto Ave, Manila','seed'),
-('MetroFresh Grocers','Ella Tan','09281230012','buy@metrofresh.ph','75 Boni Ave, Mandaluyong','seed');
+INSERT INTO customers (customer_name, contact_person, phone, email, default_delivery_address, customer_status, updated_by) VALUES
+('Apex Retail Corp','Maria Tan','09171230001','ops@apexretail.ph','6754 Ayala Ave, Makati','active','seed'),
+('Bayview Trading Inc','Rafael Cruz','09181230002','sales@bayview.ph','35 Roxas Blvd, Pasay','active','seed'),
+('Crown Merchants Co','Lara Go','09191230003','help@crownmerchants.ph','22 Pioneer St, Mandaluyong','active','seed'),
+('Delta Hardware Supply','Nico Reyes','09201230004','orders@deltahw.ph','101 Boni Ave, Mandaluyong','active','seed'),
+('Everest Distribution','Ivy Lim','09211230005','support@everestdist.ph','194 Ortigas Ave, Pasig','active','seed'),
+('Frontline Foods MNL','Pia Ramos','09221230006','contact@frontlinefoods.ph','9 EDSA, Quezon City','active','seed'),
+('Greenfields Pharma','Jose Co','09231230007','service@greenfields.ph','88 Timog Ave, Quezon City','active','seed'),
+('Island Apparel','Rina Chua','09241230008','ops@islandapparel.ph','18 Jupiter St, Makati','active','seed'),
+('Jade Homeware','Alex Yu','09251230009','orders@jadehome.ph','15 Katipunan Ave, Quezon City','active','seed'),
+('Keystone Electronics','Ben Ong','09261230010','sales@keystone.ph','31 Shaw Blvd, Mandaluyong','active','seed'),
+('Lighthouse Books','Seth Dy','09271230011','hello@lighthouse.ph','12 Recto Ave, Manila','active','seed'),
+('MetroFresh Grocers','Ella Tan','09281230012','buy@metrofresh.ph','75 Boni Ave, Mandaluyong','active','seed');
 
 /* =========================
    EMPLOYEES (12 normal rows; all active)
@@ -79,17 +79,17 @@ VALUES
 /* =========================
    BRANCHES (12 normal rows)
    ========================= */
-INSERT INTO branches (branch_name, address, city, contact_person, phone, updated_by) VALUES
-('North Hub QC','101 North Ave','Quezon City','Leo Ramos','09190010001','seed'),
-('East Depot Pasig','55 C-5 Road','Pasig','Mia Santos','09190010002','seed'),
-('South Hub Muntinlupa','77 Alabang-Zapote Rd','Muntinlupa','Iris Lim','09190010003','seed'),
-('West Depot Manila','90 Abad Santos Ave','Manila','Owen Cruz','09190010004','seed'),
-('Central Hub Makati','12 Ayala Ave','Makati','Paula Tan','09190010005','seed'),
-('Shaw Crossdock','122 Shaw Blvd','Mandaluyong','Ken Lee','09190010006','seed'),
-('Taguig Dispatch','3rd Ave BGC','Taguig','Kay Uy','09190010007','seed'),
-('Pasay Satellite','230 Taft Ave','Pasay','Rico Chua','09190010008','seed'),
-('Parañaque Satellite','19 Sucat Rd','Parañaque','Nina Dee','09190010009','seed'),
-('Caloocan Yard','800 Rizal Ave','Caloocan','Gio Te','09190010010','seed'),
-('Marikina Yard','55 JP Rizal','Marikina','Hera Dy','09190010011','seed'),
-('Valenzuela Depot','99 McArthur Hwy','Valenzuela','Ken Yu','09190010012','seed');
+INSERT INTO branches (branch_name, address, city, contact_person, phone, branch_status, updated_by) VALUES
+('North Hub QC','101 North Ave','Quezon City','Leo Ramos','09190010001','active','seed'),
+('East Depot Pasig','55 C-5 Road','Pasig','Mia Santos','09190010002','active','seed'),
+('South Hub Muntinlupa','77 Alabang-Zapote Rd','Muntinlupa','Iris Lim','09190010003','active','seed'),
+('West Depot Manila','90 Abad Santos Ave','Manila','Owen Cruz','09190010004','active','seed'),
+('Central Hub Makati','12 Ayala Ave','Makati','Paula Tan','09190010005','active','seed'),
+('Shaw Crossdock','122 Shaw Blvd','Mandaluyong','Ken Lee','09190010006','active','seed'),
+('Taguig Dispatch','3rd Ave BGC','Taguig','Kay Uy','09190010007','active','seed'),
+('Pasay Satellite','230 Taft Ave','Pasay','Rico Chua','09190010008','active','seed'),
+('Parañaque Satellite','19 Sucat Rd','Parañaque','Nina Dee','09190010009','active','seed'),
+('Caloocan Yard','800 Rizal Ave','Caloocan','Gio Te','09190010010','active','seed'),
+('Marikina Yard','55 JP Rizal','Marikina','Hera Dy','09190010011','active','seed'),
+('Valenzuela Depot','99 McArthur Hwy','Valenzuela','Ken Yu','09190010012','active','seed');
 

@@ -22,7 +22,7 @@ public class LookupDaoImpl implements LookupDao {
     @Override
     public List<Customer> listCustomers() {
         String sql = "SELECT customer_id, customer_name, contact_person, phone, email, default_delivery_address, " +
-                     "created_at, updated_at, updated_by " +
+                     "customer_status, created_at, updated_at, updated_by " +
                      "FROM customers ORDER BY customer_name";
         List<Customer> customers = new ArrayList<>();
 
@@ -38,6 +38,7 @@ public class LookupDaoImpl implements LookupDao {
                 c.setPhone(rs.getString("phone"));
                 c.setEmail(rs.getString("email"));
                 c.setDefaultDeliveryAddress(rs.getString("default_delivery_address"));
+                c.setCustomerStatus(rs.getString("customer_status"));
 
                 Timestamp createdTs = rs.getTimestamp("created_at");
                 c.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
@@ -56,8 +57,38 @@ public class LookupDaoImpl implements LookupDao {
 
     @Override
     public List<Customer> listActiveCustomers() {
-        // Customers currently have no status flag in schema; return all until status column exists.
-        return listCustomers();
+        String sql = "SELECT customer_id, customer_name, contact_person, phone, email, default_delivery_address, " +
+                     "customer_status, created_at, updated_at, updated_by " +
+                     "FROM customers WHERE customer_status = 'active' ORDER BY customer_name";
+        List<Customer> customers = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                Customer c = new Customer();
+                c.setCustomerId(rs.getLong("customer_id"));
+                c.setCustomerName(rs.getString("customer_name"));
+                c.setContactPerson(rs.getString("contact_person"));
+                c.setPhone(rs.getString("phone"));
+                c.setEmail(rs.getString("email"));
+                c.setDefaultDeliveryAddress(rs.getString("default_delivery_address"));
+                c.setCustomerStatus(rs.getString("customer_status"));
+
+                Timestamp createdTs = rs.getTimestamp("created_at");
+                c.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
+
+                Timestamp updatedTs = rs.getTimestamp("updated_at");
+                c.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
+
+                c.setUpdatedBy(rs.getString("updated_by"));
+                customers.add(c);
+            }
+        } catch (SQLException e) {
+            System.err.println("LookupDaoImpl.listActiveCustomers() failed: " + e.getMessage());
+        }
+        return customers;
     }
 
     @Override
@@ -104,7 +135,7 @@ public class LookupDaoImpl implements LookupDao {
 
     @Override
     public List<Branch> listBranches() {
-        String sql = "SELECT branch_id, branch_name, address, city, contact_person, phone, " +
+        String sql = "SELECT branch_id, branch_name, address, city, contact_person, phone, branch_status, " +
                      "created_at, updated_at, updated_by " +
                      "FROM branches ORDER BY branch_name";
         List<Branch> branches = new ArrayList<>();
@@ -121,6 +152,7 @@ public class LookupDaoImpl implements LookupDao {
                 b.setCity(rs.getString("city"));
                 b.setContactPerson(rs.getString("contact_person"));
                 b.setPhone(rs.getString("phone"));
+                b.setBranchStatus(rs.getString("branch_status"));
 
                 Timestamp createdTs = rs.getTimestamp("created_at");
                 b.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
@@ -139,8 +171,39 @@ public class LookupDaoImpl implements LookupDao {
 
     @Override
     public List<Branch> listActiveBranches() {
-        // Branches also do not track status yet; return full list.
-        return listBranches();
+        String sql = "SELECT branch_id, branch_name, address, city, contact_person, phone, branch_status, " +
+                     "created_at, updated_at, updated_by " +
+                     "FROM branches WHERE branch_status = 'active' ORDER BY branch_name";
+        List<Branch> branches = new ArrayList<>();
+
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                Branch b = new Branch();
+                b.setBranchId(rs.getLong("branch_id"));
+                b.setBranchName(rs.getString("branch_name"));
+                b.setAddress(rs.getString("address"));
+                b.setCity(rs.getString("city"));
+                b.setContactPerson(rs.getString("contact_person"));
+                b.setPhone(rs.getString("phone"));
+                b.setBranchStatus(rs.getString("branch_status"));
+
+                Timestamp createdTs = rs.getTimestamp("created_at");
+                b.setCreatedAt(createdTs != null ? createdTs.toLocalDateTime() : null);
+
+                Timestamp updatedTs = rs.getTimestamp("updated_at");
+                b.setUpdatedAt(updatedTs != null ? updatedTs.toLocalDateTime() : null);
+
+                b.setUpdatedBy(rs.getString("updated_by"));
+                branches.add(b);
+            }
+        } catch (SQLException e) {
+            System.err.println("LookupDaoImpl.listActiveBranches() failed: " + e.getMessage());
+        }
+
+        return branches;
     }
 
     @Override
@@ -235,7 +298,7 @@ public class LookupDaoImpl implements LookupDao {
 
     @Override
     public List<Vehicle> listActiveVehicles() {
-        String sql = "SELECT vehicle_id, plate_number, vehicle_type, capacity, vehicle_status, " +
+        String sql = "SELECT vehicle_id, plate_number, vehicle_type, capacity, sla_hours, vehicle_status, " +
                      "created_at, updated_at, updated_by " +
                      "FROM vehicles WHERE vehicle_status = 'available' ORDER BY plate_number";
         List<Vehicle> vehicles = new ArrayList<>();
@@ -250,6 +313,7 @@ public class LookupDaoImpl implements LookupDao {
                 v.setPlateNumber(rs.getString("plate_number"));
                 v.setVehicleType(rs.getString("vehicle_type"));
                 v.setCapacity(rs.getBigDecimal("capacity"));
+                v.setSlaHours(rs.getInt("sla_hours"));
                 v.setVehicleStatus(rs.getString("vehicle_status"));
                 
                 Timestamp createdTs = rs.getTimestamp("created_at");

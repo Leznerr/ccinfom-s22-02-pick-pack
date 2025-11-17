@@ -2,6 +2,11 @@ package com.ccinfom.ui;
 
 import com.ccinfom.config.DbConnection;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.ui.core.BranchForm;
+import com.ccinfom.ui.core.CustomerForm;
+import com.ccinfom.ui.core.EmployeeForm;
+import com.ccinfom.ui.core.ProductForm;
+import com.ccinfom.ui.core.VehicleForm;
 import com.ccinfom.ui.report.ReportR1Form;
 import com.ccinfom.ui.report.ReportR2Form;
 import com.ccinfom.ui.report.ReportR4Form;
@@ -12,8 +17,10 @@ import com.ccinfom.ui.t4.DispatchForm;
 import com.ccinfom.ui.t5.CloseForm;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -45,41 +52,16 @@ public final class MainApp {
             statusPanel.setError("DB Status: Connection Failed");
         }
 
-        JButton ticketButton = new JButton("Create Pick Ticket (T1)");
-        ticketButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new TicketForm().setVisible(true)));
+        JButton coreBtn = createMainButton("Core Records", MainApp::showCoreDialog);
+        JButton txBtn = createMainButton("Transactions", MainApp::showTransactionsDialog);
+        JButton reportsBtn = createMainButton("Reports", MainApp::showReportsDialog);
 
-        JButton pickingButton = new JButton("Start Picking (T2)");
-        pickingButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new PickingForm().setVisible(true)));
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 0, 12, 12));
+        buttonPanel.add(coreBtn);
+        buttonPanel.add(txBtn);
+        buttonPanel.add(reportsBtn);
 
-        JButton packButton = new JButton("Pack Boxes (T3)");
-        packButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new PackForm().setVisible(true)));
-
-        JButton dispatchButton = new JButton("Dispatch Manifest (T4)");
-        dispatchButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new DispatchForm().setVisible(true)));
-
-        JButton closeButton = new JButton("Close Ticket (T5)");
-        closeButton.addActionListener(e -> SwingUtilities.invokeLater(() -> new CloseForm().setVisible(true)));
-
-        JButton r1ReportButton = new JButton("R1 – Daily Outcomes");
-        r1ReportButton.addActionListener(e -> ReportR1Form.showWindow());
-
-        JButton r2ReportButton = new JButton("R2 – Weekly Picker Productivity");
-        r2ReportButton.addActionListener(e -> ReportR2Form.showWindow());
-
-        JButton r4ReportButton = new JButton("R4 – On-Time Delivery & PoD");
-        r4ReportButton.addActionListener(e -> ReportR4Form.showWindow());
-
-        JPanel buttonPanel = new JPanel(new GridLayout(0, 1, 8, 8));
-        buttonPanel.add(ticketButton);
-        buttonPanel.add(pickingButton);
-        buttonPanel.add(packButton);
-        buttonPanel.add(dispatchButton);
-        buttonPanel.add(closeButton);
-        buttonPanel.add(r1ReportButton);
-        buttonPanel.add(r2ReportButton);
-        buttonPanel.add(r4ReportButton);
-
-        JLabel helperText = new JLabel("Select a transaction or report to launch its Swing form.", JLabel.CENTER);
+        JLabel helperText = new JLabel("Choose a category to launch its actions.", JLabel.CENTER);
 
         frame.add(statusPanel, BorderLayout.NORTH);
         frame.add(buttonPanel, BorderLayout.CENTER);
@@ -90,4 +72,68 @@ public final class MainApp {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
+
+    private static JButton createMainButton(String label, Runnable action) {
+        JButton btn = new JButton(label);
+        btn.setMargin(new java.awt.Insets(12, 18, 12, 18));
+        btn.addActionListener(e -> action.run());
+        return btn;
+    }
+
+    private static void showCoreDialog() {
+        JDialog dialog = buildDialog("Core Records", new JButton[]{
+                createActionButton("Products", () -> new ProductForm().setVisible(true)),
+                createActionButton("Customers", () -> new CustomerForm().setVisible(true)),
+                createActionButton("Branches", () -> new BranchForm().setVisible(true)),
+                createActionButton("Employees", () -> new EmployeeForm().setVisible(true)),
+                createActionButton("Vehicles", () -> new VehicleForm().setVisible(true))
+        });
+        dialog.setVisible(true);
+    }
+
+    private static void showTransactionsDialog() {
+        JDialog dialog = buildDialog("Transactions", new JButton[]{
+                createActionButton("T1 - Create Pick Ticket", () -> new TicketForm().setVisible(true)),
+                createActionButton("T2 - Allocate & Pick", () -> new PickingForm().setVisible(true)),
+                createActionButton("T3 - Pack & Box", () -> new PackForm().setVisible(true)),
+                createActionButton("T4 - Dispatch", () -> new DispatchForm().setVisible(true)),
+                createActionButton("T5 - Close Ticket", () -> new CloseForm().setVisible(true))
+        });
+        dialog.setVisible(true);
+    }
+
+    private static void showReportsDialog() {
+        JDialog dialog = buildDialog("Reports", new JButton[]{
+                createActionButton("R1 - Daily Outcomes", ReportR1Form::showWindow),
+                createActionButton("R2 - Weekly Picker Productivity", ReportR2Form::showWindow),
+                createActionButton("R4 - On-Time Delivery & PoD", ReportR4Form::showWindow)
+        });
+        dialog.setVisible(true);
+    }
+
+    private static JDialog buildDialog(String title, JButton[] buttons) {
+        JDialog dialog = new JDialog((JFrame) null, title, true);
+        dialog.setLayout(new BorderLayout(8, 8));
+        JPanel grid = new JPanel(new GridLayout(0, 1, 8, 8));
+        for (JButton b : buttons) {
+            grid.add(b);
+        }
+        dialog.add(grid, BorderLayout.CENTER);
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dialog.dispose());
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(close);
+        dialog.add(south, BorderLayout.SOUTH);
+        dialog.pack();
+        dialog.setLocationRelativeTo(null);
+        return dialog;
+    }
+
+    private static JButton createActionButton(String label, Runnable action) {
+        JButton btn = new JButton(label);
+        btn.setMargin(new java.awt.Insets(10, 14, 10, 14));
+        btn.addActionListener(e -> action.run());
+        return btn;
+    }
 }
+

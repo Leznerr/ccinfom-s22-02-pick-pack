@@ -11,6 +11,7 @@ import com.ccinfom.model.dispatch.DispatchLine;
 import com.ccinfom.model.pack.PackBox;
 import com.ccinfom.service.DispatchService;
 import com.ccinfom.service.ValidationException;
+import com.ccinfom.util.CoreValidationUtil;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -59,10 +60,11 @@ public class DispatchServiceImpl implements DispatchService {
             LOGGER.info(() -> String.format("[T4_CREATE_MANIFEST][ticket=%d][vehicle=%d][driver=%d][boxes=%d] BEGIN",
                     ticketId, header.getVehicleId(), header.getDriverId(), lines.size()));
 
-            if (dispatchDao.isManifestNoExists(header.getManifestNo(), conn)) {
-                throw new ValidationException("DISPATCH_MANIFEST_DUP",
-                        "Manifest number already exists: " + header.getManifestNo());
-            }
+            CoreValidationUtil.ensureNotDuplicate(
+                    dispatchDao.isManifestNoExists(header.getManifestNo(), conn),
+                    "DISPATCH_MANIFEST_DUP",
+                    "Manifest number already exists: " + header.getManifestNo()
+            );
 
             if (!dispatchDao.isVehicleAvailable(header.getVehicleId(), conn)) {
                 throw new ValidationException("DISPATCH_VEHICLE_UNAVAILABLE",
@@ -71,10 +73,12 @@ public class DispatchServiceImpl implements DispatchService {
 
             int capacity = dispatchDao.fetchVehicleCapacity(header.getVehicleId(), conn);
             int currentLoad = dispatchDao.countBoxesAssignedToVehicle(header.getVehicleId(), conn);
-            if (currentLoad + lines.size() > capacity) {
-                throw new ValidationException("DISPATCH_CAPACITY_EXCEEDED",
-                        "Vehicle capacity exceeded. Current load=" + currentLoad + ", requested boxes=" + lines.size());
-            }
+            CoreValidationUtil.ensureCapacityAvailable(
+                    capacity,
+                    currentLoad,
+                    lines.size(),
+                    "DISPATCH_CAPACITY_EXCEEDED"
+            );
 
             for (DispatchLine line : lines) {
                 line.setCreatedBy(line.getCreatedBy() == null ? actor : line.getCreatedBy());

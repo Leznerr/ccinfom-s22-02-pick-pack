@@ -3,10 +3,12 @@
 ########################################
 app/bin/
 app/out_test/
-out/
+app/out/
+
 bin/
 target/
 *.class
+
 
 ########################################
 # IDE / editor noise

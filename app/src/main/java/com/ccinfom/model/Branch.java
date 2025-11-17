@@ -26,6 +26,7 @@ public class Branch {
     private String city;
     private String contactPerson;
     private String phone;
+    private String branchStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String updatedBy;
@@ -33,7 +34,7 @@ public class Branch {
     // Constructors
     public Branch() {}
     public Branch(Long branchId, String branchName, String address, String city,
-                  String contactPerson, String phone,
+                  String contactPerson, String phone, String branchStatus,
                   LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
         this.branchId = branchId;
         this.branchName = branchName;
@@ -41,6 +42,7 @@ public class Branch {
         this.city = city;
         this.contactPerson = contactPerson;
         this.phone = phone;
+        this.branchStatus = branchStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.updatedBy = updatedBy;
@@ -64,6 +66,9 @@ public class Branch {
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public String getBranchStatus() { return branchStatus; }
+    public void setBranchStatus(String branchStatus) { this.branchStatus = branchStatus; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

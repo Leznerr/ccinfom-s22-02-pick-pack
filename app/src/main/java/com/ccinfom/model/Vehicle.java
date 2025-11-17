@@ -8,6 +8,7 @@ public class Vehicle {
     private String plateNumber;
     private String vehicleType;
     private BigDecimal capacity;
+    private Integer slaHours;
     private String vehicleStatus;
     private LocalDateTime  createdAt;
     private LocalDateTime  updatedAt;
@@ -16,12 +17,13 @@ public class Vehicle {
     // Constructors
     public Vehicle() {}
     public Vehicle(Long vehicleId, String plateNumber, String vehicleType, BigDecimal capacity,
-                   String vehicleStatus, LocalDateTime  createdAt,
+                   Integer slaHours, String vehicleStatus, LocalDateTime  createdAt,
                    LocalDateTime  updatedAt, String updatedBy) {
         this.vehicleId = vehicleId;
         this.plateNumber = plateNumber;
         this.vehicleType = vehicleType;
         this.capacity = capacity;
+        this.slaHours = slaHours;
         this.vehicleStatus = vehicleStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -40,6 +42,9 @@ public class Vehicle {
 
     public BigDecimal getCapacity() { return capacity; }
     public void setCapacity(BigDecimal capacity) { this.capacity = capacity; }
+
+    public Integer getSlaHours() { return slaHours; }
+    public void setSlaHours(Integer slaHours) { this.slaHours = slaHours; }
 
     public String getVehicleStatus() { return vehicleStatus; }
     public void setVehicleStatus(String vehicleStatus) { this.vehicleStatus = vehicleStatus; }

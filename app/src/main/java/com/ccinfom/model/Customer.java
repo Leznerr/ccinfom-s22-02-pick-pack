@@ -26,6 +26,7 @@ public class Customer {
     private String phone;
     private String email;
     private String defaultDeliveryAddress;
+    private String customerStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String updatedBy;
@@ -34,13 +35,14 @@ public class Customer {
     public Customer() {}
     public Customer(Long customerId, String customerName, String contactPerson,
                     String phone, String email, String defaultDeliveryAddress,
-                    LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
+                    String customerStatus, LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
         this.customerId = customerId;
         this.customerName = customerName;
         this.contactPerson = contactPerson;
         this.phone = phone;
         this.email = email;
         this.defaultDeliveryAddress = defaultDeliveryAddress;
+        this.customerStatus = customerStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.updatedBy = updatedBy;
@@ -64,6 +66,9 @@ public class Customer {
 
     public String getDefaultDeliveryAddress() { return defaultDeliveryAddress; }
     public void setDefaultDeliveryAddress(String defaultDeliveryAddress) { this.defaultDeliveryAddress = defaultDeliveryAddress; }
+
+    public String getCustomerStatus() { return customerStatus; }
+    public void setCustomerStatus(String customerStatus) { this.customerStatus = customerStatus; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

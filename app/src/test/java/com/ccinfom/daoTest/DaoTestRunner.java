@@ -8,6 +8,8 @@ import com.ccinfom.dao.interfaces.LookupDao;
 import com.ccinfom.dao.interfaces.PickingDao;
 import com.ccinfom.dao.interfaces.TicketDao;
 import com.ccinfom.model.*;
+import com.ccinfom.service.ValidationException;
+import com.ccinfom.util.CoreValidationUtil;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -29,6 +31,7 @@ public class DaoTestRunner {
         System.out.println("--- Comprehensive DAO Layer Test Suite ---");
 
         boolean allTestsPassed = true;
+        allTestsPassed &= testCoreValidationUtil();
         allTestsPassed &= testLookupDao();
         allTestsPassed &= testTicketDao();
         allTestsPassed &= testPickingDao();
@@ -170,3 +173,34 @@ public class DaoTestRunner {
         }
     }
 }
+    private static boolean testCoreValidationUtil() {
+        System.out.println("\n----- Testing CoreValidationUtil ----- ");
+        try {
+            CoreValidationUtil.validatePhoneFormat("09171234567", "PHONE_OK", "Test Phone");
+            boolean caught = false;
+            try {
+                CoreValidationUtil.validatePhoneFormat("12345", "PHONE_BAD", "Bad Phone");
+            } catch (ValidationException ex) {
+                caught = true;
+            }
+            assert caught : "Invalid phone format should trigger ValidationException";
+
+            CoreValidationUtil.ensureCapacityAvailable(10, 4, 6, "CAPACITY");
+            caught = false;
+            try {
+                CoreValidationUtil.ensureCapacityAvailable(5, 3, 4, "CAPACITY");
+            } catch (ValidationException ex) {
+                caught = true;
+            }
+            assert caught : "Capacity overage should trigger ValidationException";
+
+            System.out.println("CoreValidationUtil helpers: PASSED");
+            return true;
+        } catch (Exception e) {
+            System.out.println("CoreValidationUtil tests FAILED: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+

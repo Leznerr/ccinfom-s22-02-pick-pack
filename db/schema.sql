@@ -63,6 +63,7 @@ CREATE TABLE customers (
   phone                     VARCHAR(40),
   email                     VARCHAR(120),
   default_delivery_address  VARCHAR(300) NOT NULL,
+  customer_status           ENUM('active','inactive') NOT NULL DEFAULT 'active',
   created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by                VARCHAR(64) NOT NULL DEFAULT 'system',
@@ -101,6 +102,7 @@ CREATE TABLE branches (
   city              VARCHAR(120) NOT NULL,
   contact_person    VARCHAR(200),
   phone             VARCHAR(40),
+  branch_status     ENUM('active','inactive') NOT NULL DEFAULT 'active',
   created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by        VARCHAR(64) NOT NULL DEFAULT 'system'
