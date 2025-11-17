@@ -572,6 +572,8 @@ CREATE INDEX idx_close_variance_ticket_line ON close_variance(ticket_line_id);
 DELIMITER ;
 USE ccinfom_dev;
 -- Phase F report views
+SOURCE db/views/helpers.sql;
 SOURCE db/views/v_r1_daily_outcomes.sql;
 SOURCE db/views/v_r2_weekly_picker_productivity.sql;
+SOURCE db/views/v_r3_monthly_inventory_throughput.sql;
 SOURCE db/views/v_r4_on_time_delivery.sql;
