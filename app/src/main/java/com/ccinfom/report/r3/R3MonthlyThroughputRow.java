@@ -1,4 +1,4 @@
-package main.java.com.ccinfom.report.r3;
+package com.ccinfom.report.r3;
 import java.math.BigDecimal;
 
 public class R3MonthlyThroughputRow {
