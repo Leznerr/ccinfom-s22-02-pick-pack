@@ -1,6 +1,8 @@
 package com.ccinfom.ui.report;
 
 
+import com.ccinfom.report.ReportFilterPanel;
+import com.ccinfom.report.ReportTableModel;
 import com.ccinfom.report.r3.ReportR3Dao;
 import com.ccinfom.report.r3.R3MonthlyThroughputRow;
 import com.ccinfom.report.r4.ReportFilters;
@@ -16,7 +18,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.Calendar;
+import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -27,8 +29,7 @@ import java.util.List;
  */
 public class ReportR3Form extends JFrame {
     // ui components
-    private JComboBox<String> monthCombo;
-    private JComboBox<Integer> yearCombo;
+    private final ReportFilterPanel filterPanel = new ReportFilterPanel();
     private JTextField customerIdFilter;
     private JTextField branchIdFilter;
     private JTextField productIdFilter;
@@ -36,7 +37,7 @@ public class ReportR3Form extends JFrame {
     private JButton exportButton;
 
     private JTable reportTable;
-    private DefaultTableModel tableModel;
+    private ReportTableModel tableModel;
 
     // KPI Labels
     private JTextField kpiTotalPacked;
@@ -54,13 +55,14 @@ public class ReportR3Form extends JFrame {
         setLayout(new BorderLayout(10, 10));
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        JPanel filterPanel = createFilterPanel();
+        JPanel filters = createFilterPanel();
+        filterPanel.setSupportedModes(EnumSet.of(ReportFilterPanel.PeriodMode.MONTH));
         JPanel kpiPanel = createKpiPanel();
         JPanel tablePanel = createTablePanel();
         JPanel buttonPanel = createButtonPanel();
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.add(filterPanel, BorderLayout.NORTH);
+        topPanel.add(filters, BorderLayout.NORTH);
         topPanel.add(kpiPanel, BorderLayout.CENTER);
 
         add(topPanel, BorderLayout.NORTH);
@@ -83,45 +85,26 @@ public class ReportR3Form extends JFrame {
      * Refactored to use text fields matching the new ReportFilters object.
      */
     private JPanel createFilterPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Filters"));
+        JPanel panel = new JPanel(new BorderLayout());
 
-        // Month Filter
-        panel.add(new JLabel("Month:"));
-        String[] months = {"January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"};
-        monthCombo = new JComboBox<>(months);
-        monthCombo.setSelectedIndex(Calendar.getInstance().get(Calendar.MONTH)); // Default to current month
-        panel.add(monthCombo);
+        // Configure filterPanel to only show Month mode
+        filterPanel.setSupportedModes(EnumSet.of(ReportFilterPanel.PeriodMode.MONTH));
 
-        // Year Filter
-        panel.add(new JLabel("Year:"));
-        Integer[] years = new Integer[5];
-        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
-        for (int i = 0; i < 5; i++) {
-            years[i] = currentYear - i;
-        }
-        yearCombo = new JComboBox<>(years);
-        panel.add(yearCombo);
-
-        // Customer ID Filter (Optional)
-        panel.add(new JLabel("Customer ID:"));
-        customerIdFilter = new JTextField(8);
-        panel.add(customerIdFilter);
-
-        panel.add(new JLabel("Branch ID:"));
-        branchIdFilter = new JTextField(8);
-        panel.add(branchIdFilter);
-
-        // Product ID Filter (Optional)
-        panel.add(new JLabel("Product ID:"));
+        // Extra filters
+        customerIdFilter = new JTextField(10);
+        branchIdFilter = new JTextField(10);
         productIdFilter = new JTextField(10);
-        panel.add(productIdFilter);
+        filterPanel.addFilterField("Customer ID", customerIdFilter);
+        filterPanel.addFilterField("Branch ID", branchIdFilter);
+        filterPanel.addFilterField("Product ID", productIdFilter);
 
         // Run Button
-        runButton = new JButton("Run Report");
-        panel.add(runButton);
+        runButton = new JButton("Run");
+        JPanel runPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        runPanel.add(runButton);
 
+        panel.add(filterPanel, BorderLayout.CENTER);
+        panel.add(runPanel, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -178,12 +161,12 @@ public class ReportR3Form extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
 
         // New columns matching R3MonthlyThroughputRow
-        String[] columnNames = {
+        tableModel = new ReportTableModel();
+        tableModel.setColumns(
                 "Year-Month", "Customer", "Branch", "Total Tickets", "Short-Closed",
                 "Short %", "Req. Qty", "Deliv. Qty", "Short Qty", "Fulfill %",
                 "Est. Cost", "Boxes Packed", "Manifests"
-        };
-        tableModel = new DefaultTableModel(columnNames, 0);
+        );
         reportTable = new JTable(tableModel);
 
         reportTable.setFillsViewportHeight(true);
@@ -241,8 +224,8 @@ public class ReportR3Form extends JFrame {
         // 1. Get filter values and build ReportFilters object
         ReportFilters filters = new ReportFilters();
 
-        filters.setMonth(monthCombo.getSelectedIndex() + 1); // JComboBox is 0-based, SQL is 1-based
-        filters.setYear((Integer) yearCombo.getSelectedItem());
+        filters.setYear(filterPanel.getSelectedYear());
+        filters.setMonth(filterPanel.getSelectedMonth());
 
         // Parse optional Customer ID
         try {
