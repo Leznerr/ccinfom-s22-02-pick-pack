@@ -48,7 +48,7 @@ public class DispatchForm extends JFrame {
     private final JComboBox<ComboItem<Long>> ticketCombo = new JComboBox<>();
     private final JComboBox<ComboItem<Long>> vehicleCombo = new JComboBox<>();
     private final JComboBox<ComboItem<Long>> driverCombo = new JComboBox<>();
-    private final JTextField manifestField = new JTextField();
+    private final JTextField manifestField = new JTextField("Auto-generated");
     private final StatusPanel statusPanel = new StatusPanel();
     private final DefaultTableModel tableModel;
     private final JTable boxTable;
@@ -147,9 +147,11 @@ public class DispatchForm extends JFrame {
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.weightx = 0;
-        panel.add(new JLabel("Manifest No.:"), gbc);
+        panel.add(new JLabel("Manifest No. (auto):"), gbc);
         gbc.gridx = 1;
         gbc.weightx = 1;
+        manifestField.setEditable(false);
+        manifestField.setEnabled(false);
         panel.add(manifestField, gbc);
 
         return panel;
@@ -260,11 +262,7 @@ public class DispatchForm extends JFrame {
             return;
         }
 
-        String manifestNo = manifestField.getText();
-        if (manifestNo == null || manifestNo.isBlank()) {
-            manifestNo = "M" + System.currentTimeMillis();
-        }
-        final String finalManifestNo = manifestNo.trim();
+        final String finalManifestNo = "M" + System.currentTimeMillis();
 
         LOGGER.info(() -> String.format("[UI][T4_CREATE_MANIFEST] ticket=%d vehicle=%d driver=%d boxes=%d manifest=%s",
                 ticket.getValue(), vehicle.getValue(), driver.getValue(), currentBoxes.size(), finalManifestNo));
@@ -292,14 +290,14 @@ public class DispatchForm extends JFrame {
                     return dispatchService.createDispatch(hdr, lines);
                 },
                 hdr -> {
-                    currentDispatchId = hdr.getDispatchId();
-                    statusPanel.setSuccess("Dispatch created (ID " + currentDispatchId + ").");
-                    toggleManifestActions(true);
-                    manifestField.setText("");
-                    LOGGER.info(() -> String.format("[UI][T4_CREATE_MANIFEST] SUCCESS dispatch=%d ticket=%d",
-                            currentDispatchId, ticket.getValue()));
+            currentDispatchId = hdr.getDispatchId();
+            statusPanel.setSuccess("Dispatch created (ID " + currentDispatchId + ").");
+            toggleManifestActions(true);
+            manifestField.setText(finalManifestNo);
+            LOGGER.info(() -> String.format("[UI][T4_CREATE_MANIFEST] SUCCESS dispatch=%d ticket=%d",
+                    currentDispatchId, ticket.getValue()));
 
-                    if (ticket != null) {
+            if (ticket != null) {
                         suppressTicketEvents = true;
                         ticketCombo.removeItem(ticket);
                         ticketCombo.setSelectedItem(null);

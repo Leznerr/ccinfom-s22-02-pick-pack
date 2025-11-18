@@ -6,13 +6,18 @@ import com.ccinfom.service.ProductService;
 import com.ccinfom.service.ValidationException;
 import com.ccinfom.service.impl.ProductServiceImpl;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.config.DbConnection;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +69,8 @@ public class ProductForm extends JFrame {
         editBtn.addActionListener(e -> onEdit());
         JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> onToggleActive());
+        JButton viewDetailsBtn = new JButton("View Details");
+        viewDetailsBtn.addActionListener(e -> onViewDetails());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadProducts());
         JButton closeBtn = new JButton("Close");
@@ -75,6 +82,7 @@ public class ProductForm extends JFrame {
         actions.add(addBtn);
         actions.add(editBtn);
         actions.add(toggleBtn);
+        actions.add(viewDetailsBtn);
         actions.add(refreshBtn);
         actions.add(closeBtn);
 
@@ -164,6 +172,147 @@ public class ProductForm extends JFrame {
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
         return tableModel.getProductAt(modelRow);
+    }
+
+    /**
+     * Show product details plus related pick lines and pack box lines.
+     */
+    private void onViewDetails() {
+        Product selected = getSelectedProduct();
+        if (selected == null) {
+            statusPanel.setInfo("Select a product to view details.");
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Product Details - " + selected.getProductName(), true);
+        dlg.setLayout(new BorderLayout(8, 8));
+
+        JPanel details = new JPanel(new GridLayout(0, 2, 6, 6));
+        details.setBorder(new EmptyBorder(10, 10, 10, 10));
+        details.add(new JLabel("SKU:")); details.add(new JLabel(selected.getSku()));
+        details.add(new JLabel("Name:")); details.add(new JLabel(selected.getProductName()));
+        details.add(new JLabel("Category:")); details.add(new JLabel(selected.getCategory()));
+        details.add(new JLabel("Unit Price:")); details.add(new JLabel(String.valueOf(selected.getUnitPrice())));
+        details.add(new JLabel("UoM:")); details.add(new JLabel(selected.getUnitOfMeasure()));
+        details.add(new JLabel("On Hand:")); details.add(new JLabel(String.valueOf(selected.getOnHandQty())));
+        details.add(new JLabel("Reserved:")); details.add(new JLabel(String.valueOf(selected.getReservedQty())));
+        details.add(new JLabel("Status:")); details.add(new JLabel(selected.isActiveFlag() ? "Active" : "Inactive"));
+        details.add(new JLabel("Updated:")); details.add(new JLabel(selected.getUpdatedAt() != null ? selected.getUpdatedAt().toString() : ""));
+        details.add(new JLabel("Updated By:")); details.add(new JLabel(selected.getUpdatedBy()));
+
+        JTable pickLinesTable = buildPickTable(selected.getProductId());
+        JTable packLinesTable = buildPackTable(selected.getProductId());
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Details", new JScrollPane(details));
+        tabs.addTab("Recent Picking", new JScrollPane(pickLinesTable));
+        tabs.addTab("Recent Packing", new JScrollPane(packLinesTable));
+
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(close);
+        dlg.add(south, BorderLayout.SOUTH);
+
+        dlg.setSize(700, 400);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    /**
+     * Picking lines impacting reserved_qty (+picked_qty).
+     */
+    private JTable buildPickTable(long productId) {
+        String[] headers = {"Picking Line", "Picking ID", "Ticket Line", "Picked Qty", "Reserved Δ", "Started", "Completed"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT pl.picking_line_id, ph.picking_id, pl.ticket_line_id, pl.picked_qty,
+                   ph.started_at, ph.completed_at
+            FROM picking_line pl
+            JOIN picking_hdr ph ON ph.picking_id = pl.picking_id
+            JOIN pick_ticket_line ptl ON ptl.ticket_line_id = pl.ticket_line_id
+            WHERE ptl.product_id = ?
+            ORDER BY ph.started_at DESC
+            LIMIT 15
+        """;
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    BigDecimal picked = rs.getBigDecimal("picked_qty");
+                    model.addRow(new Object[]{
+                            rs.getObject("picking_line_id"),
+                            rs.getObject("picking_id"),
+                            rs.getObject("ticket_line_id"),
+                            picked,
+                            picked, // reserved increases by picked
+                            rs.getObject("started_at"),
+                            rs.getObject("completed_at")
+                    });
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to load picking lines: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
+    }
+
+    /**
+     * Pack lines impacting reserved_qty (-packed_qty) when boxing.
+     */
+    private JTable buildPackTable(long productId) {
+        String[] headers = {"Box Line", "Box ID", "Ticket ID", "Packed Qty", "Reserved Δ", "Created", "Sealed"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT pbl.box_line_id, pb.box_id, pb.pick_ticket_id, pbl.packed_qty,
+                   pb.created_at, pb.sealed_at
+            FROM pack_box_line pbl
+            JOIN pack_box_hdr pb ON pb.box_id = pbl.box_id
+            JOIN pick_ticket_line ptl ON ptl.ticket_line_id = pbl.ticket_line_id
+            WHERE ptl.product_id = ?
+            ORDER BY pb.created_at DESC
+            LIMIT 15
+        """;
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    BigDecimal packed = rs.getBigDecimal("packed_qty");
+                    model.addRow(new Object[]{
+                            rs.getObject("box_line_id"),
+                            rs.getObject("box_id"),
+                            rs.getObject("pick_ticket_id"),
+                            packed,
+                            packed != null ? packed.negate() : null, // reserved decreases by packed
+                            rs.getObject("created_at"),
+                            rs.getObject("sealed_at")
+                    });
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to load pack lines: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
     }
 
     private static class ProductTableModel extends AbstractTableModel {

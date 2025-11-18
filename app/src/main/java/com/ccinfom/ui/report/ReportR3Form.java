@@ -9,6 +9,10 @@ import com.ccinfom.report.r4.ReportFilters;
 import com.ccinfom.ui.common.PdfExporter;
 import com.ccinfom.ui.common.SimpleBarChartPanel;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.dao.impl.LookupDaoImpl;
+import com.ccinfom.dao.interfaces.LookupDao;
+import com.ccinfom.model.Customer;
+import com.ccinfom.model.Branch;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -31,9 +35,9 @@ import java.util.List;
 public class ReportR3Form extends JFrame {
     // ui components
     private final ReportFilterPanel filterPanel = new ReportFilterPanel();
-    private JTextField customerIdFilter;
-    private JTextField branchIdFilter;
-    private JTextField productCategoryFilter;
+    private JComboBox<ComboItem<Long>> customerFilter;
+    private JComboBox<ComboItem<Long>> branchFilter;
+    private JComboBox<String> productCategoryFilter;
     private JButton exportTablePdfButton;
     private JButton exportChartPngButton;
     private JButton runButton;
@@ -46,6 +50,16 @@ public class ReportR3Form extends JFrame {
 
     // DAO
     private final ReportR3Dao reportDao = new ReportR3Dao();
+    private static final class ComboItem<T> {
+        private final T value;
+        private final String label;
+        ComboItem(T value, String label) {
+            this.value = value;
+            this.label = label;
+        }
+        public T getValue() { return value; }
+        @Override public String toString() { return label; }
+    }
 
     public ReportR3Form() {
         super("R3 – Monthly Inventory / Pack-Dispatch Throughput");
@@ -86,12 +100,36 @@ public class ReportR3Form extends JFrame {
         // Configure filterPanel to only show Month mode
         filterPanel.setSupportedModes(EnumSet.of(ReportFilterPanel.PeriodMode.MONTH));
 
-        // Extra filters
-        customerIdFilter = new JTextField(10);
-        branchIdFilter = new JTextField(10);
-        productCategoryFilter = new JTextField(10);
-        filterPanel.addFilterField("Customer ID", customerIdFilter);
-        filterPanel.addFilterField("Branch ID", branchIdFilter);
+        // Dropdown filters
+        LookupDao lookupDao = new LookupDaoImpl();
+        customerFilter = new JComboBox<>();
+        branchFilter = new JComboBox<>();
+        productCategoryFilter = new JComboBox<>();
+
+        customerFilter.addItem(new ComboItem<>(null, "(All)"));
+        branchFilter.addItem(new ComboItem<>(null, "(All)"));
+        productCategoryFilter.addItem("(All)");
+
+        try {
+            List<Customer> customers = lookupDao.listCustomers();
+            for (Customer c : customers) {
+                customerFilter.addItem(new ComboItem<>(c.getCustomerId(), c.getCustomerName()));
+            }
+            List<Branch> branches = lookupDao.listBranches();
+            for (Branch b : branches) {
+                branchFilter.addItem(new ComboItem<>(b.getBranchId(), b.getBranchName()));
+            }
+        } catch (Exception ignored) {
+            // If lookup fails, keep only (All)
+        }
+
+        // static categories from seed; could be dynamic
+        productCategoryFilter.addItem("Electronics");
+        productCategoryFilter.addItem("Hardware");
+        productCategoryFilter.addItem("Grocery");
+
+        filterPanel.addFilterField("Customer", customerFilter);
+        filterPanel.addFilterField("Branch", branchFilter);
         filterPanel.addFilterField("Product Category", productCategoryFilter);
         return filterPanel;
     }
@@ -186,27 +224,19 @@ public class ReportR3Form extends JFrame {
         filters.setYear(filterPanel.getSelectedYear());
         filters.setMonth(filterPanel.getSelectedMonth());
 
-        // Parse optional Customer ID
-        try {
-            if (customerIdFilter.getText() != null && !customerIdFilter.getText().trim().isEmpty()) {
-                filters.setCustomerId(Long.parseLong(customerIdFilter.getText().trim()));
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Invalid Customer ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
-            return;
+        ComboItem<Long> cust = (ComboItem<Long>) customerFilter.getSelectedItem();
+        if (cust != null) {
+            filters.setCustomerId(cust.getValue());
         }
 
-        try {
-            if (branchIdFilter.getText() != null && !branchIdFilter.getText().trim().isEmpty()) {
-                filters.setBranchId(Long.parseLong(branchIdFilter.getText().trim()));
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Invalid Branch ID. Please enter a number.", "Filter Error", JOptionPane.ERROR_MESSAGE);
-            return;
+        ComboItem<Long> br = (ComboItem<Long>) branchFilter.getSelectedItem();
+        if (br != null) {
+            filters.setBranchId(br.getValue());
         }
 
-        if (productCategoryFilter.getText() != null && !productCategoryFilter.getText().trim().isEmpty()) {
-            filters.setProductCategory(productCategoryFilter.getText().trim());
+        String cat = (String) productCategoryFilter.getSelectedItem();
+        if (cat != null && !"(All)".equals(cat)) {
+            filters.setProductCategory(cat);
         }
 
         // 2. Clear previous data

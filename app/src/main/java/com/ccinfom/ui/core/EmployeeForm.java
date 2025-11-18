@@ -6,12 +6,17 @@ import com.ccinfom.service.EmployeeService;
 import com.ccinfom.service.ValidationException;
 import com.ccinfom.service.impl.EmployeeServiceImpl;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.config.DbConnection;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.SQLException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +66,8 @@ public class EmployeeForm extends JFrame {
         editBtn.addActionListener(e -> onEdit());
         JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> onToggle());
+        JButton viewDetailsBtn = new JButton("View Details");
+        viewDetailsBtn.addActionListener(e -> onViewDetails());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadEmployees());
         JButton closeBtn = new JButton("Close");
@@ -71,6 +78,7 @@ public class EmployeeForm extends JFrame {
         actions.add(addBtn);
         actions.add(editBtn);
         actions.add(toggleBtn);
+        actions.add(viewDetailsBtn);
         actions.add(refreshBtn);
         actions.add(closeBtn);
 
@@ -150,6 +158,161 @@ public class EmployeeForm extends JFrame {
             loadEmployees();
         } catch (SQLException | ValidationException ex) {
             statusPanel.setError("Status change failed: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Show employee profile plus picks/packs/dispatches they handled.
+     */
+    private void onViewDetails() {
+        Employee selected = getSelectedEmployee();
+        if (selected == null) {
+            statusPanel.setInfo("Select an employee to view details.");
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Employee Details - " + selected.getFirstName() + " " + selected.getLastName(), true);
+        dlg.setLayout(new BorderLayout(8, 8));
+
+        JPanel details = new JPanel(new GridLayout(0, 2, 6, 6));
+        details.setBorder(new EmptyBorder(10, 10, 10, 10));
+        details.add(new JLabel("Name:")); details.add(new JLabel(selected.getFirstName() + " " + selected.getLastName()));
+        details.add(new JLabel("Role:")); details.add(new JLabel(selected.getEmployeeRole().name()));
+        details.add(new JLabel("Phone:")); details.add(new JLabel(selected.getPhone()));
+        details.add(new JLabel("Email:")); details.add(new JLabel(selected.getEmail()));
+        details.add(new JLabel("Status:")); details.add(new JLabel(selected.getEmployeeStatus().name()));
+        details.add(new JLabel("Updated:")); details.add(new JLabel(selected.getUpdatedAt() != null ? selected.getUpdatedAt().toString() : ""));
+        details.add(new JLabel("Updated By:")); details.add(new JLabel(selected.getUpdatedBy()));
+
+        Integer days = askDaysBack();
+        JTable pickingTable = buildPickingTable(selected.getEmployeeId(), days);
+        JTable packingTable = buildPackingTable(selected.getEmployeeId(), days);
+        JTable dispatchTable = buildDispatchTable(selected.getEmployeeId(), days);
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Details", new JScrollPane(details));
+        tabs.addTab("Picking", new JScrollPane(pickingTable));
+        tabs.addTab("Packing", new JScrollPane(packingTable));
+        tabs.addTab("Dispatches (as Driver)", new JScrollPane(dispatchTable));
+
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(close);
+        dlg.add(south, BorderLayout.SOUTH);
+
+        dlg.setSize(750, 420);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    private JTable buildPickingTable(long employeeId, Integer daysBack) {
+        String[] headers = {"Picking ID", "Ticket ID", "Started", "Completed", "Status"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT picking_id, pick_ticket_id, started_at, completed_at, picking_status
+            FROM picking_hdr
+            WHERE picker_employee_id = ?
+            %s
+            ORDER BY started_at DESC
+            LIMIT 20
+        """.formatted(dateFilterClause("started_at", daysBack));
+        fillTable(model, sql, employeeId);
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
+    }
+
+    private JTable buildPackingTable(long employeeId, Integer daysBack) {
+        String[] headers = {"Box ID", "Ticket ID", "Created", "Sealed", "Status"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT box_id, pick_ticket_id, created_at, sealed_at,
+                   CASE WHEN sealed_flag = TRUE THEN 'Sealed' ELSE 'Open' END AS status
+            FROM pack_box_hdr
+            WHERE created_by = ?
+            %s
+            ORDER BY created_at DESC
+            LIMIT 20
+        """.formatted(dateFilterClause("created_at", daysBack));
+        fillTable(model, sql, employeeId);
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
+    }
+
+    private JTable buildDispatchTable(long employeeId, Integer daysBack) {
+        String[] headers = {"Dispatch ID", "Manifest", "Ticket ID", "Depart", "Arrive", "Status"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT dispatch_id, manifest_no, pick_ticket_id, depart_ts, arrive_ts, dispatch_status
+            FROM dispatch_hdr
+            WHERE driver_id = ?
+            %s
+            ORDER BY created_at DESC
+            LIMIT 20
+        """.formatted(dateFilterClause("created_at", daysBack));
+        fillTable(model, sql, employeeId);
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
+    }
+
+    /**
+     * Ask user how many days back to include; null means no filter.
+     */
+    private Integer askDaysBack() {
+        String val = JOptionPane.showInputDialog(this,
+                "Show activity for how many days back? (blank = all)", "30");
+        if (val == null || val.isBlank()) return null;
+        try {
+            int days = Integer.parseInt(val.trim());
+            return days > 0 ? days : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String dateFilterClause(String column, Integer daysBack) {
+        if (daysBack == null) return "";
+        return " AND " + column + " >= DATE_SUB(NOW(), INTERVAL " + daysBack + " DAY) ";
+    }
+
+    private void fillTable(DefaultTableModel model, String sql, long employeeId) {
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, employeeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                int cols = model.getColumnCount();
+                while (rs.next()) {
+                    Object[] row = new Object[cols];
+                    for (int i = 0; i < cols; i++) {
+                        row[i] = rs.getObject(i + 1);
+                    }
+                    model.addRow(row);
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to load related data: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

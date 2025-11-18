@@ -6,12 +6,17 @@ import com.ccinfom.service.BranchService;
 import com.ccinfom.service.ValidationException;
 import com.ccinfom.service.impl.BranchServiceImpl;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.config.DbConnection;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.SQLException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +66,8 @@ public class BranchForm extends JFrame {
         editBtn.addActionListener(e -> onEdit());
         JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> onToggle());
+        JButton viewBtn = new JButton("View Details");
+        viewBtn.addActionListener(e -> onViewDetails());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadBranches());
         JButton closeBtn = new JButton("Close");
@@ -71,6 +78,7 @@ public class BranchForm extends JFrame {
         actions.add(addBtn);
         actions.add(editBtn);
         actions.add(toggleBtn);
+        actions.add(viewBtn);
         actions.add(refreshBtn);
         actions.add(closeBtn);
 
@@ -160,6 +168,102 @@ public class BranchForm extends JFrame {
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
         return tableModel.getBranchAt(modelRow);
+    }
+
+    /**
+     * Show branch details plus recent deliveries/receiving timestamps.
+     */
+    private void onViewDetails() {
+        Branch branch = getSelectedBranch();
+        if (branch == null) {
+            statusPanel.setInfo("Select a branch to view details.");
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Branch Details - " + branch.getBranchName(), true);
+        dlg.setLayout(new BorderLayout(8, 8));
+
+        JPanel details = new JPanel(new GridLayout(0, 2, 6, 6));
+        details.setBorder(new EmptyBorder(10, 10, 10, 10));
+        details.add(new JLabel("Name:")); details.add(new JLabel(branch.getBranchName()));
+        details.add(new JLabel("City:")); details.add(new JLabel(branch.getCity()));
+        details.add(new JLabel("Address:")); details.add(new JLabel(branch.getAddress()));
+        details.add(new JLabel("Contact:")); details.add(new JLabel(branch.getContactPerson()));
+        details.add(new JLabel("Phone:")); details.add(new JLabel(branch.getPhone()));
+        details.add(new JLabel("Status:")); details.add(new JLabel(branch.getBranchStatus()));
+        details.add(new JLabel("Updated:")); details.add(new JLabel(branch.getUpdatedAt() != null ? branch.getUpdatedAt().toString() : ""));
+        details.add(new JLabel("Updated By:")); details.add(new JLabel(branch.getUpdatedBy()));
+
+        JTable dispatchTable = buildDispatchTable(branch.getBranchId());
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Details", new JScrollPane(details));
+        tabs.addTab("Recent Deliveries", new JScrollPane(dispatchTable));
+
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(close);
+        dlg.add(south, BorderLayout.SOUTH);
+
+        dlg.setSize(780, 420);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    private JTable buildDispatchTable(long branchId) {
+        String[] headers = {"Dispatch ID", "Manifest", "Driver", "Vehicle", "Customer", "Depart", "Arrive/POD", "Status"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT dh.dispatch_id, dh.manifest_no,
+                   CONCAT(e.first_name, ' ', e.last_name) AS driver_name,
+                   v.plate_number AS vehicle_plate,
+                   c.customer_name,
+                   dh.depart_ts,
+                   COALESCE(ch.pod_ts, dh.arrive_ts) AS receive_ts,
+                   dh.dispatch_status
+            FROM dispatch_hdr dh
+            JOIN employees e ON e.employee_id = dh.driver_id
+            JOIN vehicles v ON v.vehicle_id = dh.vehicle_id
+            JOIN pick_ticket_hdr pth ON pth.pick_ticket_id = dh.pick_ticket_id
+            JOIN customers c ON c.customer_id = pth.customer_id
+            LEFT JOIN close_hdr ch ON ch.pick_ticket_id = pth.pick_ticket_id
+            WHERE pth.branch_id = ?
+            ORDER BY dh.created_at DESC
+            LIMIT 20
+        """;
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, branchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.addRow(new Object[]{
+                            rs.getObject("dispatch_id"),
+                            rs.getObject("manifest_no"),
+                            rs.getObject("driver_name"),
+                            rs.getObject("vehicle_plate"),
+                            rs.getObject("customer_name"),
+                            rs.getObject("depart_ts"),
+                            rs.getObject("receive_ts"),
+                            rs.getObject("dispatch_status")
+                    });
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to load deliveries: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
     }
 
     private static class BranchTableModel extends AbstractTableModel {

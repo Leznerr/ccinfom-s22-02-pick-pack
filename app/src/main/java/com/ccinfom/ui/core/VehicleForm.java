@@ -6,13 +6,18 @@ import com.ccinfom.service.ValidationException;
 import com.ccinfom.service.VehicleService;
 import com.ccinfom.service.impl.VehicleServiceImpl;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.config.DbConnection;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +72,8 @@ public class VehicleForm extends JFrame {
         editBtn.addActionListener(e -> showEditDialog());
         JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> toggleStatus());
+        JButton viewBtn = new JButton("View Details");
+        viewBtn.addActionListener(e -> showDetails());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadVehicles());
         JButton closeBtn = new JButton("Close");
@@ -79,6 +86,7 @@ public class VehicleForm extends JFrame {
         actions.add(addBtn);
         actions.add(editBtn);
         actions.add(toggleBtn);
+        actions.add(viewBtn);
         actions.add(refreshBtn);
         actions.add(closeBtn);
 
@@ -162,6 +170,98 @@ public class VehicleForm extends JFrame {
             statusPanel.setError(ex.getMessage());
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * Show vehicle details plus recent dispatches/manifests.
+     */
+    private void showDetails() {
+        Vehicle vehicle = selectedVehicle().orElse(null);
+        if (vehicle == null) {
+            JOptionPane.showMessageDialog(this, "Select a vehicle first.");
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Vehicle Details - " + vehicle.getPlateNumber(), true);
+        dlg.setLayout(new BorderLayout(8, 8));
+
+        JPanel details = new JPanel(new GridLayout(0, 2, 6, 6));
+        details.setBorder(new EmptyBorder(10, 10, 10, 10));
+        details.add(new JLabel("Plate:")); details.add(new JLabel(vehicle.getPlateNumber()));
+        details.add(new JLabel("Type:")); details.add(new JLabel(vehicle.getVehicleType()));
+        details.add(new JLabel("Capacity:")); details.add(new JLabel(String.valueOf(vehicle.getCapacity())));
+        details.add(new JLabel("SLA Hours:")); details.add(new JLabel(String.valueOf(vehicle.getSlaHours())));
+        details.add(new JLabel("Status:")); details.add(new JLabel(vehicle.getVehicleStatus()));
+        details.add(new JLabel("Updated:")); details.add(new JLabel(vehicle.getUpdatedAt() != null ? vehicle.getUpdatedAt().toString() : ""));
+        details.add(new JLabel("Updated By:")); details.add(new JLabel(vehicle.getUpdatedBy()));
+
+        JTable dispatchTable = buildDispatchTable(vehicle.getVehicleId());
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Details", new JScrollPane(details));
+        tabs.addTab("Recent Dispatches", new JScrollPane(dispatchTable));
+
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(close);
+        dlg.add(south, BorderLayout.SOUTH);
+
+        dlg.setSize(780, 420);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    private JTable buildDispatchTable(long vehicleId) {
+        String[] headers = {"Dispatch ID", "Manifest", "Driver", "Customer", "Branch", "Built", "Depart", "Arrive", "Status"};
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        String sql = """
+            SELECT dh.dispatch_id, dh.manifest_no,
+                   CONCAT(e.first_name, ' ', e.last_name) AS driver_name,
+                   c.customer_name, b.branch_name,
+                   dh.dispatched_at, dh.depart_ts, dh.arrive_ts, dh.dispatch_status
+            FROM dispatch_hdr dh
+            JOIN employees e ON e.employee_id = dh.driver_id
+            JOIN pick_ticket_hdr pth ON pth.pick_ticket_id = dh.pick_ticket_id
+            JOIN customers c ON c.customer_id = pth.customer_id
+            JOIN branches b ON b.branch_id = pth.branch_id
+            WHERE dh.vehicle_id = ?
+            ORDER BY dh.created_at DESC
+            LIMIT 20
+        """;
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, vehicleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.addRow(new Object[]{
+                            rs.getObject("dispatch_id"),
+                            rs.getObject("manifest_no"),
+                            rs.getObject("driver_name"),
+                            rs.getObject("customer_name"),
+                            rs.getObject("branch_name"),
+                            rs.getObject("dispatched_at"),
+                            rs.getObject("depart_ts"),
+                            rs.getObject("arrive_ts"),
+                            rs.getObject("dispatch_status")
+                    });
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to load dispatches: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable tbl = new JTable(model);
+        tbl.setAutoCreateRowSorter(true);
+        return tbl;
     }
 
     private static class VehicleTableModel extends AbstractTableModel {

@@ -6,12 +6,17 @@ import com.ccinfom.service.CustomerService;
 import com.ccinfom.service.ValidationException;
 import com.ccinfom.service.impl.CustomerServiceImpl;
 import com.ccinfom.ui.common.StatusPanel;
+import com.ccinfom.config.DbConnection;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.SQLException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +68,8 @@ public class CustomerForm extends JFrame {
         editBtn.addActionListener(e -> onEdit());
         JButton toggleBtn = new JButton("Delete");
         toggleBtn.addActionListener(e -> onToggle());
+        JButton viewDetailsBtn = new JButton("View Details");
+        viewDetailsBtn.addActionListener(e -> onViewDetails());
         JButton refreshBtn = new JButton("Refresh");
         refreshBtn.addActionListener(e -> loadCustomers());
         JButton closeBtn = new JButton("Close");
@@ -73,6 +80,7 @@ public class CustomerForm extends JFrame {
         actions.add(addBtn);
         actions.add(editBtn);
         actions.add(toggleBtn);
+        actions.add(viewDetailsBtn);
         actions.add(refreshBtn);
         actions.add(closeBtn);
 
@@ -153,6 +161,98 @@ public class CustomerForm extends JFrame {
         } catch (SQLException | ValidationException ex) {
             statusPanel.setError("Status change failed: " + ex.getMessage());
         }
+    }
+
+    /**
+     * Show customer details plus related pick tickets and dispatches.
+     */
+    private void onViewDetails() {
+        Customer selected = getSelectedCustomer();
+        if (selected == null) {
+            statusPanel.setInfo("Select a customer to view details.");
+            return;
+        }
+
+        JDialog dlg = new JDialog(this, "Customer Details - " + selected.getCustomerName(), true);
+        dlg.setLayout(new BorderLayout(8, 8));
+
+        JPanel details = new JPanel(new GridLayout(0, 2, 6, 6));
+        details.setBorder(new EmptyBorder(10, 10, 10, 10));
+        details.add(new JLabel("Name:")); details.add(new JLabel(selected.getCustomerName()));
+        details.add(new JLabel("Contact:")); details.add(new JLabel(selected.getContactPerson()));
+        details.add(new JLabel("Phone:")); details.add(new JLabel(selected.getPhone()));
+        details.add(new JLabel("Email:")); details.add(new JLabel(selected.getEmail()));
+        details.add(new JLabel("Address:")); details.add(new JLabel(selected.getDefaultDeliveryAddress()));
+        details.add(new JLabel("Status:")); details.add(new JLabel(selected.getCustomerStatus()));
+        details.add(new JLabel("Updated:")); details.add(new JLabel(selected.getUpdatedAt() != null ? selected.getUpdatedAt().toString() : ""));
+        details.add(new JLabel("Updated By:")); details.add(new JLabel(selected.getUpdatedBy()));
+
+        JTable ticketTable = buildRelatedTable(
+                "SELECT pick_ticket_id AS ticket_id, ticket_status, created_at, updated_at " +
+                        "FROM pick_ticket_hdr WHERE customer_id = ? ORDER BY created_at DESC LIMIT 15",
+                selected.getCustomerId(),
+                new String[]{"Ticket ID", "Status", "Created", "Updated"}
+        );
+
+        JTable dispatchTable = buildRelatedTable(
+                "SELECT dh.dispatch_id, dh.manifest_no, dh.dispatched_at, dh.depart_ts, dh.arrive_ts, dh.dispatch_status " +
+                        "FROM dispatch_hdr dh " +
+                        "JOIN pick_ticket_hdr pth ON pth.pick_ticket_id = dh.pick_ticket_id " +
+                        "WHERE pth.customer_id = ? ORDER BY dh.created_at DESC LIMIT 15",
+                selected.getCustomerId(),
+                new String[]{"Dispatch ID", "Manifest", "Built", "Depart", "Arrive", "Status"}
+        );
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Details", new JScrollPane(details));
+        tabs.addTab("Pick Tickets", new JScrollPane(ticketTable));
+        tabs.addTab("Dispatches", new JScrollPane(dispatchTable));
+
+        dlg.add(tabs, BorderLayout.CENTER);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> dlg.dispose());
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(close);
+        dlg.add(south, BorderLayout.SOUTH);
+
+        dlg.setSize(700, 400);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    /**
+     * Helper to build a non-editable table from a query filtered by customer_id.
+     */
+    private JTable buildRelatedTable(String sql, long customerId, String[] headers) {
+        DefaultTableModel model = new DefaultTableModel(headers, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Object[] row = new Object[headers.length];
+                    for (int i = 0; i < headers.length; i++) {
+                        row[i] = rs.getObject(i + 1);
+                    }
+                    model.addRow(row);
+                }
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to load related data: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        if (model.getRowCount() == 0) {
+            model.addRow(new Object[]{"No data for selected record."});
+        }
+        JTable table = new JTable(model);
+        table.setAutoCreateRowSorter(true);
+        return table;
     }
 
     private Customer getSelectedCustomer() {
