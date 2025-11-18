@@ -16,16 +16,19 @@ import com.ccinfom.ui.t2.PickingForm;
 import com.ccinfom.ui.t3.PackForm;
 import com.ccinfom.ui.t4.DispatchForm;
 import com.ccinfom.ui.t5.CloseForm;
+import com.ccinfom.ui.common.UiStyle;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.Font;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
 /**
@@ -38,13 +41,25 @@ public final class MainApp {
     }
 
     public static void main(String[] args) {
+        // Try to use Nimbus for a cleaner, modern look; fall back silently.
+        try {
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Apply a consistent font across the app.
+        UiStyle.applyGlobalFont(new Font("Segoe UI", Font.PLAIN, 14));
         SwingUtilities.invokeLater(MainApp::createAndShow);
     }
 
     private static void createAndShow() {
-        JFrame frame = new JFrame("CCINFOM Ewan ano magandang name Control Center");
+        JFrame frame = new JFrame("CCINFOM Control Center");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setLayout(new BorderLayout(8, 8));
+        frame.setLayout(new BorderLayout(10, 10));
 
         StatusPanel statusPanel = new StatusPanel();
         if (DbConnection.ping()) {
@@ -64,11 +79,19 @@ public final class MainApp {
 
         JLabel helperText = new JLabel("Choose a category to launch its actions.", JLabel.CENTER);
 
-        frame.add(statusPanel, BorderLayout.NORTH);
-        frame.add(buttonPanel, BorderLayout.CENTER);
-        frame.add(helperText, BorderLayout.SOUTH);
+        JPanel north = UiStyle.paddedPanel(new BorderLayout());
+        north.add(statusPanel, BorderLayout.CENTER);
+        frame.add(north, BorderLayout.NORTH);
 
-        frame.setPreferredSize(new Dimension(440, 320));
+        JPanel center = UiStyle.paddedPanel(new BorderLayout());
+        center.add(buttonPanel, BorderLayout.CENTER);
+        frame.add(center, BorderLayout.CENTER);
+
+        JPanel south = UiStyle.paddedPanel(new BorderLayout());
+        south.add(helperText, BorderLayout.CENTER);
+        frame.add(south, BorderLayout.SOUTH);
+
+        frame.setPreferredSize(new Dimension(480, 320));
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
@@ -108,7 +131,7 @@ public final class MainApp {
 
     private static JButton createMainButton(String label, Runnable action) {
         JButton btn = new JButton(label);
-        btn.setMargin(new java.awt.Insets(12, 18, 12, 18));
+        UiStyle.styleButton(btn);
         btn.addActionListener(e -> action.run());
         return btn;
     }
@@ -119,7 +142,7 @@ public final class MainApp {
         JPanel grid = new JPanel(new GridLayout(0, 1, 8, 8));
         for (ActionItem item : items) {
             JButton button = new JButton(item.label);
-            button.setMargin(new java.awt.Insets(10, 14, 10, 14));
+            UiStyle.styleButton(button);
             button.addActionListener(e -> {
                 dialog.dispose(); // close the launcher before opening the next window
                 SwingUtilities.invokeLater(item.action);
@@ -128,6 +151,7 @@ public final class MainApp {
         }
         dialog.add(grid, BorderLayout.CENTER);
         JButton close = new JButton("Close");
+        UiStyle.styleButton(close);
         close.addActionListener(e -> dialog.dispose());
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         south.add(close);
