@@ -170,7 +170,7 @@ public class ReportR2Form extends JFrame {
             );
             
             if (rows.isEmpty()) {
-                statusPanel.setInfo("No data found for " + summary + ".");
+                statusPanel.setInfo("No data for selected filters.");
             } else {
                 long totalLines = rows.stream().mapToLong(R2WeeklyProductivityRow::getLinesPicked).sum();
                 double totalUnits = rows.stream().mapToDouble(row -> row.getUnitsPicked().doubleValue()).sum();

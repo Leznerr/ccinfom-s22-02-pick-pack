@@ -7,7 +7,6 @@ public class ReportFilters {
     private String vehicleName;  // optional vehicle filter
     private String driverName;   // optional driver filter
     private Long customerId;
-    private Long productId;
     private Long branchId;
     private String productCategory; // optional category filter for R3
 
@@ -32,9 +31,6 @@ public class ReportFilters {
 
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
-
-    public Long getProductId() { return productId; }
-    public void setProductId(Long productId) { this.productId = productId; }
 
     public Long getBranchId() { return branchId; }
     public void setBranchId(Long branchId) { this.branchId = branchId; }

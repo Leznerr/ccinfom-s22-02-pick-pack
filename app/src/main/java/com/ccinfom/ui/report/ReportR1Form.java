@@ -136,7 +136,7 @@ public class ReportR1Form extends JFrame {
 
             String summary = buildFilterSummary(year, month, customerId, branchId);
             if (rows.isEmpty()) {
-                statusPanel.setInfo("No data for " + summary + ".");
+                statusPanel.setInfo("No data for selected filters.");
             } else {
                 statusPanel.setSuccess(String.format("Showing %d row(s) for %s.", rows.size(), summary));
             }

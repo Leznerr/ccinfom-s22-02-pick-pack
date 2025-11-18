@@ -171,7 +171,7 @@ public class ReportR4Form extends JFrame {
                     dao.findR4(year, isMonth, period, vehicle, driver);
 
             if (rows.isEmpty()) {
-                statusLabel.setText("No data found for selected filters.");
+                statusLabel.setText("No data for selected filters.");
                 return;
             }
 
