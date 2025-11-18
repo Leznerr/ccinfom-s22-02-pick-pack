@@ -13,6 +13,8 @@ public class PackBox {
     private boolean sealedFlag;
     private String sealMethod;
     private LocalDateTime sealedAt;
+    private String handlingNotes;
+    private String boxStatus;
     private String sourceRef;
     private LocalDateTime createdAt;
     private String createdBy;
@@ -29,6 +31,8 @@ public class PackBox {
                    boolean sealedFlag,
                    String sealMethod,
                    LocalDateTime sealedAt,
+                    String handlingNotes,
+                   String boxStatus,
                    String sourceRef,
                    LocalDateTime createdAt,
                    String createdBy,
@@ -40,6 +44,8 @@ public class PackBox {
         this.sealedFlag = sealedFlag;
         this.sealMethod = sealMethod;
         this.sealedAt = sealedAt;
+        this.handlingNotes = handlingNotes;
+        this.boxStatus = boxStatus;
         this.sourceRef = sourceRef;
         this.createdAt = createdAt;
         this.createdBy = createdBy;
@@ -93,6 +99,22 @@ public class PackBox {
 
     public void setSealedAt(LocalDateTime sealedAt) {
         this.sealedAt = sealedAt;
+    }
+
+    public String getHandlingNotes() {
+        return handlingNotes;
+    }
+
+    public void setHandlingNotes(String handlingNotes) {
+        this.handlingNotes = handlingNotes;
+    }
+
+    public String getBoxStatus() {
+        return boxStatus;
+    }
+
+    public void setBoxStatus(String boxStatus) {
+        this.boxStatus = boxStatus;
     }
 
     public String getSourceRef() {

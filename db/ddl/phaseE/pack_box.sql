@@ -15,6 +15,8 @@ CREATE TABLE pack_box_hdr (
   sealed_flag     BOOLEAN NOT NULL DEFAULT FALSE,
   seal_method     VARCHAR(50) NULL,
   sealed_at       TIMESTAMP NULL,
+  handling_notes  VARCHAR(255) NULL,
+  box_status      VARCHAR(20) NOT NULL DEFAULT 'Open',
   source_ref	  VARCHAR(100) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by	  VARCHAR(64) NOT NULL DEFAULT 'system',
