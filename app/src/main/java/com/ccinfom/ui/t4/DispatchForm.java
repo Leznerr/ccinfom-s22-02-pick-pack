@@ -35,6 +35,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.WindowConstants;
+import javax.swing.JOptionPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
@@ -332,6 +333,10 @@ public class DispatchForm extends JFrame {
                         hdr.setDepartTs(LocalDateTime.now());
                     } else {
                         hdr.setArriveTs(LocalDateTime.now());
+                        String receiver = JOptionPane.showInputDialog(this, "Received By (optional):", "Receiver", JOptionPane.PLAIN_MESSAGE);
+                        if (receiver != null && !receiver.isBlank()) {
+                            hdr.setPodRef(receiver.trim()); // reuse pod_ref to carry receiver name
+                        }
                     }
                     hdr.setUpdatedBy(currentUser);
                     if (departure) {

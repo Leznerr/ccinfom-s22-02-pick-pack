@@ -15,7 +15,7 @@ public interface PackService {
 
     void addLines(long boxId, List<PackBoxLine> lines) throws SQLException, ValidationException;
 
-    void sealBox(long boxId, String sealMethod, String user) throws SQLException, ValidationException;
+    void sealBox(long boxId, Long packerId, String sealMethod, String handlingNotes, String user) throws SQLException, ValidationException;
 
     boolean isTicketPacked(long pickTicketId) throws SQLException;
 

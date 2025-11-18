@@ -43,14 +43,17 @@ public class DispatchServiceImpl implements DispatchService {
 
         validateDispatchRequest(header, lines);
 
-        String actor = header.getCreatedBy();
-        if (actor == null || actor.isBlank()) {
-            actor = SYSTEM_USER;
-            header.setCreatedBy(actor);
-        }
-        if (header.getUpdatedBy() == null || header.getUpdatedBy().isBlank()) {
-            header.setUpdatedBy(actor);
-        }
+            String actor = header.getCreatedBy();
+            if (actor == null || actor.isBlank()) {
+                actor = SYSTEM_USER;
+                header.setCreatedBy(actor);
+            }
+            if (header.getDispatchStatus() == null) {
+                header.setDispatchStatus(DispatchHeader.DispatchStatus.Built);
+            }
+            if (header.getUpdatedBy() == null || header.getUpdatedBy().isBlank()) {
+                header.setUpdatedBy(actor);
+            }
 
         Connection conn = null;
         try {
@@ -83,6 +86,9 @@ public class DispatchServiceImpl implements DispatchService {
             for (DispatchLine line : lines) {
                 line.setCreatedBy(line.getCreatedBy() == null ? actor : line.getCreatedBy());
                 line.setUpdatedBy(line.getUpdatedBy() == null ? line.getCreatedBy() : line.getUpdatedBy());
+                if (line.getQtyDispatched() == null) {
+                    line.setQtyDispatched(java.math.BigDecimal.ONE);
+                }
 
                 PackBox box = packDao.findBoxById(line.getBoxId(), conn)
                         .orElseThrow(() -> new ValidationException("DISPATCH_BOX_NOT_FOUND",
@@ -254,7 +260,8 @@ public class DispatchServiceImpl implements DispatchService {
             throw new ValidationException("DISPATCH_INVALID_ID", "Dispatch ID must be positive.");
         }
 
-        LocalDateTime arriveTs = updates != null ? updates.getArriveTs() : LocalDateTime.now();
+        LocalDateTime arriveTs = updates != null && updates.getArriveTs() != null ? updates.getArriveTs() : LocalDateTime.now();
+        String receivedBy = updates != null ? updates.getPodRef() : null;
         String actor = (updates != null && updates.getUpdatedBy() != null && !updates.getUpdatedBy().isBlank())
                 ? updates.getUpdatedBy()
                 : SYSTEM_USER;
@@ -271,6 +278,9 @@ public class DispatchServiceImpl implements DispatchService {
 
         // Reuse DAO method for updating arrival timestamp
         dispatchDao.updateDispatchArrival(dispatchId, arriveTs, actor, conn);
+        dispatchDao.markLinesDelivered(dispatchId, arriveTs, receivedBy, actor, conn);
+        // Mark header as Delivered (align with proposal: Built/Loaded/Delivered/Partial)
+        dispatchDao.updateDispatchStatus(dispatchId, DispatchHeader.DispatchStatus.Delivered.name(), actor, conn);
 
         conn.commit();
         LOGGER.info(() -> String.format("[T4_RECORD_ARRIVAL][dispatch=%d] SUCCESS", dispatchId));

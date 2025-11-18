@@ -42,6 +42,10 @@ public interface DispatchDao {
 
     void updateDispatchArrival(long dispatchId, LocalDateTime arriveTs, String updatedBy, Connection conn) throws SQLException;
 
+    void updateDispatchStatus(long dispatchId, String status, String updatedBy, Connection conn) throws SQLException;
+
+    void markLinesDelivered(long dispatchId, LocalDateTime deliveredAt, String receivedBy, String updatedBy, Connection conn) throws SQLException;
+
     List<LookupValue> findAvailableVehicles(Connection conn) throws SQLException;
 
     List<LookupValue> findAvailableDrivers(Connection conn) throws SQLException;

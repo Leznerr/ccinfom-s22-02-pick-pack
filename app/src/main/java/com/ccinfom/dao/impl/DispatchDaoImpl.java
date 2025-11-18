@@ -19,15 +19,15 @@ public class DispatchDaoImpl implements DispatchDao {
 
     private static final String INSERT_HEADER_SQL = """
         INSERT INTO dispatch_hdr
-            (pick_ticket_id, vehicle_id, driver_id, manifest_no, depart_ts, arrive_ts,
+            (pick_ticket_id, vehicle_id, driver_id, dispatch_status, manifest_no, depart_ts, arrive_ts,
              pod_ref, pod_ts, source_ref, created_by, updated_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
 
     private static final String INSERT_LINE_SQL = """
         INSERT INTO dispatch_line
-            (dispatch_id, box_id, source_ref, created_by, updated_by)
-        VALUES (?, ?, ?, ?, ?)
+            (dispatch_id, box_id, qty_dispatched, qty_delivered, line_status, delivered_at, received_by, source_ref, created_by, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
 
     @Override
@@ -36,26 +36,27 @@ public class DispatchDaoImpl implements DispatchDao {
             stmt.setLong(1, header.getPickTicketId());
             stmt.setLong(2, header.getVehicleId());
             stmt.setLong(3, header.getDriverId());
-            stmt.setString(4, header.getManifestNo());
+            stmt.setString(4, header.getDispatchStatus() != null ? header.getDispatchStatus().name() : "Built");
+            stmt.setString(5, header.getManifestNo());
             if (header.getDepartTs() != null) {
-                stmt.setTimestamp(5, Timestamp.valueOf(header.getDepartTs()));
-            } else {
-                stmt.setNull(5, java.sql.Types.TIMESTAMP);
-            }
-            if (header.getArriveTs() != null) {
-                stmt.setTimestamp(6, Timestamp.valueOf(header.getArriveTs()));
+                stmt.setTimestamp(6, Timestamp.valueOf(header.getDepartTs()));
             } else {
                 stmt.setNull(6, java.sql.Types.TIMESTAMP);
             }
-            stmt.setString(7, header.getPodRef());
-            if (header.getPodTs() != null) {
-                stmt.setTimestamp(8, Timestamp.valueOf(header.getPodTs()));
+            if (header.getArriveTs() != null) {
+                stmt.setTimestamp(7, Timestamp.valueOf(header.getArriveTs()));
             } else {
-                stmt.setNull(8, java.sql.Types.TIMESTAMP);
+                stmt.setNull(7, java.sql.Types.TIMESTAMP);
             }
-            stmt.setString(9, header.getSourceRef());
-            stmt.setString(10, header.getCreatedBy());
-            stmt.setString(11, header.getUpdatedBy());
+            stmt.setString(8, header.getPodRef());
+            if (header.getPodTs() != null) {
+                stmt.setTimestamp(9, Timestamp.valueOf(header.getPodTs()));
+            } else {
+                stmt.setNull(9, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(10, header.getSourceRef());
+            stmt.setString(11, header.getCreatedBy());
+            stmt.setString(12, header.getUpdatedBy());
             stmt.executeUpdate();
 
             try (ResultSet rs = stmt.getGeneratedKeys()) {
@@ -73,9 +74,26 @@ public class DispatchDaoImpl implements DispatchDao {
             for (DispatchLine line : lines) {
                 stmt.setLong(1, dispatchId);
                 stmt.setLong(2, line.getBoxId());
-                stmt.setString(3, line.getSourceRef());
-                stmt.setString(4, line.getCreatedBy());
-                stmt.setString(5, line.getUpdatedBy());
+                stmt.setBigDecimal(3, line.getQtyDispatched());
+                if (line.getQtyDelivered() != null) {
+                    stmt.setBigDecimal(4, line.getQtyDelivered());
+                } else {
+                    stmt.setNull(4, java.sql.Types.DECIMAL);
+                }
+                if (line.getLineStatus() != null) {
+                    stmt.setString(5, line.getLineStatus());
+                } else {
+                    stmt.setNull(5, java.sql.Types.VARCHAR);
+                }
+                if (line.getDeliveredAt() != null) {
+                    stmt.setTimestamp(6, Timestamp.valueOf(line.getDeliveredAt()));
+                } else {
+                    stmt.setNull(6, java.sql.Types.TIMESTAMP);
+                }
+                stmt.setString(7, line.getReceivedBy());
+                stmt.setString(8, line.getSourceRef());
+                stmt.setString(9, line.getCreatedBy());
+                stmt.setString(10, line.getUpdatedBy());
                 stmt.addBatch();
             }
             stmt.executeBatch();
@@ -111,8 +129,8 @@ public class DispatchDaoImpl implements DispatchDao {
             stmt.setLong(1, dispatchId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return Optional.of(mapHeader(rs));
-                }
+            return Optional.of(mapHeader(rs));
+        }
             }
         }
         return Optional.empty();
@@ -181,6 +199,11 @@ public class DispatchDaoImpl implements DispatchDao {
                    arrive_ts = ?,
                    pod_ts = ?,
                    pod_ref = ?,
+                   dispatch_status = CASE
+                        WHEN ? IS NOT NULL THEN 'Departed'
+                        WHEN ? IS NOT NULL THEN 'Arrived'
+                        ELSE dispatch_status
+                   END,
                    updated_by = ?,
                    updated_at = CURRENT_TIMESTAMP
              WHERE dispatch_id = ?
@@ -202,8 +225,19 @@ public class DispatchDaoImpl implements DispatchDao {
                 stmt.setNull(3, java.sql.Types.TIMESTAMP);
             }
             stmt.setString(4, podRef);
-            stmt.setString(5, updatedBy);
-            stmt.setLong(6, dispatchId);
+            // parameters 5 and 6 are used in CASE logic
+            if (departTs != null) {
+                stmt.setTimestamp(5, Timestamp.valueOf(departTs));
+            } else {
+                stmt.setNull(5, java.sql.Types.TIMESTAMP);
+            }
+            if (arriveTs != null) {
+                stmt.setTimestamp(6, Timestamp.valueOf(arriveTs));
+            } else {
+                stmt.setNull(6, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(7, updatedBy);
+            stmt.setLong(8, dispatchId);
             stmt.executeUpdate();
         }
     }
@@ -215,6 +249,10 @@ public class DispatchDaoImpl implements DispatchDao {
         header.setVehicleId(rs.getLong("vehicle_id"));
         header.setDriverId(rs.getLong("driver_id"));
         header.setManifestNo(rs.getString("manifest_no"));
+        String status = rs.getString("dispatch_status");
+        if (status != null) {
+            header.setDispatchStatus(DispatchHeader.DispatchStatus.valueOf(status));
+        }
         Timestamp depart = rs.getTimestamp("depart_ts");
         if (depart != null) {
             header.setDepartTs(depart.toLocalDateTime());
@@ -247,6 +285,14 @@ public class DispatchDaoImpl implements DispatchDao {
         line.setDispatchLineId(rs.getLong("dispatch_line_id"));
         line.setDispatchId(rs.getLong("dispatch_id"));
         line.setBoxId(rs.getLong("box_id"));
+        line.setQtyDispatched(rs.getBigDecimal("qty_dispatched"));
+        line.setQtyDelivered(rs.getBigDecimal("qty_delivered"));
+        line.setLineStatus(rs.getString("line_status"));
+        Timestamp delivered = rs.getTimestamp("delivered_at");
+        if (delivered != null) {
+            line.setDeliveredAt(delivered.toLocalDateTime());
+        }
+        line.setReceivedBy(rs.getString("received_by"));
         line.setSourceRef(rs.getString("source_ref"));
         Timestamp created = rs.getTimestamp("created_at");
         if (created != null) {
@@ -285,6 +331,7 @@ public class DispatchDaoImpl implements DispatchDao {
         String sql = """
             UPDATE dispatch_hdr
             SET arrive_ts = ?,
+                dispatch_status = 'Arrived',
                 updated_by = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE dispatch_id = ?
@@ -297,6 +344,48 @@ public class DispatchDaoImpl implements DispatchDao {
             }
             stmt.setString(2, updatedBy);
             stmt.setLong(3, dispatchId);
+            stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public void updateDispatchStatus(long dispatchId, String status, String updatedBy, Connection conn) throws SQLException {
+        String sql = """
+            UPDATE dispatch_hdr
+               SET dispatch_status = ?,
+                   updated_by = ?,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE dispatch_id = ?
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            stmt.setString(2, updatedBy);
+            stmt.setLong(3, dispatchId);
+            stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public void markLinesDelivered(long dispatchId, LocalDateTime deliveredAt, String receivedBy, String updatedBy, Connection conn) throws SQLException {
+        String sql = """
+            UPDATE dispatch_line
+               SET qty_delivered = COALESCE(qty_delivered, qty_dispatched),
+                   line_status = COALESCE(line_status, 'Delivered'),
+                   delivered_at = COALESCE(delivered_at, ?),
+                   received_by = COALESCE(received_by, ?),
+                   updated_by = ?,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE dispatch_id = ?
+            """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            if (deliveredAt != null) {
+                stmt.setTimestamp(1, Timestamp.valueOf(deliveredAt));
+            } else {
+                stmt.setNull(1, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(2, receivedBy);
+            stmt.setString(3, updatedBy);
+            stmt.setLong(4, dispatchId);
             stmt.executeUpdate();
         }
     }

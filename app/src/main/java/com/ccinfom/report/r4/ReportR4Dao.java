@@ -86,7 +86,7 @@ public class ReportR4Dao extends ReportDaoBase {
            .append("customer_id, customer_name, ")
            .append("product_id, sku, product_name, category, ")
            .append("on_time_deliveries, late_deliveries, short_closed_shipments, ")
-           .append("shortage_reasons_count, on_time_percentage ")
+           .append("on_time_percentage ")
            .append("FROM v_r4_on_time_delivery ")
            .append("WHERE 1=1 ");
 
@@ -171,8 +171,6 @@ public class ReportR4Dao extends ReportDaoBase {
         row.setOnTimeDeliveries(rs.getInt("on_time_deliveries"));
         row.setLateDeliveries(rs.getInt("late_deliveries"));
         row.setShortClosedShipments(rs.getInt("short_closed_shipments"));
-        row.setShortageReasonsCount(rs.getInt("shortage_reasons_count"));
-
         row.setOnTimePercentage(rs.getBigDecimal("on_time_percentage"));
 
         return row;

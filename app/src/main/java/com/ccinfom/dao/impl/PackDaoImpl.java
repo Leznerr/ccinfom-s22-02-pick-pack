@@ -18,8 +18,8 @@ public class PackDaoImpl implements PackDao {
 
     private static final String INSERT_BOX_SQL = """
         INSERT INTO pack_box_hdr
-            (pick_ticket_id, picking_id, sealed_flag, seal_method, sealed_at, source_ref, created_by, updated_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (pick_ticket_id, picking_id, packer_id, sealed_flag, seal_method, sealed_at, handling_notes, source_ref, created_by, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
 
     private static final String INSERT_LINE_SQL = """
@@ -30,7 +30,7 @@ public class PackDaoImpl implements PackDao {
 
     private static final String UPDATE_SEAL_SQL = """
         UPDATE pack_box_hdr
-           SET sealed_flag = ?, seal_method = ?, sealed_at = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+           SET sealed_flag = ?, packer_id = ?, seal_method = ?, handling_notes = ?, sealed_at = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
          WHERE box_id = ?
         """;
 
@@ -39,16 +39,22 @@ public class PackDaoImpl implements PackDao {
         try (PreparedStatement stmt = conn.prepareStatement(INSERT_BOX_SQL, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, box.getPickTicketId());
             stmt.setLong(2, box.getPickingId());
-            stmt.setBoolean(3, box.isSealedFlag());
-            stmt.setString(4, box.getSealMethod());
-            if (box.getSealedAt() != null) {
-                stmt.setTimestamp(5, java.sql.Timestamp.valueOf(box.getSealedAt()));
+            if (box.getPackerId() != null) {
+                stmt.setLong(3, box.getPackerId());
             } else {
-                stmt.setNull(5, java.sql.Types.TIMESTAMP);
+                stmt.setNull(3, java.sql.Types.BIGINT);
             }
-            stmt.setString(6, box.getSourceRef());
-            stmt.setString(7, box.getCreatedBy());
-            stmt.setString(8, box.getUpdatedBy());
+            stmt.setBoolean(4, box.isSealedFlag());
+            stmt.setString(5, box.getSealMethod());
+            if (box.getSealedAt() != null) {
+                stmt.setTimestamp(6, java.sql.Timestamp.valueOf(box.getSealedAt()));
+            } else {
+                stmt.setNull(6, java.sql.Types.TIMESTAMP);
+            }
+            stmt.setString(7, box.getHandlingNotes());
+            stmt.setString(8, box.getSourceRef());
+            stmt.setString(9, box.getCreatedBy());
+            stmt.setString(10, box.getUpdatedBy());
             stmt.executeUpdate();
 
             try (ResultSet rs = stmt.getGeneratedKeys()) {
@@ -78,13 +84,19 @@ public class PackDaoImpl implements PackDao {
     }
 
     @Override
-    public void sealBox(long boxId, String sealMethod, String updatedBy, Connection conn) throws SQLException {
+    public void sealBox(long boxId, Long packerId, String sealMethod, String handlingNotes, String updatedBy, Connection conn) throws SQLException {
         try (PreparedStatement stmt = conn.prepareStatement(UPDATE_SEAL_SQL)) {
             stmt.setBoolean(1, true);
-            stmt.setString(2, sealMethod);
-            stmt.setTimestamp(3, java.sql.Timestamp.valueOf(LocalDateTime.now()));
-            stmt.setString(4, updatedBy);
-            stmt.setLong(5, boxId);
+            if (packerId != null) {
+                stmt.setLong(2, packerId);
+            } else {
+                stmt.setNull(2, java.sql.Types.BIGINT);
+            }
+            stmt.setString(3, sealMethod);
+            stmt.setString(4, handlingNotes);
+            stmt.setTimestamp(5, java.sql.Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setString(6, updatedBy);
+            stmt.setLong(7, boxId);
             stmt.executeUpdate();
         }
     }
@@ -226,12 +238,17 @@ public class PackDaoImpl implements PackDao {
         box.setBoxId(rs.getLong("box_id"));
         box.setPickTicketId(rs.getLong("pick_ticket_id"));
         box.setPickingId(rs.getLong("picking_id"));
+        long packerId = rs.getLong("packer_id");
+        if (!rs.wasNull()) {
+            box.setPackerId(packerId);
+        }
         box.setSealedFlag(rs.getBoolean("sealed_flag"));
         box.setSealMethod(rs.getString("seal_method"));
         java.sql.Timestamp sealedTs = rs.getTimestamp("sealed_at");
         if (sealedTs != null) {
             box.setSealedAt(sealedTs.toLocalDateTime());
         }
+        box.setHandlingNotes(rs.getString("handling_notes"));
         box.setSourceRef(rs.getString("source_ref"));
         java.sql.Timestamp createdTs = rs.getTimestamp("created_at");
         if (createdTs != null) {

@@ -10,6 +10,11 @@ public class DispatchLine {
     private Long dispatchLineId;
     private Long dispatchId;
     private Long boxId;
+    private java.math.BigDecimal qtyDispatched;
+    private java.math.BigDecimal qtyDelivered;
+    private String lineStatus;
+    private LocalDateTime deliveredAt;
+    private String receivedBy;
     private String sourceRef;
     private LocalDateTime createdAt;
     private String createdBy;
@@ -23,6 +28,11 @@ public class DispatchLine {
     public DispatchLine(Long dispatchLineId,
                         Long dispatchId,
                         Long boxId,
+                        java.math.BigDecimal qtyDispatched,
+                        java.math.BigDecimal qtyDelivered,
+                        String lineStatus,
+                        LocalDateTime deliveredAt,
+                        String receivedBy,
                         String sourceRef,
                         LocalDateTime createdAt,
                         String createdBy,
@@ -31,6 +41,11 @@ public class DispatchLine {
         this.dispatchLineId = dispatchLineId;
         this.dispatchId = dispatchId;
         this.boxId = boxId;
+        this.qtyDispatched = qtyDispatched;
+        this.qtyDelivered = qtyDelivered;
+        this.lineStatus = lineStatus;
+        this.deliveredAt = deliveredAt;
+        this.receivedBy = receivedBy;
         this.sourceRef = sourceRef;
         this.createdAt = createdAt;
         this.createdBy = createdBy;
@@ -60,6 +75,46 @@ public class DispatchLine {
 
     public void setBoxId(Long boxId) {
         this.boxId = boxId;
+    }
+
+    public java.math.BigDecimal getQtyDispatched() {
+        return qtyDispatched;
+    }
+
+    public void setQtyDispatched(java.math.BigDecimal qtyDispatched) {
+        this.qtyDispatched = qtyDispatched;
+    }
+
+    public java.math.BigDecimal getQtyDelivered() {
+        return qtyDelivered;
+    }
+
+    public void setQtyDelivered(java.math.BigDecimal qtyDelivered) {
+        this.qtyDelivered = qtyDelivered;
+    }
+
+    public String getLineStatus() {
+        return lineStatus;
+    }
+
+    public void setLineStatus(String lineStatus) {
+        this.lineStatus = lineStatus;
+    }
+
+    public LocalDateTime getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    public void setDeliveredAt(LocalDateTime deliveredAt) {
+        this.deliveredAt = deliveredAt;
+    }
+
+    public String getReceivedBy() {
+        return receivedBy;
+    }
+
+    public void setReceivedBy(String receivedBy) {
+        this.receivedBy = receivedBy;
     }
 
     public String getSourceRef() {

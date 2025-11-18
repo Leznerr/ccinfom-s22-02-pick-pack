@@ -160,7 +160,7 @@ public class PackServiceImpl implements PackService {
     }
 
     @Override
-    public void sealBox(long boxId, String sealMethod, String user) throws SQLException, ValidationException {
+    public void sealBox(long boxId, Long packerId, String sealMethod, String handlingNotes, String user) throws SQLException, ValidationException {
         if (sealMethod == null || sealMethod.isBlank()) {
             throw new ValidationException("PACK_SEAL_METHOD_REQUIRED", "Seal method must be provided.");
         }
@@ -195,7 +195,7 @@ public class PackServiceImpl implements PackService {
                         "Box ticket does not match picking session ticket.");
             }
 
-            packDao.sealBox(boxId, sealMethod, actor, conn);
+            packDao.sealBox(boxId, packerId, sealMethod, handlingNotes, actor, conn);
 
             ticketDao.updateTicketStatus(
                     pickingHdr.getPickTicketId(),

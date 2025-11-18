@@ -6,6 +6,7 @@ import com.ccinfom.dao.impl.PickingDaoImpl;
 import com.ccinfom.dao.impl.TicketDaoImpl;
 import com.ccinfom.model.PickingHdr;
 import com.ccinfom.model.PickingLine;
+import com.ccinfom.model.Employee;
 import com.ccinfom.model.pack.PackBox;
 import com.ccinfom.model.pack.PackBoxLine;
 import com.ccinfom.service.ValidationException;
@@ -49,6 +50,9 @@ public class PackForm extends JFrame {
 
     // UI Components
     private JComboBox<ComboItem<Long>> pickingCombo;
+    private JComboBox<ComboItem<Long>> packerCombo;
+    private JTextField sealMethodField;
+    private JTextArea handlingNotesArea;
     private JButton loadLinesButton;
     private PackLineTable lineTable;
     private JButton addButton;
@@ -81,6 +85,7 @@ public class PackForm extends JFrame {
         enterSelectionState();
         layoutComponents();
         registerEventHandlers();
+        loadPackers();
         loadPickingSessions();
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -90,6 +95,11 @@ public class PackForm extends JFrame {
 
     private void initializeComponents() {
         pickingCombo = new JComboBox<>();
+        packerCombo = new JComboBox<>();
+        sealMethodField = new JTextField("tape");
+        handlingNotesArea = new JTextArea(3, 20);
+        handlingNotesArea.setLineWrap(true);
+        handlingNotesArea.setWrapStyleWord(true);
         loadLinesButton = new JButton("Load Lines");
 
         lineTableModel = new PackLineTableModel();
@@ -135,6 +145,24 @@ public class PackForm extends JFrame {
         gbc.weightx = 0;
         sessionPanel.add(loadLinesButton, gbc);
 
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        sessionPanel.add(new JLabel("Packer:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        sessionPanel.add(packerCombo, gbc);
+        gbc.gridwidth = 1;
+
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
+        sessionPanel.add(new JLabel("Seal Method:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        sessionPanel.add(sealMethodField, gbc);
+        gbc.gridwidth = 1;
+
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0;
+        sessionPanel.add(new JLabel("Handling Notes:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.gridwidth = 2;
+        sessionPanel.add(new JScrollPane(handlingNotesArea), gbc);
+        gbc.gridwidth = 1;
+
         // Table Panel
         JScrollPane tableScroll = new JScrollPane(lineTable);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Picking Lines"));
@@ -159,6 +187,23 @@ public class PackForm extends JFrame {
         addButton.addActionListener(e -> onAddToBox());
         sealButton.addActionListener(e -> onSealBox());
         resetButton.addActionListener(e -> onReset());
+    }
+
+    private void loadPackers() {
+        packerCombo.removeAllItems();
+        packerCombo.addItem(new ComboItem<>(null, "(select packer)"));
+        try {
+            LookupDaoImpl lookup = new LookupDaoImpl();
+            for (Employee emp : lookup.listActiveEmployees()) {
+                if (Employee.Role.PACKER.equals(emp.getEmployeeRole())) {
+                    String label = emp.getFirstName() + " " + emp.getLastName();
+                    packerCombo.addItem(new ComboItem<>(emp.getEmployeeId(), label));
+                }
+            }
+        } catch (Exception e) {
+            Logger.getLogger(PackForm.class.getName()).log(Level.WARNING,
+                    "Failed to load packers: " + e.getMessage(), e);
+        }
     }
 
     // Loads only picking sessions that are "Done" (ready to pack)
@@ -441,7 +486,11 @@ public class PackForm extends JFrame {
                 null,
                 () -> {
                     String user = currentUser();
-                    packService.sealBox(currentBoxId, SEAL_METHOD, user);
+                    ComboItem<Long> packer = (ComboItem<Long>) packerCombo.getSelectedItem();
+                    Long packerId = packer != null ? packer.getValue() : null;
+                    String sealMethod = sealMethodField.getText() != null ? sealMethodField.getText().trim() : "";
+                    String notes = handlingNotesArea.getText();
+                    packService.sealBox(currentBoxId, packerId, sealMethod, notes, user);
                     return true;
                 },
                 ok -> {

@@ -123,6 +123,7 @@ CREATE TABLE pick_ticket_hdr (
   branch_id       BIGINT UNSIGNED NOT NULL,
   ticket_status   ENUM('Open','Picking','Packed','Dispatched','Delivered','Closed')
                   NOT NULL DEFAULT 'Open',
+  promised_delivery_date DATE NULL,
   remarks         VARCHAR(300) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -385,9 +386,11 @@ CREATE TABLE IF NOT EXISTS pack_box_hdr (
   box_id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   pick_ticket_id  BIGINT UNSIGNED NOT NULL,
   picking_id      BIGINT UNSIGNED NOT NULL,
+  packer_id       BIGINT UNSIGNED NULL,
   sealed_flag     BOOLEAN NOT NULL DEFAULT FALSE,
   seal_method     VARCHAR(50) NULL,
   sealed_at       TIMESTAMP NULL,
+  handling_notes  VARCHAR(200) NULL,
   source_ref      VARCHAR(100) NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by      VARCHAR(64) NOT NULL DEFAULT 'system',
@@ -402,7 +405,12 @@ CREATE TABLE IF NOT EXISTS pack_box_hdr (
   CONSTRAINT fk_pack_box_picking
     FOREIGN KEY (picking_id)
     REFERENCES picking_hdr(picking_id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_pack_box_packer
+    FOREIGN KEY (packer_id)
+    REFERENCES employees(employee_id)
+    ON DELETE SET NULL
 );
 
 CREATE INDEX idx_pack_box_ticket_id ON pack_box_hdr(pick_ticket_id);
@@ -449,6 +457,7 @@ CREATE TABLE dispatch_hdr (
   pick_ticket_id  BIGINT UNSIGNED NOT NULL,
   vehicle_id      BIGINT UNSIGNED NOT NULL,
   driver_id       BIGINT UNSIGNED NOT NULL,
+  dispatch_status ENUM('Built','Departed','Arrived','Delivered','Partial') NOT NULL DEFAULT 'Built',
   manifest_no     VARCHAR(100) NOT NULL UNIQUE,
   depart_ts       TIMESTAMP NULL,
   arrive_ts       TIMESTAMP NULL,
@@ -482,6 +491,11 @@ CREATE TABLE dispatch_line (
   dispatch_line_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   dispatch_id      BIGINT UNSIGNED NOT NULL,
   box_id           BIGINT UNSIGNED NOT NULL,
+  qty_dispatched   DECIMAL(12,2) NOT NULL DEFAULT 1,
+  qty_delivered    DECIMAL(12,2) NULL,
+  line_status      ENUM('Delivered','Short') NULL,
+  delivered_at     TIMESTAMP NULL,
+  received_by      VARCHAR(150) NULL,
   source_ref       VARCHAR(100) NULL,
   created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by       VARCHAR(64) NOT NULL DEFAULT 'system',

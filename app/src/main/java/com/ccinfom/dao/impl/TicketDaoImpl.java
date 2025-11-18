@@ -20,16 +20,21 @@ public class TicketDaoImpl implements TicketDao {
     @Override
     public long insertTicketHeader(PickTicketHdr hdr, Connection conn) throws SQLException {
         String sql = """
-            INSERT INTO pick_ticket_hdr (customer_id, branch_id, ticket_status, remarks, updated_by)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO pick_ticket_hdr (customer_id, branch_id, ticket_status, promised_delivery_date, remarks, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, hdr.getCustomerId());
             stmt.setLong(2, hdr.getBranchId());
             stmt.setString(3, hdr.getTicketStatus().getDbValue());
-            stmt.setString(4, hdr.getRemarks());
-            stmt.setString(5, hdr.getUpdatedBy());
+            if (hdr.getPromisedDeliveryDate() != null) {
+                stmt.setDate(4, java.sql.Date.valueOf(hdr.getPromisedDeliveryDate()));
+            } else {
+                stmt.setNull(4, java.sql.Types.DATE);
+            }
+            stmt.setString(5, hdr.getRemarks());
+            stmt.setString(6, hdr.getUpdatedBy());
 
             int affectedRows = stmt.executeUpdate();
 
@@ -160,6 +165,10 @@ public class TicketDaoImpl implements TicketDao {
         hdr.setCustomerId(rs.getLong("customer_id"));
         hdr.setBranchId(rs.getLong("branch_id"));
         hdr.setTicketStatus(PickTicketHdr.TicketStatus.fromDb(rs.getString("ticket_status")));
+        java.sql.Date promised = rs.getDate("promised_delivery_date");
+        if (promised != null) {
+            hdr.setPromisedDeliveryDate(promised.toLocalDate());
+        }
         hdr.setRemarks(rs.getString("remarks"));
         hdr.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         hdr.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());

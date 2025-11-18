@@ -22,7 +22,6 @@ public class R4OnTimeDeliveryRow {
     private int onTimeDeliveries;
     private int lateDeliveries;
     private int shortClosedShipments;
-    private int shortageReasonsCount;
     private BigDecimal onTimePercentage;
 
     // Getters & Setters
@@ -62,9 +61,6 @@ public class R4OnTimeDeliveryRow {
 
     public int getShortClosedShipments() { return shortClosedShipments; }
     public void setShortClosedShipments(int shortClosedShipments) { this.shortClosedShipments = shortClosedShipments; }
-
-    public int getShortageReasonsCount() { return shortageReasonsCount; }
-    public void setShortageReasonsCount(int shortageReasonsCount) { this.shortageReasonsCount = shortageReasonsCount; }
 
     public BigDecimal getOnTimePercentage() { return onTimePercentage; }
     public void setOnTimePercentage(BigDecimal onTimePercentage) { this.onTimePercentage = onTimePercentage; }

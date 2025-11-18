@@ -10,6 +10,7 @@ public class PackBox {
     private Long boxId;
     private Long pickTicketId;
     private Long pickingId;
+    private Long packerId;
     private boolean sealedFlag;
     private String sealMethod;
     private LocalDateTime sealedAt;
@@ -28,6 +29,7 @@ public class PackBox {
     public PackBox(Long boxId,
                    Long pickTicketId,
                    Long pickingId,
+                   Long packerId,
                    boolean sealedFlag,
                    String sealMethod,
                    LocalDateTime sealedAt,
@@ -41,6 +43,7 @@ public class PackBox {
         this.boxId = boxId;
         this.pickTicketId = pickTicketId;
         this.pickingId = pickingId;
+        this.packerId = packerId;
         this.sealedFlag = sealedFlag;
         this.sealMethod = sealMethod;
         this.sealedAt = sealedAt;
@@ -75,6 +78,14 @@ public class PackBox {
 
     public void setPickingId(Long pickingId) {
         this.pickingId = pickingId;
+    }
+
+    public Long getPackerId() {
+        return packerId;
+    }
+
+    public void setPackerId(Long packerId) {
+        this.packerId = packerId;
     }
 
     public boolean isSealedFlag() {

@@ -18,6 +18,7 @@
 package com.ccinfom.model;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 public class PickTicketHdr {
 
@@ -61,6 +62,7 @@ public class PickTicketHdr {
     private Long customerId;
     private Long branchId;
     private TicketStatus ticketStatus;
+    private LocalDate promisedDeliveryDate;
     private String remarks;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -69,12 +71,13 @@ public class PickTicketHdr {
     // Constructors
     public PickTicketHdr() {}
     public PickTicketHdr(Long pickTicketId, Long customerId, Long branchId,
-                         TicketStatus ticketStatus, String remarks,
+                         TicketStatus ticketStatus, LocalDate promisedDeliveryDate, String remarks,
                          LocalDateTime createdAt, LocalDateTime updatedAt, String updatedBy) {
         this.pickTicketId = pickTicketId;
         this.customerId = customerId;
         this.branchId = branchId;
         this.ticketStatus = ticketStatus;
+        this.promisedDeliveryDate = promisedDeliveryDate;
         this.remarks = remarks;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -93,6 +96,9 @@ public class PickTicketHdr {
 
     public TicketStatus getTicketStatus() { return ticketStatus; }
     public void setTicketStatus(TicketStatus ticketStatus) { this.ticketStatus = ticketStatus; }
+
+    public LocalDate getPromisedDeliveryDate() { return promisedDeliveryDate; }
+    public void setPromisedDeliveryDate(LocalDate promisedDeliveryDate) { this.promisedDeliveryDate = promisedDeliveryDate; }
 
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }

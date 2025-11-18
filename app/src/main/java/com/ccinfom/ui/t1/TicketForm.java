@@ -18,6 +18,9 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +45,8 @@ import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerDateModel;
 
 /**
  * Phase D UI form for Transaction T1 - Create Pick Ticket.
@@ -62,6 +67,7 @@ public class TicketForm extends JFrame {
     // UI Components
     private JComboBox<ComboItem<Customer>> customerComboBox;
     private JComboBox<ComboItem<Branch>> branchComboBox;
+    private JSpinner promisedDateSpinner;
     private JTextArea remarksArea;
     private JTextField productIdField;
     private JTextField quantityField;
@@ -106,6 +112,10 @@ public class TicketForm extends JFrame {
     private void initializeComponents() {
         customerComboBox = new JComboBox<>();
         branchComboBox = new JComboBox<>();
+        promisedDateSpinner = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor editor = new JSpinner.DateEditor(promisedDateSpinner, "yyyy-MM-dd");
+        promisedDateSpinner.setEditor(editor);
+        editor.getTextField().setText(""); // start empty so user must pick
         remarksArea = new JTextArea(3, 30);
         remarksArea.setLineWrap(true);
         remarksArea.setWrapStyleWord(true);
@@ -146,6 +156,13 @@ public class TicketForm extends JFrame {
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         headerPanel.add(branchComboBox, gbc);
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        headerPanel.add(new JLabel("Promised Date"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        headerPanel.add(promisedDateSpinner, gbc);
 
         gbc.gridy++;
         gbc.gridx = 0;
@@ -339,9 +356,24 @@ public class TicketForm extends JFrame {
             return;
         }
 
+        String promisedText = ((JSpinner.DateEditor) promisedDateSpinner.getEditor())
+                .getTextField().getText();
+        if (promisedText == null || promisedText.isBlank()) {
+            showWarning("Select a promised delivery date.");
+            return;
+        }
+        LocalDate promisedDate;
+        try {
+            promisedDate = LocalDate.parse(promisedText.trim(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        } catch (DateTimeParseException ex) {
+            showWarning("Invalid promised delivery date. Use yyyy-MM-dd.");
+            return;
+        }
+
         PickTicketHdr hdr = new PickTicketHdr();
         hdr.setCustomerId(customerItem.getValue().getCustomerId());
         hdr.setBranchId(branchItem.getValue().getBranchId());
+        hdr.setPromisedDeliveryDate(promisedDate);
         hdr.setRemarks(remarksArea.getText().isBlank() ? null : remarksArea.getText().trim());
         hdr.setUpdatedBy(DEFAULT_UPDATED_BY);
 

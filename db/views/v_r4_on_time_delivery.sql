@@ -41,8 +41,6 @@ SELECT
         THEN ch.pick_ticket_id 
     END) AS short_closed_shipments,
     
-    COUNT(CASE WHEN cv.short_qty > 0 THEN cv.reason END) AS shortage_reasons_count,
-    
     -- Calculated Percentage (EXACTLY as specified)
     CASE 
         WHEN COUNT(DISTINCT CASE WHEN ch.final_status = 'Delivered' THEN ch.pick_ticket_id END) > 0

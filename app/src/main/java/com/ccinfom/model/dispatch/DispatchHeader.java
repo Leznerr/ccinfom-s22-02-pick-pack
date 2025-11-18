@@ -7,11 +7,20 @@ import java.time.LocalDateTime;
  */
 public class DispatchHeader {
 
+    public enum DispatchStatus {
+        Built,
+        Departed,
+        Arrived,
+        Delivered,
+        Partial
+    }
+
     private Long dispatchId;
     private Long pickTicketId;
     private Long vehicleId;
     private Long driverId;
     private String manifestNo;
+    private DispatchStatus dispatchStatus;
     private LocalDateTime departTs;
     private LocalDateTime arriveTs;
     private String podRef;
@@ -31,6 +40,7 @@ public class DispatchHeader {
                           Long vehicleId,
                           Long driverId,
                           String manifestNo,
+                          DispatchStatus dispatchStatus,
                           LocalDateTime departTs,
                           LocalDateTime arriveTs,
                           String podRef,
@@ -45,6 +55,7 @@ public class DispatchHeader {
         this.vehicleId = vehicleId;
         this.driverId = driverId;
         this.manifestNo = manifestNo;
+        this.dispatchStatus = dispatchStatus;
         this.departTs = departTs;
         this.arriveTs = arriveTs;
         this.podRef = podRef;
@@ -94,6 +105,14 @@ public class DispatchHeader {
 
     public void setManifestNo(String manifestNo) {
         this.manifestNo = manifestNo;
+    }
+
+    public DispatchStatus getDispatchStatus() {
+        return dispatchStatus;
+    }
+
+    public void setDispatchStatus(DispatchStatus dispatchStatus) {
+        this.dispatchStatus = dispatchStatus;
     }
 
     public LocalDateTime getDepartTs() {

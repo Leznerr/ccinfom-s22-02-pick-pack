@@ -138,6 +138,10 @@ public class TicketService {
         if (hdr.getUpdatedBy() == null || hdr.getUpdatedBy().isBlank()) {
             hdr.setUpdatedBy(SYSTEM_USER);
         }
+        // Normalize promised date (no-op if null)
+        if (hdr.getPromisedDeliveryDate() != null) {
+            hdr.setPromisedDeliveryDate(hdr.getPromisedDeliveryDate());
+        }
 
         if (lines != null) {
             for (PickTicketLine line : lines) {
@@ -170,6 +174,14 @@ public class TicketService {
 
         if (hdr.getCustomerId() == null || hdr.getBranchId() == null) {
             throw new ValidationException("Customer and Branch are required.");
+        }
+
+        // Promised delivery date must be present and not in the past
+        if (hdr.getPromisedDeliveryDate() == null) {
+            throw new ValidationException("Promised delivery date is required.");
+        }
+        if (hdr.getPromisedDeliveryDate().isBefore(java.time.LocalDate.now())) {
+            throw new ValidationException("Promised delivery date cannot be in the past.");
         }
 
         if (lines.isEmpty()) {
