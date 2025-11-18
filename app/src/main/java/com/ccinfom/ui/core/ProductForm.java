@@ -281,7 +281,8 @@ public class ProductForm extends JFrame {
                    pb.created_at, pb.sealed_at
             FROM pack_box_line pbl
             JOIN pack_box_hdr pb ON pb.box_id = pbl.box_id
-            JOIN pick_ticket_line ptl ON ptl.ticket_line_id = pbl.ticket_line_id
+            JOIN picking_line pl ON pl.picking_line_id = pbl.picking_line_id
+            JOIN pick_ticket_line ptl ON ptl.ticket_line_id = pl.ticket_line_id
             WHERE ptl.product_id = ?
             ORDER BY pb.created_at DESC
             LIMIT 15

@@ -223,7 +223,7 @@ public class VehicleForm extends JFrame {
             SELECT dh.dispatch_id, dh.manifest_no,
                    CONCAT(e.first_name, ' ', e.last_name) AS driver_name,
                    c.customer_name, b.branch_name,
-                   dh.dispatched_at, dh.depart_ts, dh.arrive_ts, dh.dispatch_status
+                   dh.depart_ts AS dispatched_at, dh.depart_ts, dh.arrive_ts, dh.dispatch_status
             FROM dispatch_hdr dh
             JOIN employees e ON e.employee_id = dh.driver_id
             JOIN pick_ticket_hdr pth ON pth.pick_ticket_id = dh.pick_ticket_id

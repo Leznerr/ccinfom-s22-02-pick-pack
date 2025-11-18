@@ -195,7 +195,7 @@ public class CustomerForm extends JFrame {
         );
 
         JTable dispatchTable = buildRelatedTable(
-                "SELECT dh.dispatch_id, dh.manifest_no, dh.dispatched_at, dh.depart_ts, dh.arrive_ts, dh.dispatch_status " +
+                "SELECT dh.dispatch_id, dh.manifest_no, dh.depart_ts AS dispatched_at, dh.depart_ts, dh.arrive_ts, dh.dispatch_status " +
                         "FROM dispatch_hdr dh " +
                         "JOIN pick_ticket_hdr pth ON pth.pick_ticket_id = dh.pick_ticket_id " +
                         "WHERE pth.customer_id = ? ORDER BY dh.created_at DESC LIMIT 15",
