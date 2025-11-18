@@ -33,12 +33,12 @@ CREATE TABLE close_hdr (
   CONSTRAINT fk_close_ticket
     FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_close_dispatch
     FOREIGN KEY (dispatch_id)
     REFERENCES dispatch_hdr(dispatch_id)
-    ON DELETE CASCADE
+    ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_close_hdr_ticket_id ON close_hdr(pick_ticket_id);
@@ -62,12 +62,12 @@ CREATE TABLE close_variance (
   CONSTRAINT fk_close_variance_hdr
     FOREIGN KEY (close_id)
     REFERENCES close_hdr(close_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_close_variance_ticket_line
     FOREIGN KEY (ticket_line_id)
     REFERENCES pick_ticket_line(ticket_line_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT ck_close_variance_requested_nonneg CHECK (requested_qty >= 0),
   CONSTRAINT ck_close_variance_delivered_nonneg CHECK (delivered_qty >= 0),

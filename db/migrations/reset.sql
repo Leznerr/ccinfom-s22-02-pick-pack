@@ -150,7 +150,7 @@ CREATE TABLE pick_ticket_line (
   updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
   CONSTRAINT fk_pt_line_hdr FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
   CONSTRAINT fk_pt_line_product FOREIGN KEY (product_id)
     REFERENCES products(product_id),
   CONSTRAINT uq_pt_line UNIQUE (pick_ticket_id, product_id)
@@ -199,7 +199,7 @@ CREATE TABLE picking_line (
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
   CONSTRAINT fk_pick_line_hdr
-    FOREIGN KEY (picking_id)     REFERENCES picking_hdr(picking_id) ON DELETE CASCADE,
+    FOREIGN KEY (picking_id)     REFERENCES picking_hdr(picking_id) ON DELETE RESTRICT,
   CONSTRAINT fk_pick_line_ticket_line
     FOREIGN KEY (ticket_line_id) REFERENCES pick_ticket_line(ticket_line_id),
   CONSTRAINT fk_pick_line_product
@@ -400,12 +400,12 @@ CREATE TABLE IF NOT EXISTS pack_box_hdr (
   CONSTRAINT fk_pack_box_ticket
     FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_pack_box_picking
     FOREIGN KEY (picking_id)
     REFERENCES picking_hdr(picking_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_pack_box_packer
     FOREIGN KEY (packer_id)
@@ -432,7 +432,7 @@ CREATE TABLE IF NOT EXISTS pack_box_line (
   CONSTRAINT fk_pack_line_hdr
     FOREIGN KEY (box_id)
     REFERENCES pack_box_hdr(box_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_pack_line_picking
     FOREIGN KEY (picking_line_id)
@@ -472,7 +472,7 @@ CREATE TABLE dispatch_hdr (
   CONSTRAINT fk_dispatch_ticket
     FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_dispatch_vehicle
     FOREIGN KEY (vehicle_id)
@@ -505,12 +505,12 @@ CREATE TABLE dispatch_line (
   CONSTRAINT fk_dispatch_line_hdr
     FOREIGN KEY (dispatch_id)
     REFERENCES dispatch_hdr(dispatch_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_dispatch_line_box
     FOREIGN KEY (box_id)
     REFERENCES pack_box_hdr(box_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT uq_dispatch_line_box UNIQUE (box_id)
 );
@@ -539,12 +539,12 @@ CREATE TABLE close_hdr (
   CONSTRAINT fk_close_ticket
     FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_close_dispatch
     FOREIGN KEY (dispatch_id)
     REFERENCES dispatch_hdr(dispatch_id)
-    ON DELETE CASCADE
+    ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_close_hdr_ticket_id ON close_hdr(pick_ticket_id);
@@ -568,12 +568,12 @@ CREATE TABLE close_variance (
   CONSTRAINT fk_close_variance_hdr
     FOREIGN KEY (close_id)
     REFERENCES close_hdr(close_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_close_variance_ticket_line
     FOREIGN KEY (ticket_line_id)
     REFERENCES pick_ticket_line(ticket_line_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT ck_close_variance_requested_nonneg CHECK (requested_qty >= 0),
   CONSTRAINT ck_close_variance_delivered_nonneg CHECK (delivered_qty >= 0),

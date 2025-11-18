@@ -26,12 +26,12 @@ CREATE TABLE pack_box_hdr (
   CONSTRAINT fk_pack_box_ticket
     FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_pack_box_picking
     FOREIGN KEY (picking_id)
     REFERENCES picking_hdr(picking_id)
-    ON DELETE CASCADE
+    ON DELETE RESTRICT
 );
 
 -- Helpful indexes
@@ -61,7 +61,7 @@ CREATE TABLE pack_box_line (
   CONSTRAINT fk_pack_line_hdr
     FOREIGN KEY (box_id)
     REFERENCES pack_box_hdr(box_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_pack_line_picking
     FOREIGN KEY (picking_line_id)

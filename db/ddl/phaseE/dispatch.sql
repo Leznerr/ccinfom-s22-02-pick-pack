@@ -26,7 +26,7 @@ CREATE TABLE dispatch_hdr (
   CONSTRAINT fk_dispatch_ticket
     FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_dispatch_vehicle
     FOREIGN KEY (vehicle_id)
@@ -55,12 +55,12 @@ CREATE TABLE dispatch_line (
   CONSTRAINT fk_dispatch_line_hdr
     FOREIGN KEY (dispatch_id)
     REFERENCES dispatch_hdr(dispatch_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT fk_dispatch_line_box
     FOREIGN KEY (box_id)
     REFERENCES pack_box_hdr(box_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
 
   CONSTRAINT uq_dispatch_line_box UNIQUE (box_id) -- prevents the same box from being added to multiple dispatches
 );

@@ -144,7 +144,7 @@ CREATE TABLE pick_ticket_line (
   updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
   CONSTRAINT fk_pt_line_hdr FOREIGN KEY (pick_ticket_id)
     REFERENCES pick_ticket_hdr(pick_ticket_id)
-    ON DELETE CASCADE,
+    ON DELETE RESTRICT,
   CONSTRAINT fk_pt_line_product FOREIGN KEY (product_id)
     REFERENCES products(product_id),
   CONSTRAINT uq_pt_line UNIQUE (pick_ticket_id, product_id)
@@ -193,7 +193,7 @@ CREATE TABLE picking_line (
   updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by      VARCHAR(64) NOT NULL DEFAULT 'system',
   CONSTRAINT fk_pick_line_hdr
-    FOREIGN KEY (picking_id)     REFERENCES picking_hdr(picking_id) ON DELETE CASCADE,
+    FOREIGN KEY (picking_id)     REFERENCES picking_hdr(picking_id) ON DELETE RESTRICT,
   CONSTRAINT fk_pick_line_ticket_line
     FOREIGN KEY (ticket_line_id) REFERENCES pick_ticket_line(ticket_line_id),
   CONSTRAINT fk_pick_line_product
