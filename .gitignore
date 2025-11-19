@@ -1,9 +1,9 @@
 ########################################
 # Build / compiled output
 ########################################
-app/bin/
-app/out_test/
-app/out/
+CCINFOM S22-02-DBAPP/bin/
+CCINFOM S22-02-DBAPP/out_test/
+CCINFOM S22-02-DBAPP/out/
 
 bin/
 target/

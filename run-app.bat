@@ -4,6 +4,7 @@ setlocal enabledelayedexpansion
 REM === Repo root (handles spaces/apostrophes) ===
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
+set "APP_DIR=%ROOT%\CCINFOM S22-02-DBAPP"
 
 REM === Config (password will be prompted) ===
 set "DB_HOST=127.0.0.1"
@@ -41,17 +42,17 @@ REM === Compile ===
 echo [*] Building Java sources...
 powershell -NoProfile -Command ^
   "$root = [IO.Path]::GetFullPath(\"%ROOT%\");" ^
-  "$src  = Join-Path $root 'app\src\main\java';" ^
+  "$src  = Join-Path $root 'CCINFOM S22-02-DBAPP\src\main\java';" ^
   "$out  = Join-Path $root 'sources.txt';" ^
   "Get-ChildItem -LiteralPath $src -Recurse -File -Filter *.java | ForEach-Object { '\"{0}\"' -f ($_.FullName -replace '\\','/') } | Set-Content -Encoding ASCII $out"
 if errorlevel 1 goto :eof
 
-"%JAVAC_BIN%" -cp "%ROOT%\app/lib/*" -d "%ROOT%\app/out" @"%ROOT%\sources.txt"
+"%JAVAC_BIN%" -cp "%APP_DIR%\lib/*" -d "%APP_DIR%\out" @"%ROOT%\sources.txt"
 if errorlevel 1 goto :eof
 
 REM === Run ===
 echo [*] Launching app...
-set "CLASSPATH=%ROOT%\app/out;%ROOT%\app/lib/*;%ROOT%\app/src/main/resources"
+set "CLASSPATH=%APP_DIR%\out;%APP_DIR%\lib/*;%APP_DIR%\src/main/resources"
 echo [*] Using DB host=%DB_HOST%, user=%DB_USER%
 java %JAVA_OPTS% -cp "%CLASSPATH%" com.ccinfom.ui.MainApp
 goto :eof

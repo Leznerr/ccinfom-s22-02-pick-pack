@@ -1,49 +1,179 @@
-## Phase F Reporting Helpers
+# CCINFOM S22‑02 Pick & Pack Application
 
-- `db/views/helpers.sql` now defines a reusable `dim_date` calendar (2023-01-01 → 2030-12-31) plus `dim_iso_week`. These views power ISO-week grouping for R2/R4 and are sourced automatically by `db/schema.sql` after the core tables and dispatch/close modules compile.
-- Java shared components under `app/src/main/java/com/ccinfom/report/` provide:
-  - `ReportFilterPanel`: year dropdown + Month/ISO-week toggle plus slots for extra filters.
-  - `ReportDaoBase`: JDBC helper for executing queries with consistent date-range binding.
-  - `ReportTableModel`: non-editable table model with CSV export utility.
+This repository contains our Phase E Swing application plus the SQL assets used to reset/seed the database and the Phase F report helpers. The codebase has been reorganised to follow the submission naming requirements:
 
-Use `dim_date` to join on `calendar_date` (or `iso_year/iso_week`) inside report SQL so every report uses the same definition for ISO weeks, weekends, and month boundaries.
+- `CCINFOM S22-02-DBAPP/` – Java sources, libs, and compiled classes.
+- `CCINFOM S22-02-sql/` – Schema definition, migrations, views, and seeds.
+- `CCINFOM S22-02-sql.sql` – Convenience SQL script that recreates the schema and loads all seeds in one go.
 
-## Core Record Management – Products
+The legacy `app/` and `db/` paths are no longer authoritative (Windows may still show a stale `db/` directory if a file is locked, but all scripts read from `CCINFOM S22-02-*`).
 
-- New `ProductForm` (Swing) lets admins search, add, edit, and activate/deactivate products. Launch it from MainApp via **Products (Core Data)**.
-- Validation is enforced via `ProductService` + `CoreValidationUtil` (SKU uniqueness, non-negative quantities/prices, reserved ≤ on-hand).
-- Automated smoke test: `java -cp "app/out;app/lib/*;app/src/main/resources" com.ccinfom.daoTest.ProductCrudRunner` creates a temp product, updates it, toggles the status, and cleans up.
-- Evidence/screenshot: capture the form with data and save as `docs/evidence/stageF/product-form.png`.
+---
 
-## Core Record Management â€“ Customers
+## 1. Database Setup
 
-- `CustomerForm` (Swing) allows searching, adding, editing, and activating/deactivating customer records. Launch via **Customers (Core Data)** in MainApp.
-- Validation leverages `CustomerService` + `CoreValidationUtil` (required name/address, PH phone format, email format + uniqueness).
-- Smoke test: `java -cp "app/out;app/lib/*;app/src/main/resources" com.ccinfom.daoTest.CustomerCrudRunner`.
-- Save evidence screenshot as `docs/evidence/stageF/customer-form.png`.
+### Option A – Batch Script
 
-## Core Record Management â€“ Branches
+```
+.\reset-db.bat
+```
 
-- `BranchForm` provides CRUD for branches (address/city/contact fields, activate/deactivate with in-progress ticket guard). Launch via **Branches (Core Data)**.
-- `BranchService` uses `BranchDao` + `CoreValidationUtil` to enforce required name/address/city/phone and prevent deactivation when pick tickets are still Open→Dispatched.
-- Smoke test: `java -cp "app/out;app/lib/*;app/src/main/resources" com.ccinfom.daoTest.BranchCrudRunner`.
-- Screenshot target: `docs/evidence/stageF/branch-form.png`.
-## Core Record Management – Employees
+The script prompts for the MySQL password, runs `CCINFOM S22-02-sql\migrations\reset.sql`, and seeds `CCINFOM S22-02-sql\seed\cores.sql`.
 
-- EmployeeForm covers employee CRUD (first/last name, role, phone/email, activate/deactivate). Launch via **Employees (Core Data)**.
-- Validation via EmployeeService + CoreValidationUtil enforces PH phone/email format + uniqueness, and blocks deactivation if pickers have open picking sessions or drivers have open dispatch manifests.
-- Smoke test: java -cp "app/out;app/lib/*;app/src/main/resources" com.ccinfom.daoTest.EmployeeCrudRunner.
-- Screenshot target: docs/evidence/stageF/employee-form.png.
+### Option B – Manual / Workbench
 
-## Core Record Management - Vehicles
+```sql
+DROP DATABASE IF EXISTS ccinfom_dev;
+CREATE DATABASE ccinfom_dev;
+USE ccinfom_dev;
+SOURCE "CCINFOM S22-02-sql/schema.sql";
+SOURCE "CCINFOM S22-02-sql/seed/cores.sql";
+SOURCE "CCINFOM S22-02-sql/seed/tx-T1.sql";
+SOURCE "CCINFOM S22-02-sql/seed/tx-T2.sql";
+SOURCE "CCINFOM S22-02-sql/seed/tx-T3.sql";
+SOURCE "CCINFOM S22-02-sql/seed/tx-T4.sql";
+SOURCE "CCINFOM S22-02-sql/seed/tx-T5.sql";
+```
 
-- `VehicleForm` provides vehicle CRUD (plate, type, capacity, SLA hours) with activate/deactivate and guards against deactivating vehicles that are still used in active dispatch manifests. Launch via **Vehicles (Core Data)** in MainApp.
-- Validation via `VehicleService` + `CoreValidationUtil` enforces plate uniqueness; allowed types (van, truck, motorcycle); non-negative capacity; non-negative SLA hours.
-- Smoke test: `java -cp "app/out;app/lib/*;app/src/main/resources" com.ccinfom.daoTest.VehicleCrudRunner`.
-- Screenshot target: `docs/evidence/stageF/vehicle-form.png`.
+Or simply:
 
-## Reports (R1/R2/R4) – Chart Views
+```bash
+mysql -u <user> -p < CCINFOM S22-02-sql.sql
+```
 
-- Each report now includes a Chart tab alongside the table and lets you save the chart as PNG.
-- R1: daily outcomes grouped bars (Delivered, Short-Closed); R2: weekly picker productivity bars; R4: on-time vs late percentages.
-- Tables remain the source of truth; chart data is derived directly from current rows. Use CSV/PDF export for tabular data; use “Save Chart PNG” for visuals.
+That consolidated script drops the schema, recreates it, then sources every file listed above.
+
+---
+
+## 2. Build & Run
+
+### Compile
+
+```powershell
+if (-not (Test-Path "CCINFOM S22-02-DBAPP/out")) {
+    New-Item -ItemType Directory "CCINFOM S22-02-DBAPP/out" | Out-Null
+}
+javac -encoding UTF-8 `
+      -d "CCINFOM S22-02-DBAPP/out" `
+      -cp "CCINFOM S22-02-DBAPP/lib/*" `
+      @sources.txt
+```
+
+`sources.txt` is regenerated automatically by `run-app.bat`, but you can rerun the PowerShell one-liner above if you edit the source tree manually.
+
+### Launch Main UI
+
+```powershell
+java -cp "CCINFOM S22-02-DBAPP/out;
+          CCINFOM S22-02-DBAPP/lib/*;
+          CCINFOM S22-02-DBAPP/src/main/resources" `
+     com.ccinfom.ui.MainApp
+```
+
+`CCINFOM S22-02-DBAPP/src/main/resources/dbconfig.properties` (or the JVM `-Ddb.*` properties set by `run-app.bat`) must point to your MySQL instance.
+
+### QA SQL Checks
+
+```
+./scripts/qa/run-validation.ps1
+```
+
+Update the script with local credentials before running.
+
+### Service Tests?
+
+The previous `app/src/test` suite was deleted during cleanup to keep the repo lean. If you need those regression tests, restore the folder from version history before compiling; otherwise skip that step.
+
+---
+
+## 3. Demo SQL Scripts
+
+| Script | Purpose | Prerequisites |
+| --- | --- | --- |
+| `scripts/demo/demo-T1-to-T4.sql` | Drives a typical Open → Dispatched ticket, including exception cases (over-pack, dispatch unsealed). | Load seeds through `CCINFOM S22-02-sql/seed/tx-T3.sql`. |
+| `scripts/demo/demo-full-flow.sql` | Demonstrates both Delivered and Short-Closed tickets end-to-end. | Apply `CCINFOM S22-02-sql/seed/tx-T4.sql` before running. |
+
+---
+
+## 4. Folder Structure (high level)
+
+```
+CCINFOM S22-02-DBAPP/
+├─ lib/                       JDBC + Swing dependencies
+├─ src/
+│  ├─ main/java/com/ccinfom/
+│  │  ├─ config/              DB config + connection helpers
+│  │  ├─ dao/                 DAO implementations & interfaces
+│  │  ├─ model/               Table-mirroring POJOs
+│  │  ├─ infra/               Cross-cutting helpers (InventoryHelper, etc.)
+│  │  ├─ service/             Business logic
+│  │  ├─ util/                Validation + misc utilities
+│  │  ├─ ui/                  Swing forms (t1–t5 + shared widgets)
+│  │  └─ report/              Phase F report helpers
+│  └─ main/resources/         `dbconfig.properties`, icons, etc.
+├─ out/                       Generated bytecode (created by build scripts)
+└─ DECISIONS.md               Architecture notes
+
+CCINFOM S22-02-sql/
+├─ ddl/                       Historical phase DDL snapshots
+├─ migrations/                `reset.sql`, `phase_f_core_status.sql`, etc.
+├─ seed/                      Core + transaction seeds
+└─ views/                     `helpers.sql`, report-specific views
+```
+
+> Windows may still display an idle `db/` folder if `reset.sql` is open in another process; all scripts now use the `CCINFOM S22-02-sql` directory.
+
+---
+
+## 5. Phase E Transaction Summary
+
+1. **T1 – Create Pick Ticket (`TicketForm`)**  
+   Select a customer & branch, add product lines; tickets start in `Open`.
+2. **T2 – Allocate & Pick (`PickingForm`)**  
+   Assign a picker, record picked vs requested, log shortages; ticket flows `Picking → Done`.
+3. **T3 – Pack & Box (`PackForm`)**  
+   Add picked lines to boxes, seal each box, auto-promote ticket to `Packed`.
+4. **T4 – Schedule & Dispatch (`DispatchForm`)**  
+   Choose vehicle/driver, create manifest, load sealed boxes, record depart/arrive; ticket becomes `Dispatched`.
+5. **T5 – Close Ticket (`CloseForm`)**  
+   Reconcile delivered vs short quantities, capture PoD, and finalize as `Delivered` or `Short-Closed` (with the inventory guardrails described in the business rules).
+
+Each form is accessible via the main control panel in `MainApp` and enforces the validations we documented in our proposal/business rules (e.g., no deleting referenced cores, life-cycle enforcement, PH phone format).
+
+---
+
+## 6. Phase F Reporting Helpers
+
+- `dim_date` + `dim_iso_week` in `CCINFOM S22-02-sql/views/helpers.sql` provide a shared calendar for ISO-week joins (2023‑01‑01 through 2030‑12‑31). All report SQL uses those helpers for consistent week/month boundaries.
+- Shared Java tooling lives under `CCINFOM S22-02-DBAPP/src/main/java/com/ccinfom/report/`:
+  - `ReportFilterPanel` – Year selector + Month/ISO-week toggle for reuse across R1/R2/R4.
+  - `ReportDaoBase` – Parameter binding + safe JDBC helper.
+  - `ReportTableModel` – Read-only model with CSV export utility.
+
+### Core Forms & Modules
+
+- **Products / Customers / Branches / Employees / Vehicles:** Each has a Swing CRUD form backed by `*Service` classes that enforce the business rules from the proposal (uniqueness, activation guards, PH phone format, etc.). Earlier smoke-test runners referenced in documentation were removed together with `src/test`, so validation is done manually via the UI now.
+
+### Reports
+
+- **R1 – Daily Pick & Pack Outcomes**: Delivered vs Short-Closed counts, shortage units, and top short reasons per day. Chart tab renders grouped bars; CSV/PDF exporters cover tabular data.
+- **R2 – Weekly Picker Productivity**: ISO-week filters with picker/category breakdowns (lines, units picked, units/hour, shortage/error lines).
+- **R4 – Monthly On-Time Delivery**: Customer/product matrix with on-time %, late counts, and short-closed shipments for the selected period.
+
+All report forms provide:
+
+- Table tab (source of truth with CSV + PDF export).
+- Chart tab with “Save Chart PNG”.
+- Shared filter panel (year/month vs ISO-week).
+
+When writing new reports, always join through `dim_date` (or `dim_iso_week`) instead of ad-hoc date math so ISO-week rules stay consistent.
+
+---
+
+## 7. Known Differences from Earlier Docs
+
+- Service-layer JUnit/Swing test runners were deleted; README now reflects that.
+- Folder names must stay `CCINFOM S22-02-DBAPP` and `CCINFOM S22-02-sql` for submission. Adjust scripts if you clone into a different path with spaces/apostrophes.
+- If `reset-db.bat` reports “The system cannot find the file specified,” close any editor holding `CCINFOM S22-02-sql\migrations\reset.sql` and rerun.
+
+This README is now the single authoritative reference for building, running, and demonstrating the project with the renamed submission folders. Let us know if anything drifts so we can keep it in sync with the code.
